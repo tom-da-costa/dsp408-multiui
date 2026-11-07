@@ -41,8 +41,10 @@ cp .env.example .env   # set DSP408_HOST, DSP408_PIN …
 docker compose up -d
 ```
 
-Standalone executables (linux-amd64, linux-arm64, windows-amd64) will be attached to each
-release. Then open `http://<server-ip>:8080` from any device on the LAN.
+Standalone executables (linux-amd64, linux-arm64, windows-amd64) are attached to each Gitea
+release: download one and run `./dsp408-multiui-<version>-linux-amd64 --dsp-host 192.168.1.50`.
+Then open `http://<server-ip>:8080` from any device on the LAN. See
+[docs/release.md](docs/release.md) for how releases are built.
 
 ## Documentation
 
@@ -52,8 +54,11 @@ release. Then open `http://<server-ip>:8080` from any device on the LAN.
 | [docs/PLAN.md](docs/PLAN.md) | Phased implementation plan, testing strategy, risks |
 | [docs/PROTOCOL.md](docs/PROTOCOL.md) | Cross-referenced synthesis of the DSP network protocol, with confidence levels and open questions |
 | [docs/SOURCES.md](docs/SOURCES.md) | Prior reverse-engineering projects and reuse rules |
+| [docs/PROGRESS.md](docs/PROGRESS.md) | Implementation progress |
+| [docs/captures.md](docs/captures.md) | How to capture protocol traffic (editor, proxy, probe) |
+| [docs/release.md](docs/release.md) | Distribution, releases, runner prerequisites |
 
-## Tech stack (planned)
+## Tech stack
 
 Python ≥ 3.12 with uv, FastAPI and asyncio for the backend; Svelte 5, TypeScript and Vite for the
 UI, built and embedded in the Python package; pytest, ruff and mypy for quality checks; CI on

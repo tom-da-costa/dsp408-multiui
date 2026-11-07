@@ -1,0 +1,19 @@
+# docker compose up -d   (settings come from .env, see .env.example)
+services:
+  dsp408:
+    image: ${DSP408_IMAGE:-dsp408-multiui:latest}
+    build: .
+    container_name: dsp408-multiui
+    restart: unless-stopped
+    ports:
+      - "${DSP408_LISTEN_PORT:-8080}:8080"
+    environment:
+      DSP408_HOST: ${DSP408_HOST:-}
+      DSP408_PORT: ${DSP408_PORT:-9761}
+      DSP408_PIN: ${DSP408_PIN:-0000}
+      DSP408_METER_RATE: ${DSP408_METER_RATE:-5}
+      DSP408_LOCK_IDLE_TIMEOUT: ${DSP408_LOCK_IDLE_TIMEOUT:-120}
+      DSP408_RESYNC_INTERVAL: ${DSP408_RESYNC_INTERVAL:-0}
+      DSP408_EXPERIMENTAL: ${DSP408_EXPERIMENTAL:-false}
+      DSP408_SIMULATOR: ${DSP408_SIMULATOR:-false}
+      DSP408_LOG_LEVEL: ${DSP408_LOG_LEVEL:-info}

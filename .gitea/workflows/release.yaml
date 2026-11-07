@@ -1,0 +1,74 @@
+# Release on a version tag (vX.Y.Z): standalone executables + multi-arch Docker image.
+# Prerequisites (docs/release.md): the runner gives jobs access to Docker (socket mounted) with
+# QEMU binfmt registered for arm64, and the repository has a REGISTRY_TOKEN secret (a token with
+# package write access) for the container registry.
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+env:
+  GITEA_URL: ${{ github.server_url }}
+  GITEA_REPO: ${{ github.repository }}
+  GITEA_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  TAG: ${{ github.ref_name }}
+
+jobs:
+  check-version:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Tag matches pyproject version
+        run: |
+          VERSION="$(sed -n 's/^version = "\(.*\)"/\1/p' pyproject.toml)"
+          if [ "v$VERSION" != "$TAG" ]; then
+            echo "::error::tag $TAG does not match pyproject version $VERSION"; exit 1
+          fi
+
+  exe-linux:
+    needs: check-version
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        arch: [amd64, arm64]
+    steps:
+      - uses: actions/checkout@v4
+      # buildx sends the build context, so this also works when the job container talks to the
+      # host's Docker daemon (a bind mount of $PWD would point at the wrong path).
+      - name: Build in a ${{ matrix.arch }} container
+        run: |
+          docker buildx build --platform "linux/${{ matrix.arch }}" \
+            --build-arg "NAME=dsp408-multiui-${TAG}-linux-${{ matrix.arch }}" \
+            -f packaging/exe.Dockerfile -o dist .
+      - name: Upload to the release
+        run: packaging/release_upload.sh "$TAG" dist/dsp408-multiui-*-linux-${{ matrix.arch }}
+
+  exe-windows:
+    needs: check-version
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Cross-build with Wine
+        run: |
+          docker buildx build --build-arg "NAME=dsp408-multiui-${TAG}-windows-amd64" \
+            -f packaging/windows.Dockerfile -o dist .
+      - name: Upload to the release
+        run: packaging/release_upload.sh "$TAG" dist/dsp408-multiui-*-windows-amd64.exe
+
+  docker:
+    needs: check-version
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build and push the multi-arch image
+        env:
+          REGISTRY_TOKEN: ${{ secrets.REGISTRY_TOKEN }}
+        run: |
+          REGISTRY="$(echo "$GITEA_URL" | sed -E 's#^https?://##; s#/.*$##')"
+          IMAGE="$REGISTRY/$(echo "$GITEA_REPO" | tr '[:upper:]' '[:lower:]')"
+          echo "$REGISTRY_TOKEN" | docker login "$REGISTRY" -u "${{ github.actor }}" --password-stdin
+          docker buildx create --use --name dsp408 2>/dev/null || docker buildx use dsp408
+          docker buildx build --platform linux/amd64,linux/arm64 \
+            -t "$IMAGE:${TAG#v}" -t "$IMAGE:latest" --push .

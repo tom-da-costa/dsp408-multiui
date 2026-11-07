@@ -373,7 +373,7 @@ model and firmware, version, logout.
 | D11 | UI in English, French translation later | Owner decision |
 
 | D12 | Standalone executable targets: linux-amd64, linux-arm64, windows-amd64 (no macOS) | Owner decision |
-| D13 | CI runs on the Gitea **Docker runner**. arm64 builds use QEMU emulation (`binfmt` + `docker buildx`); the arm64 PyInstaller executable is built inside an emulated arm64 container. | Only a Docker runner is available. Emulated builds are slow but only run on release tags. The Windows executable needs a Windows-capable build path (to be decided in Phase 6: cross-build with Wine, or a manual build). |
+| D13 | CI runs on the Gitea **Docker runner**. arm64 builds use QEMU emulation (`binfmt` + `docker buildx`); the arm64 PyInstaller executable is built inside an emulated arm64 container. | Only a Docker runner is available. Emulated builds are slow but only run on release tags. The Windows executable is cross-built with Wine (`tobix/pywine`); it still has to be tested on a real Windows machine (docs/release.md). |
 
 ## 12. Open questions for the owner
 

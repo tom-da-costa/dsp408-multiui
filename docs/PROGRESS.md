@@ -98,10 +98,15 @@ Notes:
 - A real-phone check (iOS Safari safe areas, touch scrolling) is still to do.
 
 ## Phase 6: Distribution
-- [ ] Committed UI + `web-check`
-- [ ] PyInstaller executables (linux-amd64, linux-arm64, windows-amd64)
-- [ ] Docker image (multi-arch), `compose.yaml`, `.env.example`
-- [ ] Release workflow
+- [x] Committed UI + `web` CI job (fails if the committed build is stale)
+- [~] PyInstaller executables: linux-amd64 built and smoke-tested; windows-amd64 built but
+  untested (fails under Wine, see docs/release.md); linux-arm64 needs QEMU on the runner
+- [x] Docker image, `compose.yaml`, `.env.example` (amd64 tested; arm64 via buildx in the release)
+- [~] Release workflow written (`.gitea/workflows/release.yaml`); not run yet: needs Docker access
+  and QEMU on the runner plus a `REGISTRY_TOKEN` secret (docs/release.md)
+
+**Status: mostly done.** Remaining: a first tagged release on the Gitea runner, and a test of the
+Windows executable on a real Windows machine.
 
 ## Phase 7: Remaining MVP parameters
 - [ ] PEQ, HPF/LPF, delay, compressor, limiter
@@ -125,3 +130,4 @@ Notes:
 | 2026-11-07 | Phase 3 done: state models, registry, store, command pipeline, device session. |
 | 2026-11-07 | Phase 4 done: FastAPI server, auth, activity lock, WebSocket hub, `serve` CLI. |
 | 2026-11-07 | Phase 5 done: web UI (mixer, matrix, presets, settings, lock). |
+| 2026-11-07 | Phase 6: Docker image, compose, executables, release workflow (first release pending). |
