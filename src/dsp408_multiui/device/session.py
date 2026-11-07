@@ -74,7 +74,7 @@ class DeviceSession:
         self._meter_rate_hz = clamp_meter_rate(meter_rate_hz)
         self.reconnect_min_s = reconnect_min_s
         self.reconnect_max_s = reconnect_max_s
-        self._factory = connection_factory or (lambda: DspConnection(host, port, profile))
+        self._factory = connection_factory or self._default_connection
         self.status = DeviceStatus.STOPPED
         self.last_error: str | None = None
         self.info = DeviceInfo()
@@ -84,6 +84,10 @@ class DeviceSession:
         self._pipeline: CommandPipeline | None = None
         self._task: asyncio.Task[None] | None = None
         self._online = asyncio.Event()
+
+    def _default_connection(self) -> DspConnection:
+        # Built at each attempt, so host/port can change (embedded simulator, reconfiguration).
+        return DspConnection(self.host, self.port, self.profile)
 
     # --- listeners ------------------------------------------------------------------------------
     def on_status(self, listener: StatusListener) -> Callable[[], None]:

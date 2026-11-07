@@ -160,3 +160,19 @@ async def test_cli_probe_against_simulator(
     assert "Demo 3-way" in text
     assert f"wrote {cm.CONFIG_SIZE} bytes" in text
     assert out.read_bytes() == sim.device.config_blob
+
+
+def test_serve_is_the_default_command() -> None:
+    assert cli._with_default_command(["--simulator"]) == ["serve", "--simulator"]
+    assert cli._with_default_command(["probe", "info"]) == ["probe", "info"]
+    assert cli._with_default_command(["--version"]) == ["--version"]
+    assert cli._with_default_command([]) == []
+    args = cli.build_parser().parse_args(["serve", "--simulator", "--log-level", "debug"])
+    assert args.simulator
+    assert args.log_level == "debug"
+    assert args.pin == "0000"
+
+
+def test_serve_requires_a_dsp_host(capsys: pytest.CaptureFixture[str]) -> None:
+    assert cli.main(["--port", "0"]) == 1
+    assert "dsp-host" in capsys.readouterr().err
