@@ -370,3 +370,88 @@ def default_config(preset_name: str = "Default Preset") -> RawConfig:
     image = bytearray(CONFIG_SIZE)
     config = RawConfig(MARKER_FACTORY, preset_name, inputs, outputs, bytes(image))
     return replace(config, image=encode_config(config))
+
+
+# --- offset annotation (for diff tools) ------------------------------------------------------
+_INPUT_FIELDS: tuple[tuple[int, int, str], ...] = (
+    (0, 8, "name"),
+    (8, 2, "gate.attack"),
+    (10, 2, "gate.release"),
+    (12, 2, "gate.hold"),
+    (14, 2, "gate.threshold"),
+    (126, 2, "crossover.hpf_freq"),
+    (128, 2, "crossover.lpf_freq"),
+    (130, 1, "crossover.hpf_slope"),
+    (131, 1, "crossover.lpf_slope"),
+    (132, 2, "gain"),
+    (134, 2, "delay (HYP)"),
+    (136, 1, "mute (HYP)"),
+    (137, 1, "phase (HYP)"),
+    (138, 2, "link"),
+)
+_OUTPUT_FIELDS: tuple[tuple[int, int, str], ...] = (
+    (0, 8, "name"),
+    (8, 2, "matrix"),
+    (18, 2, "crossover.hpf_freq"),
+    (20, 2, "crossover.lpf_freq"),
+    (22, 1, "crossover.hpf_slope"),
+    (23, 1, "crossover.lpf_slope"),
+    (78, 2, "compressor.ratio"),
+    (80, 2, "compressor.attack"),
+    (82, 2, "compressor.release"),
+    (84, 2, "compressor.knee"),
+    (86, 2, "compressor.threshold"),
+    (88, 2, "limiter.attack"),
+    (90, 2, "limiter.release"),
+    (92, 2, "limiter.reserved"),
+    (94, 2, "limiter.threshold"),
+    (96, 2, "gain"),
+    (98, 2, "delay (HYP)"),
+    (100, 1, "mute (HYP)"),
+    (101, 1, "phase (HYP)"),
+    (102, 2, "link"),
+)
+_PEQ_FIELDS = ("gain", "gain", "freq", "freq", "q", "type")
+
+
+def field_at(offset: int) -> str:
+    """Human-readable name of the field that contains byte ``offset`` of the blob."""
+    if not 0 <= offset < CONFIG_SIZE:
+        raise ValueError(f"offset outside the config blob: {offset}")
+    if offset < 2:
+        return "marker"
+    if offset < HEADER_SIZE:
+        return "preset_name"
+    if offset >= TRAILER_BASE:
+        return f"trailer[{offset - TRAILER_BASE}]"
+    if offset < OUTPUT_BASE:
+        index, rel = divmod(offset - INPUT_BASE, INPUT_RECORD)
+        prefix = f"in{index}"
+        if 16 <= rel < 78:
+            return f"{prefix}.geq[{(rel - 16) // 2}]"
+        if 78 <= rel < 126:
+            band, pos = divmod(rel - 78, PEQ_BAND_SIZE)
+            return f"{prefix}.peq[{band}].{_PEQ_FIELDS[pos]}"
+        table = _INPUT_FIELDS
+    else:
+        index, rel = divmod(offset - OUTPUT_BASE, OUTPUT_RECORD)
+        prefix = f"out{index}"
+        if 10 <= rel < 18:
+            return f"{prefix}.crosspoints[{(rel - 10) // 2}]"
+        if 24 <= rel < 78:
+            band, pos = divmod(rel - 24, PEQ_BAND_SIZE)
+            return f"{prefix}.peq[{band}].{_PEQ_FIELDS[pos]}"
+        table = _OUTPUT_FIELDS
+    for start, size, name in table:
+        if start <= rel < start + size:
+            return f"{prefix}.{name}"
+    return f"{prefix}.+{rel}"  # pragma: no cover - every record byte is mapped
+
+
+def diff_blobs(before: bytes, after: bytes) -> list[tuple[int, int, int, str]]:
+    """Changed bytes as ``(offset, old, new, field)`` tuples."""
+    if len(before) != CONFIG_SIZE or len(after) != CONFIG_SIZE:
+        raise ConfigError("both blobs must be full config images")
+    return [
+        (i, a, b, field_at(i)) for i, (a, b) in enumerate(zip(before, after, strict=True)) if a != b
+    ]

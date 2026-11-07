@@ -111,3 +111,41 @@ def test_layout_errors(forest: cm.RawConfig) -> None:
     bad = replace(forest.outputs[0], peq=forest.outputs[0].peq[:2])
     with pytest.raises(cm.ConfigError, match="PEQ"):
         cm.encode_config(replace(forest, outputs=(bad, *forest.outputs[1:])))
+
+
+@pytest.mark.parametrize(
+    ("offset", "name"),
+    [
+        (0, "marker"),
+        (5, "preset_name"),
+        (16, "in0.name"),
+        (16 + 16 + 40, "in0.geq[20]"),
+        (16 + 78 + 6 + 4, "in0.peq[1].q"),
+        (16 + 140 + 132, "in1.gain"),
+        (cm.output_offset(0) + 8, "out0.matrix"),
+        (cm.output_offset(0) + 13, "out0.crosspoints[1]"),
+        (cm.output_offset(7) + 24 + 6 * 8 + 5, "out7.peq[8].type"),
+        (cm.output_offset(2) + 86, "out2.compressor.threshold"),
+        (cm.output_offset(2) + 100, "out2.mute (HYP)"),
+        (cm.TRAILER_BASE + 3, "trailer[3]"),
+    ],
+)
+def test_field_at(offset: int, name: str) -> None:
+    assert cm.field_at(offset) == name
+
+
+def test_every_offset_has_a_name() -> None:
+    names = {cm.field_at(i) for i in range(cm.CONFIG_SIZE)}
+    assert not any(".+" in n for n in names)
+    with pytest.raises(ValueError, match="offset"):
+        cm.field_at(cm.CONFIG_SIZE)
+
+
+def test_diff_blobs(forest_blob: bytes) -> None:
+    edited = bytearray(forest_blob)
+    edited[cm.output_offset(0) + 96] = 0xC8
+    assert cm.diff_blobs(forest_blob, bytes(edited)) == [
+        (cm.output_offset(0) + 96, 0x18, 0xC8, "out0.gain")
+    ]
+    with pytest.raises(cm.ConfigError):
+        cm.diff_blobs(b"", forest_blob)
