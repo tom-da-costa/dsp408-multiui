@@ -98,12 +98,12 @@ Bitmasks:
 |---|---|---|---|
 | Channel gain (`0x34`) | **Two segments.** raw < 80: `dB = raw/2 − 60` (0.5 dB steps); raw ≥ 80: `dB = (raw−80)/10 − 20` (0.1 dB steps). Encode: `dB < −20 → (dB+60)·2`, else `80 + (dB+20)·10`. Unity gain = 280. | raw 0–400 = −60 … +12 dB | 408 (encode) + SIB (decode) |
 | PEQ / GEQ gain | `dB = (raw − 120)/10` | raw 0–240 = ±12 dB | 408 |
-| Frequency (PEQ, HPF, LPF) | `Hz = 19.70 · (20160/19.70)^(raw/N)` | **CONFLICT** on N: ▶ **N = 300** (4x4 Mini and 206 verified; the 408 config dump has default PEQ bands at raw 31, 63, 95 … 285, evenly spaced, which only makes sense with N = 300). dsp-408-ui uses N = 1000, almost certainly wrong. | CONFLICT |
+| Frequency (PEQ, HPF, LPF) | `Hz = 19.70 · (20160/19.70)^(raw/N)` | **N = 300**. The 4x4 Mini and the 206 agree, and the 408 config dump only makes sense with N = 300: evenly spaced default PEQ bands (raw 31, 63 … 285) and crossover points of a coherent 3-way system (25/80 Hz, 80/161 Hz, 370 Hz/4.8 kHz). dsp-408-ui uses N = 1000, which is wrong. | 408 (dump) + SIB |
 | PEQ Q | `Q = 0.4 · 320^(raw/M)` | **CONFLICT** on M: ▶ **M = 100** (the 4x4 Mini formula and the 206 formula `10^((raw−16)/40)` are the same curve). dsp-408-ui uses M = 255. | CONFLICT |
 | Threshold (gate / comp / limiter) | `dB = raw/2 − 90` (i.e. raw = 2·dB + 180) | gate −90…0, comp/lim −90…+20 | SIB (both siblings agree) |
 | Attack / release / hold | `ms = raw + 1` | attack 1–999, release 1/10–3000, hold 10–999 | SIB |
 | Knee | `dB = raw` | 0–12 | SIB |
-| Delay (`0x38`) | **CONFLICT**: 4x4 Mini `ms = raw/48` (48 kHz, max 680 ms); 206 `ms = raw/96`. ▶ Make it a per-model constant; verify on the 408. | uint16 | CONFLICT |
+| Delay (`0x38`) | **CONFLICT**: 4x4 Mini `ms = raw/48` (48 kHz, max 680 ms); 206 `ms = raw/96`. ▶ **96 kHz** (206, same TCP generation); a profile setting. | uint16, max 680 ms | CONFLICT |
 | Compressor ratio | enum 0–15: 1:1, 1:1.1, 1:1.3, 1:1.5, 1:1.7, 1:2, 1:2.5, 1:3, 1:3.5, 1:4, 1:5, 1:6, 1:8, 1:10, 1:20, Limit | | SIB |
 | Names | ASCII. Channel names are 8 bytes, zero-padded. Preset names are 14 bytes, space-padded. **Never send more than 14 characters** (that crashes the 4x4 Mini firmware). | | SIB |
 
@@ -176,7 +176,7 @@ Request payloads are shown without the framing. `ch` is a channel index (§3).
 | `32` | `32 ch f_lo f_hi slope`: high-pass | outputs (+inputs?) | 408 (layout) / SIB (values) |
 | `31` | `31 ch f_lo f_hi slope`: low-pass | outputs (+inputs?) | idem |
 | `38` | `38 ch lo hi`: delay (§4) | outputs (inputs?) | SIB / CONFLICT |
-| `30` | Compressor. **CONFLICT on layout**: 206 = `30 ch ratio(2) atk(2) rel(2) knee(2) thr(2)`; 4x4 Mini = `30 ch ratio(1) knee(1) atk(2) rel(2) thr(2)` | outputs | CONFLICT |
+| `30` | Compressor. **CONFLICT on layout**: 206 = `30 ch ratio(2) atk(2) rel(2) knee(2) thr(2)`; 4x4 Mini = `30 ch ratio(1) knee(1) atk(2) rel(2) thr(2)`. ▶ 206 layout: the 408 config blob stores exactly these five LE16 fields (§7). | outputs | CONFLICT |
 | `3f` | `3f ch atk(2) rel(2) ?(2) thr(2)`: limiter (206 only; the 4x4 Mini has no separate limiter) | outputs | SIB (206) |
 | `3e` | `3e ch atk(2) rel(2) hold(2) thr(2)`: noise gate | inputs | SIB |
 | `3d` | `3d ch` + 8 ASCII bytes: channel name | all | SIB |
@@ -222,22 +222,57 @@ editor does.
 ## 7. Configuration blob (`0x27` pages)
 
 29 pages: 28 × 50 bytes + 1 × 48 bytes = **1448 bytes**. This is a live dump of the active preset.
-The partial map below comes from the 408 capture in dsp-408-ui (`analyze5.py`) and is
-cross-checked against the sibling layouts.
 
-| Offset (approx.) | Content |
-|---|---|
-| 0–1 | `ff ff` = modified user preset, `ff 00` = factory/empty |
-| 2–15 | Active preset name (14 bytes) |
-| 16 … | **4 input records** (≈136–140 bytes each, preceded by `00 00 <id LE16>` from In B onwards): name (8), gate? (4 × LE16, e.g. `0, 99, 99, 0`), **GEQ 31 × LE16**, **PEQ 8 × 6 bytes** `[gain LE16][freq LE16][Q][type]`, then HPF/LPF fields |
-| ≈574 … | **8 output records** (≈104 bytes each): name (8), **matrix mask LE16**, **4 × crosspoint gain LE16** (280 = 0 dB), HPF freq LE16, LPF freq LE16, HPF slope, LPF slope, **PEQ 9 × 6 bytes**, `00 00`, **compressor block** `(49, 499, 0, 220)` = atk 50 ms / rel 500 ms / ? / thr +20 dB, **limiter block** (same layout), LE16 280 (gain?) |
-| tail | Global flags (test tone, delay unit, PEQ bypass, mute bitmask?…) |
+The layout below is **byte-exact on a real DSP 408 dump** (preset "Forest" from dsp-408-ui,
+stored as `tests/fixtures/config/forest_408.bin`). Every record has a fixed size, the values make
+sense (a 3-way system: sub 25–80 Hz BW-24, low 80–161 Hz, mid 370 Hz–4.8 kHz LR-24, GEQ cuts
+around 2 kHz), and the field layouts match the 206 command layouts. It is implemented in
+`protocol/config_map.py`.
 
-Not located yet: mute, phase, delay, channel gain (probably the LE16 that comes just before the
-next record, which dsp-408-ui uses for gains), link flags, band bypass.
+| Offset | Size | Content | Conf. |
+|---|---|---|---|
+| 0 | 2 | Marker: `ff ff` = modified user preset, `ff 00` = factory/empty | 408 |
+| 2 | 14 | Active preset name, space-padded | 408 |
+| 16 | 4 × 140 | Input records | 408 |
+| 576 | 8 × 104 | Output records | 408 |
+| 1408 | 40 | Trailer: unknown, preserved as-is | UNKNOWN |
+
+**Input record (140 bytes):**
+
+| Off | Field | Conf. |
+|---|---|---|
+| 0 | name (8 bytes, zero-padded) | 408 |
+| 8 | gate: attack, release, hold, threshold (4 × LE16; default `0, 99, 99, 0`) | 408 (order SIB) |
+| 16 | GEQ: 31 × LE16 (EQ gain encoding) | 408 |
+| 78 | PEQ: 8 bands × 6 bytes `[gain LE16][freq LE16][Q u8][type u8]` | 408 |
+| 126 | HPF freq LE16, LPF freq LE16, HPF slope u8, LPF slope u8 | 408 |
+| 132 | gain LE16 | 408 |
+| 134 | delay LE16 | HYP (zero in every dump) |
+| 136 | mute u8, phase u8 | HYP (zero in every dump) |
+| 138 | link flags LE16 (standalone = own bit: 1, 2, 4, 8) | 408 |
+
+**Output record (104 bytes):**
+
+| Off | Field | Conf. |
+|---|---|---|
+| 0 | name (8 bytes) | 408 |
+| 8 | matrix input mask LE16 | 408 |
+| 10 | 4 × crosspoint gain LE16 (280 = 0 dB) | 408 (meaning SIB) |
+| 18 | HPF freq, LPF freq, HPF slope, LPF slope (as inputs) | 408 |
+| 24 | PEQ: 9 bands × 6 bytes | 408 |
+| 78 | compressor: ratio, attack, release, knee, threshold (5 × LE16; default `0, 49, 499, 0, 220`) | 408 (= 206 command layout) |
+| 88 | limiter: attack, release, reserved, threshold (4 × LE16) | 408 (= 206 command layout) |
+| 96 | gain LE16 | 408 |
+| 98 | delay LE16 | HYP |
+| 100 | mute u8, phase u8 | HYP |
+| 102 | link flags LE16 (standalone: 1, 2, 4 … 128) | 408 |
+
+Not located yet: PEQ band bypass and channel PEQ bypass (not stored in the band data, as on the
+4x4 Mini), anything in the trailer. The hypothetical fields (HYP) are the only zero bytes left in
+the records, so they are the natural candidates; one diff capture each settles them (Q11).
 
 dsp-408-ui finds records by searching for the strings `"InA"` / `"Out1"`. That breaks as soon as
-a user renames a channel. **We will use fixed offsets** derived from diff captures (PLAN, Phase 8).
+a user renames a channel. We use the fixed offsets above.
 
 ---
 
@@ -274,7 +309,7 @@ with the ▶ choice as default. The *Side* column says what is needed to answer 
 | Q8 | `0x2c` and `0x10` responses on the 408; DSP PIN lock behaviour | Capture at connect | resp |
 | Q9 | Write ACK format; any unsolicited frames | Observe | resp |
 | Q10 | Second TCP client: refused, accepted, or kicks the first one? Idle timeout? | Two sockets | resp |
-| Q11 | Full config-blob offset map | Diff dumps before/after each single change | resp |
+| Q11 | Remaining config-blob fields (HYP offsets for delay/mute/phase, band bypass, trailer); the record layout itself is confirmed (§7) | Diff dumps before/after each single change | resp |
 | Q12 | Input HPF/LPF and input delay availability | Editor UI + capture | req |
 
 Capture method: Wireshark on the PC that runs the official editor (`tcp.port == 9761`), or the
