@@ -26,7 +26,7 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` to do · `[-]` dropped or defer
 
 **Exit:** codecs and parsers green; profile loads; a default config blob round-trips.
 **Status: done.** 218 tests, 97 % coverage on `protocol/`. The Gitea CI workflow is written but
-not yet run (no runner observed yet).
+run on the Gitea Docker runner (PR #1).
 
 Findings during the phase:
 - The config blob layout (1448 bytes: 16 + 4 × 140 + 8 × 104 + 40) is byte-exact on the real 408
@@ -36,15 +36,24 @@ Findings during the phase:
   dataclasses are frozen without slots.
 
 ## Phase 1: Simulator and developer tools
-- [ ] Simulator device state and opcode handling
-- [ ] Simulator TCP server, second-client policy
-- [ ] Synthetic meters following the parameters
-- [ ] Fault injection, scenarios, frame log
-- [ ] `device/transport.py` (minimal)
-- [ ] `probe` CLI, `proxy` CLI, `docs/captures.md`
+- [x] Simulator device state and opcode handling
+- [x] Simulator TCP server, second-client policy
+- [x] Synthetic meters following the parameters
+- [x] Fault injection, scenarios, frame log
+- [x] `device/transport.py` (minimal)
+- [x] `probe` CLI, `proxy` CLI, `docs/captures.md`
+
+**Status: done.** 279 tests, 96 % total coverage. The CLI offers `simulate`, `probe` and `proxy`.
+
+Notes:
+- Requests declare the opcode of their expected response (`Request.RESPONSE`); the transport
+  skips late answers to timed-out requests.
+- The simulated identity string `DSP408 V1.04` is a placeholder (the real 0x13 reply is unknown).
+- PEQ band bypass and channel PEQ bypass are kept outside the config blob (location unknown).
 
 ## Phase 2: Editor-vs-simulator capture session (optional)
-- [ ] Capture session with the official editor
+- [x] Capture procedure and checklist (`docs/captures.md`)
+- [ ] Capture session with the official editor (needs the owner's Windows PC; not blocking)
 
 ## Phase 3: Device layer
 - [ ] State models, registry, store
@@ -86,3 +95,4 @@ Findings during the phase:
 |---|---|
 | 2026-11-07 | Docs committed (SPEC, PLAN, PROTOCOL, SOURCES, README, CLAUDE.md). Phase 0 started. |
 | 2026-11-07 | Phase 0 done: scaffolding, protocol core, config layout confirmed on the real dump. |
+| 2026-11-07 | Phase 1 done: simulator, transport, probe/proxy tools. Phase 2 procedure written. |
