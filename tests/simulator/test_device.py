@@ -1,0 +1,233 @@
+import pytest
+
+from dsp408_multiui.protocol import commands as c
+from dsp408_multiui.protocol import config_map as cm
+from dsp408_multiui.protocol import responses as r
+from dsp408_multiui.protocol.meters import decode_meters
+from dsp408_multiui.protocol.profile import DEFAULT_PROFILE as P
+from dsp408_multiui.simulator import Faults, SimulatedDevice, apply_scenario
+from dsp408_multiui.simulator.meters import Shape, Source
+
+
+@pytest.fixture
+def device() -> SimulatedDevice:
+    return SimulatedDevice(P, clock=lambda: 0.0)
+
+
+def ask(device: SimulatedDevice, request: c.Request) -> r.Response | None:
+    reply = device.handle(request.encode(P))
+    assert not reply.crash
+    if reply.response is None:
+        return None
+    # Go through the wire format to check that the response encodes cleanly.
+    return r.decode_response(reply.response.encode())
+
+
+def read_config(device: SimulatedDevice) -> cm.RawConfig:
+    pages = {}
+    for page in range(P.page_count):
+        reply = ask(device, c.ReadConfigPage(page))
+        assert isinstance(reply, r.ConfigPage)
+        assert reply.page == page
+        pages[page] = reply.data
+    return cm.decode_config(cm.join_pages(pages, P))
+
+
+def test_init_sequence(device: SimulatedDevice) -> None:
+    assert ask(device, c.Handshake()) == r.HandshakeReply(bytes((20,)))
+    info = ask(device, c.GetDeviceInfo())
+    assert isinstance(info, r.DeviceInfo)
+    assert info.model == "DSP408"
+    assert isinstance(ask(device, c.GetStatus()), r.Status)
+    assert isinstance(ask(device, c.GetPresetHeader()), r.PresetHeader)
+    assert ask(device, c.GetActivePreset()) == r.ActivePreset(0)
+    names = [ask(device, c.GetPresetName(i)) for i in range(20)]
+    assert names[0] == r.PresetName(0, "Default Preset")
+    assert read_config(device).preset_name == "Default Preset"
+    assert ask(device, c.Activate()) == r.Ack()
+
+
+def test_every_request_gets_the_declared_response(device: SimulatedDevice) -> None:
+    requests: list[c.Request] = [
+        c.Handshake(),
+        c.GetDeviceInfo(),
+        c.GetStatus(),
+        c.GetPresetHeader(),
+        c.GetActivePreset(),
+        c.Activate(),
+        c.PollMeters(),
+        c.GetPresetName(3),
+        c.ReadConfigPage(5),
+        c.SubmitPin("1234"),
+        c.SetGain(0, 200),
+        c.SetMute(1, True),
+        c.SetPhase(4, True),
+        c.SetPeqBypass(4, True),
+        c.SetMatrix(4, 3),
+        c.SetGeqBand(0, 5, 100),
+        c.SetPeqBand(4, 2, 150, 100, 20, 1, True),
+        c.SetHighPass(4, 60, 8),
+        c.SetLowPass(4, 200, 10),
+        c.SetDelay(5, 960),
+        c.SetCompressor(5, 7, 10, 100, 2, 170),
+        c.SetLimiter(5, 5, 50, 0, 180),
+        c.SetGate(2, 1, 2, 30, 40),
+        c.SetChannelName(6, "Sub"),
+        c.SetPresetName("Test"),
+    ]
+    for request in requests:
+        reply = ask(device, request)
+        assert reply is not None
+        assert reply.OPCODE == request.RESPONSE, request
+
+
+def test_writes_show_up_in_the_config(device: SimulatedDevice) -> None:
+    for request in [
+        c.SetGain(4, 200),
+        c.SetMute(5, True),
+        c.SetPhase(0, True),
+        c.SetDelay(6, 960),
+        c.SetMatrix(7, 0b1010),
+        c.SetHighPass(4, 61, 8),
+        c.SetLowPass(4, 91, 3),
+        c.SetPeqBand(8, 3, 150, 120, 30, 2, False),
+        c.SetGeqBand(1, 20, 73),
+        c.SetCompressor(9, 5, 9, 99, 3, 170),
+        c.SetLimiter(9, 4, 40, 0, 190),
+        c.SetGate(3, 0, 50, 20, 60),
+        c.SetChannelName(11, "MonR"),
+    ]:
+        assert ask(device, request) == r.Ack()
+    config = read_config(device)
+    assert config.marker == cm.MARKER_MODIFIED
+    out = config.outputs
+    assert out[0].gain == 200
+    assert out[1].mute
+    assert config.inputs[0].phase
+    assert out[2].delay == 960
+    assert out[3].matrix == 0b1010
+    assert out[0].crossover == cm.RawCrossover(61, 91, 8, 3)
+    assert out[4].peq[3] == cm.RawPeqBand(150, 120, 30, 2)
+    assert config.inputs[1].geq[20] == 73
+    assert out[5].compressor == cm.RawCompressor(5, 9, 99, 3, 170)
+    assert out[5].limiter == cm.RawLimiter(4, 40, 0, 190)
+    assert config.inputs[3].gate == cm.RawGate(0, 50, 20, 60)
+    assert out[7].name == "MonR"
+
+
+def test_peq_bypass_is_tracked_outside_the_blob(device: SimulatedDevice) -> None:
+    ask(device, c.SetPeqBand(4, 1, 120, 50, 35, 0, True))
+    ask(device, c.SetPeqBypass(5, True))
+    assert device.peq_band_bypass[(4, 1)] is True
+    assert device.peq_channel_bypass[5] is True
+
+
+def test_store_and_recall(device: SimulatedDevice) -> None:
+    ask(device, c.SetGain(4, 123))
+    assert ask(device, c.SetPresetName("My Show")) == r.Ack()
+    reply = device.handle(c.StorePreset(3).encode(P))
+    assert reply.response == r.Ack()
+    assert reply.delay_s == device.timing.store_s
+    assert ask(device, c.GetPresetName(2)) == r.PresetName(2, "My Show")
+    assert ask(device, c.GetActivePreset()) == r.ActivePreset(3)
+
+    reply = device.handle(c.RecallPreset(0).encode(P))
+    assert reply.delay_s == device.timing.recall_s
+    assert read_config(device).outputs[0].gain == cm.UNITY_GAIN_RAW
+    ask(device, c.RecallPreset(3))
+    config = read_config(device)
+    assert config.outputs[0].gain == 123
+    assert config.preset_name == "My Show"
+
+
+def test_store_to_f00_is_ignored(device: SimulatedDevice) -> None:
+    payload = bytes((c.Opcode.STORE_PRESET, 0))
+    reply = device.handle(payload)
+    assert reply.response is None
+    assert not reply.crash
+    assert device.presets[0].preset_name == "Default Preset"
+
+
+def test_long_preset_name_crashes_the_firmware(device: SimulatedDevice) -> None:
+    payload = bytes((c.Opcode.SET_PRESET_NAME,)) + b"x" * 15
+    assert device.handle(payload).crash
+
+
+@pytest.mark.parametrize("payload", ["", "ff", "34 00", "39 03 11"])
+def test_invalid_requests_get_no_answer(device: SimulatedDevice, payload: str) -> None:
+    reply = device.handle(bytes.fromhex(payload))
+    assert reply.response is None
+    assert not reply.crash
+
+
+def meters(device: SimulatedDevice) -> tuple[float | None, ...]:
+    reply = ask(device, c.PollMeters())
+    assert isinstance(reply, r.MeterFrame)
+    return decode_meters(reply.data, P).levels_db
+
+
+def test_meters_follow_parameters(device: SimulatedDevice) -> None:
+    device.meters.sources = [Source(Shape.STEADY, -20.0) for _ in range(4)]
+    levels = meters(device)
+    assert levels[0] == pytest.approx(-20.0, abs=0.05)
+    assert levels[4] == pytest.approx(-20.0, abs=0.05)  # Out1 <- In A (default matrix)
+
+    ask(device, c.SetGain(0, 220))  # In A -6 dB
+    ask(device, c.SetMatrix(4, 0b0011))  # Out1 <- In A + In B
+    levels = meters(device)
+    assert levels[0] == pytest.approx(-26.0, abs=0.05)
+    # power sum of -26 and -20 dB
+    assert levels[4] == pytest.approx(-19.03, abs=0.05)
+
+    ask(device, c.SetMute(4, True))
+    ask(device, c.SetMute(1, True))
+    levels = meters(device)
+    assert levels[4] == P.meter_floor_db
+    assert levels[1] == P.meter_floor_db
+
+
+def test_limiter_flag_follows_threshold(device: SimulatedDevice) -> None:
+    device.meters.sources[0] = Source(Shape.STEADY, -3.0)
+    reply = ask(device, c.PollMeters())
+    assert isinstance(reply, r.MeterFrame)
+    assert decode_meters(reply.data, P).limit == (False,) * 8
+    ask(device, c.SetLimiter(4, 0, 0, 0, 170))  # Out1 limiter at -5 dB
+    reply = ask(device, c.PollMeters())
+    assert isinstance(reply, r.MeterFrame)
+    assert decode_meters(reply.data, P).limit == (True,) + (False,) * 7
+
+
+def test_nan_meter_frame(device: SimulatedDevice) -> None:
+    device.meters.nan_next = True
+    assert all(level is None for level in meters(device))
+    assert all(level is not None for level in meters(device))
+
+
+@pytest.mark.parametrize("name", ["demo", "silent", "clipping", "stress"])
+def test_scenarios(name: str) -> None:
+    device = SimulatedDevice(P, clock=lambda: 1.0)
+    faults = Faults()
+    apply_scenario(name, device, faults)
+    levels = meters(device)
+    assert len(levels) == 12
+    if name == "silent":
+        assert all(level == P.meter_floor_db for level in levels)
+    if name == "clipping":
+        reply = ask(device, c.PollMeters())
+        assert isinstance(reply, r.MeterFrame)
+        assert decode_meters(reply.data, P).input_clip_flag
+    if name == "stress":
+        assert faults.drop_rate > 0
+    if name == "demo":
+        assert device.active_slot == 1
+        assert read_config(device).preset_name == "Demo 3-way"
+
+
+def test_unknown_scenario() -> None:
+    with pytest.raises(ValueError, match="unknown scenario"):
+        apply_scenario("nope", SimulatedDevice(P), Faults())
+
+
+def test_set_preset_bounds(device: SimulatedDevice) -> None:
+    with pytest.raises(ValueError, match="slot"):
+        device.set_preset(21, cm.default_config())

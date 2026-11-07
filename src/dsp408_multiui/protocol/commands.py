@@ -82,6 +82,7 @@ class Request:
     OPCODE: ClassVar[Opcode]
     FORMAT: ClassVar[str] = ""  # struct format (little-endian) of the data after the opcode
     SLOW: ClassVar[bool] = False  # needs the long timeout (preset recall/store)
+    RESPONSE: ClassVar[Opcode] = Opcode.ACK  # opcode of the expected response
 
     def __init_subclass__(cls, **kwargs: object) -> None:
         super().__init_subclass__(**kwargs)
@@ -135,26 +136,31 @@ def decode_request(payload: bytes, profile: ProtocolProfile) -> Request:
 @dataclass(frozen=True)
 class Handshake(Request):
     OPCODE = Opcode.HANDSHAKE
+    RESPONSE = Opcode.HANDSHAKE
 
 
 @dataclass(frozen=True)
 class GetDeviceInfo(Request):
     OPCODE = Opcode.DEVICE_INFO
+    RESPONSE = Opcode.DEVICE_INFO
 
 
 @dataclass(frozen=True)
 class GetStatus(Request):
     OPCODE = Opcode.STATUS
+    RESPONSE = Opcode.STATUS
 
 
 @dataclass(frozen=True)
 class GetPresetHeader(Request):
     OPCODE = Opcode.PRESET_HEADER
+    RESPONSE = Opcode.PRESET_HEADER
 
 
 @dataclass(frozen=True)
 class GetActivePreset(Request):
     OPCODE = Opcode.ACTIVE_PRESET
+    RESPONSE = Opcode.ACTIVE_PRESET
 
 
 @dataclass(frozen=True)
@@ -165,11 +171,13 @@ class Activate(Request):
 @dataclass(frozen=True)
 class PollMeters(Request):
     OPCODE = Opcode.METERS
+    RESPONSE = Opcode.METERS
 
 
 @dataclass(frozen=True)
 class SubmitPin(Request):
     OPCODE = Opcode.SUBMIT_PIN
+    RESPONSE = Opcode.SUBMIT_PIN
     pin: str
 
     def validate(self, profile: ProtocolProfile) -> None:
@@ -192,6 +200,7 @@ class GetPresetName(Request):
     """Name of user preset ``index`` (0 = U01)."""
 
     OPCODE = Opcode.PRESET_NAME
+    RESPONSE = Opcode.PRESET_NAME
     FORMAT = "B"
     index: int
 
@@ -253,6 +262,7 @@ class StorePreset(Request):
 @dataclass(frozen=True)
 class ReadConfigPage(Request):
     OPCODE = Opcode.READ_CONFIG_PAGE
+    RESPONSE = Opcode.CONFIG_PAGE
     FORMAT = "B"
     page: int
 
