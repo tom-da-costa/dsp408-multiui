@@ -223,6 +223,7 @@ HTTP (JSON):
 |---|---|---|
 | `POST` | `/api/login` | `{pin, name?}` → sets the `session` cookie (HttpOnly, SameSite=Strict); 401 on a wrong code |
 | `POST` | `/api/logout` | Clears the session and releases any lock it held |
+| `GET` | `/api/session` | `{authenticated, client_id, name}`; 401 when not logged in (used by the UI at start-up) |
 | `GET` | `/api/health` | `{status, device_status, version}`, no auth (for Docker healthchecks) |
 | `GET` | `/` and assets | The SPA; static files need no auth, all data goes through the authenticated WebSocket |
 
@@ -233,17 +234,21 @@ WebSocket `/ws` (cookie auth plus an `Origin` check). JSON messages `{type, ...}
 | S→C | `hello` | `client_id`, `server_version`, `capabilities` (verified/experimental features), `settings` |
 | S→C | `snapshot` | `rev`, full `state` (device info, presets, channels) |
 | S→C | `patch` | `rev`, `changes: [{path, value}]`, `origin` (client_id or `device`) |
-| S→C | `meters` | `seq`, `levels` (12 values in dB or `null`), `clip` (12 bools), `limit` (8), `comp` (8) |
+| S→C | `meters` | `seq`, `levels` (12 values in dB or `null`; the whole field is `null` when the poll failed), `clip` (12 bools), `limit` (8 bools or `null`), `comp` (8 bools or `null`), `input_clip` |
 | S→C | `device` | `status`, `error?`, `model`, `firmware` |
-| S→C | `lock` | `owner_id?`, `owner_name?`, `idle_expires_at?` (server time, plus `server_now` to correct clock skew) |
+| S→C | `lock` | `owner_id?`, `owner_name?`, `idle_remaining_s?`, `idle_timeout_s` (relative time: no clock-skew issue) |
+| S→C | `settings` | `meter_rate_hz`, `lock_idle_timeout_s` (sent on change) |
+| S→C | `self` | `name` (after a `rename`) |
+| S→C | `pong` | `req` |
 | S→C | `clients` | list of `{id, name}` |
-| S→C | `result` | `req`, `ok`, `error?` (`locked`, `invalid`, `device_timeout`, `busy` …) |
+| S→C | `result` | `req`, `ok`, `error?` (`locked`, `invalid`, `experimental`, `device_offline`, `device_timeout`), `message?` |
 | C→S | `set` | `req`, `path`, `value` |
 | C→S | `preset.recall` | `req`, `slot` |
 | C→S | `preset.store` | `req`, `slot` (1–20), `name` |
 | C→S | `lock.acquire` / `lock.release` | `req` |
 | C→S | `activity` | (no payload; user interaction, throttled to one every 10 s; resets the lock idle timer when sent by the owner) |
-| C→S | `settings.set` | `req`, `meter_rate_hz` |
+| C→S | `settings.set` | `req`, `meter_rate_hz` (clamped to 1–10) |
+| C→S | `rename` | `req`, `name` (display name) |
 | C→S | `resync` | `req` |
 | C→S | `ping` | (keepalive; the server answers `pong`) |
 

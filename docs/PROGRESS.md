@@ -70,10 +70,18 @@ Notes:
 - A server-side disconnect is only noticed at the next request (at worst one meter period).
 
 ## Phase 4: Server
-- [ ] Auth, sessions, rate limit
-- [ ] Activity-based lock
-- [ ] WebSocket hub, settings, health
-- [ ] `serve` CLI, `--simulator`
+- [x] Auth, sessions, rate limit
+- [x] Activity-based lock
+- [x] WebSocket hub, settings, health
+- [x] `serve` CLI, `--simulator`
+
+**Status: done.** 358 tests. `uv run dsp408-multiui --simulator` serves the API on :8080 (a
+placeholder page until the UI is built).
+
+Notes:
+- `serve` is the default sub-command; global options work before or after it.
+- The lock message carries `idle_remaining_s` (relative) instead of an absolute expiry time.
+- Patches are emitted before the matching `result` (the store updates on the device ACK).
 
 ## Phase 5: Web UI MVP
 - [ ] Scaffold, WS client, stores, activity reporting
@@ -105,3 +113,4 @@ Notes:
 | 2026-11-07 | Phase 0 done: scaffolding, protocol core, config layout confirmed on the real dump. |
 | 2026-11-07 | Phase 1 done: simulator, transport, probe/proxy tools. Phase 2 procedure written. |
 | 2026-11-07 | Phase 3 done: state models, registry, store, command pipeline, device session. |
+| 2026-11-07 | Phase 4 done: FastAPI server, auth, activity lock, WebSocket hub, `serve` CLI. |

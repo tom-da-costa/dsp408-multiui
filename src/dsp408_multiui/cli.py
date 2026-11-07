@@ -1,7 +1,7 @@
 """Command-line entry point (``dsp408-multiui``).
 
-Sub-commands are added phase by phase (docs/PLAN.md): ``simulate``, ``probe`` and ``proxy`` for
-now; ``serve`` comes in phase 4.
+``serve`` (the default) runs the web application; ``simulate``, ``probe`` and ``proxy`` are
+developer tools. Every option can also come from a ``DSP408_<NAME>`` environment variable.
 """
 
 from __future__ import annotations
@@ -25,27 +25,87 @@ def _env(name: str, default: str | None = None) -> str | None:
     return os.environ.get(f"DSP408_{name}", default)
 
 
+def _env_float(name: str, default: float) -> float:
+    value = _env(name)
+    return float(value) if value else default
+
+
+def _env_flag(name: str) -> bool:
+    return (_env(name) or "").lower() in ("1", "true", "yes", "on")
+
+
+def _common(suppress: bool) -> argparse.ArgumentParser:
+    """Global options, accepted before or after the sub-command."""
+    common = argparse.ArgumentParser(add_help=False)
+    default = argparse.SUPPRESS if suppress else None
+    common.add_argument(
+        "--log-level",
+        default=default or _env("LOG_LEVEL", "info"),
+        choices=["debug", "info", "warning", "error"],
+    )
+    common.add_argument(
+        "--profile",
+        type=Path,
+        default=default or _env("PROFILE"),
+        help="protocol profile TOML overriding the built-in defaults",
+    )
+    return common
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="dsp408-multiui",
         description="Multi-client web controller for the t.racks DSP 408.",
+        parents=[_common(suppress=False)],
     )
     parser.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
-    parser.add_argument(
-        "--log-level",
-        default=_env("LOG_LEVEL", "info"),
-        choices=["debug", "info", "warning", "error"],
-    )
-    parser.add_argument(
-        "--profile",
-        type=Path,
-        default=_env("PROFILE"),
-        help="protocol profile TOML overriding the built-in defaults",
-    )
     sub = parser.add_subparsers(dest="command", metavar="COMMAND")
+    common = _common(suppress=True)
+
+    # serve (default)
+    serve = sub.add_parser("serve", parents=[common], help="run the web application (default)")
+    serve.add_argument("--dsp-host", default=_env("HOST"), help="DSP IP address")
+    serve.add_argument("--dsp-port", type=int, default=int(_env("PORT") or DSP_PORT))
+    serve.add_argument("--host", default=_env("LISTEN_HOST", "0.0.0.0"), help="listen address")
+    serve.add_argument("--port", type=int, default=int(_env("LISTEN_PORT") or 8080))
+    serve.add_argument("--pin", default=_env("PIN", "0000"), help="access code (default 0000)")
+    serve.add_argument(
+        "--meter-rate",
+        type=float,
+        default=_env_float("METER_RATE", 5.0),
+        help="meter refresh rate in Hz, 1-10 (default 5)",
+    )
+    serve.add_argument(
+        "--lock-idle-timeout",
+        type=float,
+        default=_env_float("LOCK_IDLE_TIMEOUT", 120.0),
+        help="seconds of owner inactivity before the lock is released",
+    )
+    serve.add_argument(
+        "--resync-interval",
+        type=float,
+        default=_env_float("RESYNC_INTERVAL", 0),
+        help="re-read the DSP config every N seconds (0 = off)",
+    )
+    serve.add_argument("--command-timeout", type=float, default=None)
+    serve.add_argument(
+        "--experimental",
+        action="store_true",
+        default=_env_flag("EXPERIMENTAL"),
+        help="allow parameters not yet verified on a DSP 408",
+    )
+    serve.add_argument(
+        "--simulator",
+        action="store_true",
+        default=_env_flag("SIMULATOR"),
+        help="run against an embedded simulated DSP",
+    )
+    serve.add_argument(
+        "--scenario", default=_env("SCENARIO", "demo"), help="simulator scenario (with --simulator)"
+    )
 
     # simulate
-    sim = sub.add_parser("simulate", help="run a simulated DSP 408 on TCP")
+    sim = sub.add_parser("simulate", parents=[common], help="run a simulated DSP 408 on TCP")
     sim.add_argument("--host", default="127.0.0.1", help="listen address (default 127.0.0.1)")
     sim.add_argument("--port", type=int, default=DSP_PORT)
     sim.add_argument("--scenario", default="demo")
@@ -56,7 +116,7 @@ def build_parser() -> argparse.ArgumentParser:
     sim.add_argument("--frame-log", type=Path, help="append every frame to this JSONL file")
 
     # probe
-    probe = sub.add_parser("probe", help="query a DSP or the simulator directly")
+    probe = sub.add_parser("probe", parents=[common], help="query a DSP or the simulator directly")
     probe.add_argument("--dsp-host", default=_env("HOST", "127.0.0.1"))
     probe.add_argument("--dsp-port", type=int, default=int(_env("PORT", str(DSP_PORT)) or DSP_PORT))
     probe.add_argument("--timeout", type=float, help="response timeout in seconds")
@@ -75,7 +135,9 @@ def build_parser() -> argparse.ArgumentParser:
     raw.add_argument("payload", nargs="+")
 
     # proxy
-    proxy = sub.add_parser("proxy", help="log every frame between a client and the DSP")
+    proxy = sub.add_parser(
+        "proxy", parents=[common], help="log every frame between a client and the DSP"
+    )
     proxy.add_argument("--dsp-host", default=_env("HOST"), required=_env("HOST") is None)
     proxy.add_argument("--dsp-port", type=int, default=DSP_PORT)
     proxy.add_argument("--listen", default="0.0.0.0:9761", help="HOST:PORT to listen on")
@@ -83,7 +145,46 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
-# --- commands ---------------------------------------------------------------------------------
+# --- commands ---
+async def _serve(args: argparse.Namespace, profile: ProtocolProfile) -> int:
+    import uvicorn
+
+    from dsp408_multiui.server.app import create_app
+    from dsp408_multiui.server.settings import ServerConfig
+
+    config = ServerConfig(
+        dsp_host=args.dsp_host,
+        dsp_port=args.dsp_port,
+        host=args.host,
+        port=args.port,
+        pin=args.pin,
+        meter_rate_hz=args.meter_rate,
+        lock_idle_timeout_s=args.lock_idle_timeout,
+        resync_interval_s=args.resync_interval,
+        command_timeout_s=args.command_timeout,
+        experimental=args.experimental,
+        simulator=args.simulator,
+        scenario=args.scenario,
+    )
+    app = create_app(config, profile)
+    target = "embedded simulator" if config.simulator else f"{config.dsp_host}:{config.dsp_port}"
+    print(
+        f"dsp408-multiui {__version__}: http://{config.host}:{config.port} -> {target}", flush=True
+    )
+    server = uvicorn.Server(
+        uvicorn.Config(
+            app,
+            host=config.host,
+            port=config.port,
+            log_level=args.log_level,
+            access_log=False,
+            ws_ping_interval=20,
+        )
+    )
+    await server.serve()
+    return 0
+
+
 async def _simulate(args: argparse.Namespace, profile: ProtocolProfile) -> int:
     from dsp408_multiui.framelog import FrameLog
     from dsp408_multiui.simulator import (
@@ -178,12 +279,20 @@ async def _proxy(args: argparse.Namespace, profile: ProtocolProfile) -> int:
     return 0
 
 
-COMMANDS = {"simulate": _simulate, "probe": _probe, "proxy": _proxy}
+COMMANDS = {"serve": _serve, "simulate": _simulate, "probe": _probe, "proxy": _proxy}
+
+
+def _with_default_command(argv: Sequence[str]) -> list[str]:
+    """``dsp408-multiui --dsp-host X`` means ``dsp408-multiui serve --dsp-host X``."""
+    args = list(argv)
+    if any(a in COMMANDS for a in args) or any(a in ("-h", "--help", "--version") for a in args):
+        return args
+    return ["serve", *args] if args else args
 
 
 def main(argv: Sequence[str] | None = None) -> int:
     parser = build_parser()
-    args = parser.parse_args(argv)
+    args = parser.parse_args(_with_default_command(sys.argv[1:] if argv is None else argv))
     logging.basicConfig(
         level=args.log_level.upper(),
         format="%(asctime)s %(levelname)-7s %(name)s: %(message)s",
