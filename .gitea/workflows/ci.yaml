@@ -33,3 +33,32 @@ jobs:
 
       - name: Tests
         run: uv run pytest --cov --cov-report=term-missing
+
+  web:
+    runs-on: ubuntu-latest
+    container:
+      image: node:22-bookworm
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install
+        working-directory: web
+        run: npm ci --no-audit --no-fund
+
+      - name: Type check
+        working-directory: web
+        run: npm run check
+
+      - name: Unit tests
+        working-directory: web
+        run: npm test
+
+      - name: The committed build is up to date
+        run: |
+          cd web && npm run build && cd ..
+          git config --global --add safe.directory "$PWD"
+          if [ -n "$(git status --porcelain -- src/dsp408_multiui/web)" ]; then
+            git status --short -- src/dsp408_multiui/web
+            echo "::error::src/dsp408_multiui/web is stale: run 'make web' and commit the result"
+            exit 1
+          fi
