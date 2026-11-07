@@ -6,9 +6,9 @@ at once (phones first), with live metering.
 One backend process owns the TCP connection to the DSP. It serves a mobile-first web UI to
 every client on the local network and keeps them in sync in real time. It works fully offline.
 
-> **Status: design phase.** No code yet. The specification and the implementation plan are in
-> [`docs/`](docs/). Until a DSP 408 is available for testing, development targets a built-in
-> simulator.
+> **Status: in development, not yet tested on a real DSP 408.** Everything runs against the
+> built-in simulator: `uv run dsp408-multiui --simulator`, then open http://localhost:8080
+> (code `0000`). Progress is tracked in [docs/PROGRESS.md](docs/PROGRESS.md).
 
 ## Planned features
 
@@ -23,7 +23,7 @@ every client on the local network and keeps them in sync in real time. It works 
 - No database, no internet access needed, no external assets
 - Protocol-accurate DSP simulator for development, tests and demos
 
-## Planned usage
+## Usage
 
 ```bash
 # From a clone (needs only uv)
