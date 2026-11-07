@@ -1,0 +1,21 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+build/
+dist/
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+coverage.xml
+htmlcov/
+
+# Node (UI sources live in web/)
+web/node_modules/
+web/.svelte-kit/
+
+# Local
+.env
+*.jsonl.local
