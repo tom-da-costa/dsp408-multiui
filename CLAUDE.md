@@ -8,7 +8,8 @@ A web app that controls one t.racks DSP 408 over TCP (port 9761). Several browse
 first) control it at the same time with live meters. A single Python process owns the DSP
 connection and serves the API, the WebSocket and the static UI.
 
-**Current status: design phase, no code yet.** Read these before doing anything substantial:
+**Current status: see `docs/PROGRESS.md`** (keep it updated with every change). Read these before
+doing anything substantial:
 
 - `docs/SPEC.md`: requirements (IDs such as F-P-1), architecture, WebSocket API, decisions D1–D13
 - `docs/PLAN.md`: phases and their exit criteria. Work phase by phase.
@@ -53,7 +54,7 @@ connection and serves the API, the WebSocket and the static UI.
 - Do not implement the test-tone generator (`0x39`) or the device-PIN setter (`0x2f`).
 - On a real DSP, parameters not yet hardware-verified stay behind `--experimental`.
 
-## Tooling (planned, see PLAN Phase 0)
+## Tooling
 
 ```bash
 uv sync                                   # install
@@ -61,7 +62,8 @@ uv run dsp408-multiui --simulator         # backend + embedded simulator on :808
 uv run pytest                             # tests
 uv run ruff check . && uv run ruff format --check . && uv run mypy
 cd web && npm ci && npm run dev           # UI dev server (proxies /api and /ws to :8080)
-make web                                  # rebuild the committed UI (CI fails if it is stale)
+make web                                  # rebuild the committed UI (Node or Docker; CI fails if stale)
+make web-test                             # svelte-check + vitest
 ```
 
 - Python ≥ 3.12, uv, hatchling. FastAPI + uvicorn, Pydantic v2.

@@ -84,8 +84,18 @@ Notes:
 - Patches are emitted before the matching `result` (the store updates on the device ACK).
 
 ## Phase 5: Web UI MVP
-- [ ] Scaffold, WS client, stores, activity reporting
-- [ ] Components and screens (Login, Mixer, Matrix, Presets, Settings)
+- [x] Scaffold, WS client, stores, activity reporting
+- [x] Components and screens (Login, Mixer, Matrix, Presets, Settings)
+
+**Status: done.** Svelte 5 + TypeScript + Vite; 27 kB gzipped in total. Checked with headless
+Chromium against `serve --simulator`: login (including a wrong code), mixer on a 390 px phone and a
+1366 px desktop (all 12 strips fit), knob-only fader drag, mute, matrix, presets, lock seen by a
+second client, settings.
+
+Notes:
+- Node is not required: `make web` falls back to the `node:22-alpine` Docker image.
+- TypeScript is pinned to 5.9 (svelte-check does not support 7 yet).
+- A real-phone check (iOS Safari safe areas, touch scrolling) is still to do.
 
 ## Phase 6: Distribution
 - [ ] Committed UI + `web-check`
@@ -114,3 +124,4 @@ Notes:
 | 2026-11-07 | Phase 1 done: simulator, transport, probe/proxy tools. Phase 2 procedure written. |
 | 2026-11-07 | Phase 3 done: state models, registry, store, command pipeline, device session. |
 | 2026-11-07 | Phase 4 done: FastAPI server, auth, activity lock, WebSocket hub, `serve` CLI. |
+| 2026-11-07 | Phase 5 done: web UI (mixer, matrix, presets, settings, lock). |

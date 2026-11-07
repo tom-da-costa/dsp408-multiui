@@ -1,0 +1,151 @@
+// Mirrors src/dsp408_multiui/state/models.py and the WebSocket messages of docs/SPEC.md §5.
+
+export interface PeqBand {
+  gain_db: number;
+  freq_hz: number;
+  q: number;
+  type: number;
+  bypass: boolean;
+}
+
+export interface Filter {
+  freq_hz: number;
+  slope: number;
+  enabled: boolean;
+}
+
+export interface Crossover {
+  hpf: Filter;
+  lpf: Filter;
+}
+
+export interface Gate {
+  attack_ms: number;
+  release_ms: number;
+  hold_ms: number;
+  threshold_db: number;
+}
+
+export interface Compressor {
+  ratio: number;
+  attack_ms: number;
+  release_ms: number;
+  knee_db: number;
+  threshold_db: number;
+}
+
+export interface Limiter {
+  attack_ms: number;
+  release_ms: number;
+  threshold_db: number;
+}
+
+export interface Channel {
+  index: number;
+  name: string;
+  gain_db: number;
+  mute: boolean;
+  phase: boolean;
+  peq: PeqBand[];
+  peq_bypass: boolean;
+  crossover: Crossover;
+}
+
+export interface InputChannel extends Channel {
+  geq: number[];
+  gate: Gate;
+}
+
+export interface OutputChannel extends Channel {
+  delay_ms: number;
+  matrix: boolean[];
+  crosspoints_db: number[];
+  compressor: Compressor;
+  limiter: Limiter;
+}
+
+export interface Preset {
+  slot: number;
+  name: string;
+}
+
+export interface DeviceState {
+  info: { identity: string; model: string; firmware: string };
+  presets: Preset[];
+  active_slot: number;
+  preset_name: string;
+  inputs: InputChannel[];
+  outputs: OutputChannel[];
+}
+
+export interface Profile {
+  input_count: number;
+  output_count: number;
+  preset_count: number;
+  peq_types: string[];
+  slopes: string[];
+  ratios: string[];
+  freq_min_hz: number;
+  freq_max_hz: number;
+  q_min: number;
+  q_max: number;
+  delay_max_ms: number;
+  meter_floor_db: number;
+  meter_clip_db: number;
+}
+
+export interface Hello {
+  type: "hello";
+  client_id: string;
+  name: string;
+  server_version: string;
+  simulator: boolean;
+  experimental: boolean;
+  verified_kinds: string[];
+  profile: Profile;
+  settings: Settings;
+}
+
+export interface Settings {
+  meter_rate_hz: number;
+  lock_idle_timeout_s: number;
+}
+
+export interface Meters {
+  seq: number;
+  levels: (number | null)[] | null;
+  clip?: boolean[];
+  limit?: boolean[] | null;
+  comp?: boolean[] | null;
+  input_clip?: boolean | null;
+}
+
+export type DeviceStatus = "stopped" | "connecting" | "initialising" | "online" | "offline";
+
+export interface DeviceMessage {
+  status: DeviceStatus;
+  error: string | null;
+  model: string;
+  firmware: string;
+  identity: string;
+}
+
+export interface LockMessage {
+  owner_id: string | null;
+  owner_name: string | null;
+  idle_remaining_s: number | null;
+  idle_timeout_s: number;
+}
+
+export interface Change {
+  path: string;
+  value: unknown;
+}
+
+export interface ResultMessage {
+  type: "result";
+  req: number | null;
+  ok: boolean;
+  error?: string;
+  message?: string;
+}
