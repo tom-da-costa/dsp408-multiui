@@ -234,3 +234,20 @@ async def test_detail_parameters_round_trip_through_the_device(
     # Re-read everything from the device: the simulator's config blob must give the same state.
     await session.resync()
     assert session.store.state.model_dump() == before
+
+
+async def test_concurrent_partial_writes_to_one_band_keep_every_field(
+    session: DeviceSession, sim: SimulatorServer
+) -> None:
+    # Two clients edit different fields of the same band before the first write is acked.
+    await asyncio.gather(
+        session.write("outputs.3.peq.2", {"gain_db": -3.0}, "a"),
+        session.write("outputs.3.peq.2", {"freq_hz": 500.0}, "b"),
+        session.write("outputs.3.peq.2", {"type": 1}, "a"),
+    )
+    band = session.store.state.outputs[3].peq[2]
+    assert band.gain_db == -3.0
+    assert band.freq_hz == pytest.approx(500, rel=0.02)
+    assert band.type == 1
+    await session.resync()
+    assert session.store.state.outputs[3].peq[2] == band
