@@ -18,4 +18,6 @@ much each source is trusted.
 
 | File in this repo | Origin | Notes |
 |---|---|---|
-| _none yet_ | | |
+| `tests/fixtures/config/forest_408.bin` | dsp-408-ui, `analyze5.py` (hex dump of a DSP 408 config read) | 4 missing bytes filled with 0, see the `.meta.toml` |
+| `tests/unit/test_framing.py` (frame vectors) | dsp-408-ui `protocol.dart` / `protocol_service.dart`; miniDSP-Linux `analysis/protocol.md` | Captured frames used as test vectors |
+| `tests/unit/test_meters.py` (24-bit vectors) | miniDSP-Linux `analysis/protocol.md` | Sine-sweep meter triplets |

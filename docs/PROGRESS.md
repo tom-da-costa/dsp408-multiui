@@ -8,23 +8,32 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` to do · `[-]` dropped or defer
 ## Phase 0: Scaffolding and protocol core
 
 ### 0.1 Scaffolding
-- [ ] `pyproject.toml` (uv, hatchling, Python ≥ 3.12), `src/dsp408_multiui/` layout, CLI stub
-- [ ] Ruff (lint + format), mypy strict on `protocol/` and `state/`, pytest + coverage config
-- [ ] `Makefile`, `.gitignore`
-- [ ] Gitea Actions `ci.yaml` (lint, format check, mypy, tests)
-- [ ] `docs/SOURCES.md` attribution entries for copied vectors
+- [x] `pyproject.toml` (uv, hatchling, Python ≥ 3.12), `src/dsp408_multiui/` layout, CLI stub
+- [x] Ruff (lint + format), mypy strict on `protocol/` and `state/`, pytest + coverage config
+- [x] `Makefile`, `.gitignore`
+- [x] Gitea Actions `ci.yaml` (lint, format check, mypy, tests)
+- [x] `docs/SOURCES.md` attribution entries for copied vectors
 
 ### 0.2 `protocol/`
-- [ ] `framing.py`: `encode_frame`, incremental `FrameDecoder` (frame on LEN, resync)
-- [ ] `profile.py` + `profiles/default.toml`: `ProtocolProfile`
-- [ ] `codecs.py`: gain, EQ gain, frequency, Q, threshold, times, delay, names
-- [ ] `commands.py`: request builders and request parsers (simulator side)
-- [ ] `responses.py`: response builders and parsers
-- [ ] `meters.py`: float16 and 24-bit decoders/encoders, tail-byte layout
-- [ ] `config_map.py`: config blob ↔ state model (layout from PROTOCOL §7)
-- [ ] Test vectors from upstream projects in `tests/fixtures/`
+- [x] `framing.py`: `encode_frame`, incremental `FrameDecoder` (frame on LEN, resync)
+- [x] `profile.py` + `profiles/default.toml`: `ProtocolProfile`
+- [x] `codecs.py`: gain, EQ gain, frequency, Q, threshold, times, delay, names
+- [x] `commands.py`: request builders and request parsers (simulator side)
+- [x] `responses.py`: response builders and parsers
+- [x] `meters.py`: float16 and 24-bit decoders/encoders, tail-byte layout
+- [x] `config_map.py`: config blob ↔ state model (layout from PROTOCOL §7)
+- [x] Test vectors from upstream projects in `tests/fixtures/`
 
 **Exit:** codecs and parsers green; profile loads; a default config blob round-trips.
+**Status: done.** 218 tests, 97 % coverage on `protocol/`. The Gitea CI workflow is written but
+not yet run (no runner observed yet).
+
+Findings during the phase:
+- The config blob layout (1448 bytes: 16 + 4 × 140 + 8 × 104 + 40) is byte-exact on the real 408
+  dump. It confirms 300 frequency steps and the 206 compressor/limiter layouts (PROTOCOL §7).
+- Delay, mute and phase offsets in the blob are hypotheses (the only zero bytes left).
+- `dataclass(slots=True)` breaks the auto-registration of request/response classes; those
+  dataclasses are frozen without slots.
 
 ## Phase 1: Simulator and developer tools
 - [ ] Simulator device state and opcode handling
@@ -76,3 +85,4 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` to do · `[-]` dropped or defer
 | Date | Change |
 |---|---|
 | 2026-11-07 | Docs committed (SPEC, PLAN, PROTOCOL, SOURCES, README, CLAUDE.md). Phase 0 started. |
+| 2026-11-07 | Phase 0 done: scaffolding, protocol core, config layout confirmed on the real dump. |

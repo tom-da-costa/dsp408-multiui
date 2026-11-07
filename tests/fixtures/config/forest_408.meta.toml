@@ -1,0 +1,10 @@
+# Live configuration blob of a real DSP 408 (preset "Forest"), 29 x 0x24 pages concatenated.
+device = "DSP 408"
+size = 1448
+source = "https://github.com/Aeternitaas/dsp-408-ui (analyze5.py, raw_hex), GPL-3.0, (c) Aeternitaas"
+notes = """
+The upstream hex dump was printed truncated: bytes at offsets 399, 549, 949 and 1447 were
+missing and are filled with 0x00 here. From the surrounding fields they are the high byte of
+an EQ gain (always 0 for values <= 255), a PEQ type byte (0 = Peak in all neighbouring bands),
+the high byte of an EQ gain, and the last trailer byte (trailer is zero-filled).
+"""
