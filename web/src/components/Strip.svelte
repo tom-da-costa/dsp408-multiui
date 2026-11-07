@@ -1,5 +1,6 @@
 <script lang="ts">
   import { app } from "../lib/app.svelte";
+  import { nav, slotLabel } from "../lib/nav.svelte";
   import type { Channel } from "../lib/types";
   import Fader from "./Fader.svelte";
   import Meter from "./Meter.svelte";
@@ -26,7 +27,14 @@
 </script>
 
 <section class="strip" class:muted={channel.mute}>
-  <header title={channel.name}>{channel.name || "—"}</header>
+  <button
+    class="name"
+    title={`${slotLabel(path)} ${channel.name}: open the channel settings`}
+    onclick={() => nav.open(path)}
+  >
+    <span class="slot">{slotLabel(path)}</span>
+    <span class="label">{channel.name || "—"}</span>
+  </button>
   <div class="body">
     <Meter {level} {clip} {limit} {comp} {floor} />
     <Fader
@@ -68,13 +76,26 @@
     border: 1px solid var(--line);
     border-radius: var(--radius);
   }
-  header {
+  .name {
+    display: grid;
+    min-height: 40px;
+    padding: 2px 4px;
+    line-height: 1.15;
     text-align: center;
-    font-weight: 600;
-    font-size: 0.85rem;
+    min-width: 0;
+  }
+  .name span {
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+  }
+  .slot {
+    font-size: 0.7rem;
+    color: var(--muted);
+  }
+  .label {
+    font-weight: 600;
+    font-size: 0.85rem;
   }
   .body {
     flex: 1;
@@ -102,7 +123,7 @@
     border-color: var(--info);
     color: #000;
   }
-  .strip.muted header {
+  .strip.muted .label {
     color: var(--danger);
   }
 </style>

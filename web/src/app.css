@@ -93,3 +93,28 @@ h2 {
   border-radius: var(--radius);
   padding: 14px;
 }
+
+/* on/off button (EQ band enable, filter enable, mute …) */
+button.switch {
+  min-height: 36px;
+  padding: 0 12px;
+  font-weight: 600;
+  font-size: 0.85rem;
+}
+
+button.switch.on {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-text);
+}
+
+button.switch.danger:not(.on) {
+  border-color: var(--line);
+  color: inherit;
+}
+
+button.switch.danger.on {
+  background: var(--danger);
+  border-color: var(--danger);
+  color: #fff;
+}

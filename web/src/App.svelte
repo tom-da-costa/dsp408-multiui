@@ -7,37 +7,22 @@
   import Settings from "./components/Settings.svelte";
   import Toasts from "./components/Toasts.svelte";
   import TopBar from "./components/TopBar.svelte";
+  import ChannelDetail from "./components/ChannelDetail.svelte";
   import { app } from "./lib/app.svelte";
-
-  const TABS = [
-    ["mixer", "Mixer", "🎚"],
-    ["matrix", "Matrix", "▦"],
-    ["presets", "Presets", "☰"],
-    ["settings", "Settings", "⚙"],
-  ] as const;
-  type Tab = (typeof TABS)[number][0];
-
-  let tab = $state<Tab>(initialTab());
-
-  function initialTab(): Tab {
-    const hash = location.hash.slice(1);
-    return (TABS.find(([key]) => key === hash)?.[0] ?? "mixer") as Tab;
-  }
-
-  function select(next: Tab) {
-    tab = next;
-    history.replaceState(null, "", `#${next}`);
-  }
+  import { nav, TABS } from "./lib/nav.svelte";
 
   onMount(() => {
     void app.start();
     // Any interaction counts as activity for the lock (throttled in app.activity).
     const onActivity = () => app.activity();
+    const onPop = () => nav.fromHash();
+    window.addEventListener("popstate", onPop);
     window.addEventListener("pointerdown", onActivity, { passive: true });
     window.addEventListener("keydown", onActivity);
     return () => {
       window.removeEventListener("pointerdown", onActivity);
       window.removeEventListener("keydown", onActivity);
+      window.removeEventListener("popstate", onPop);
     };
   });
 </script>
@@ -49,7 +34,11 @@
     <TopBar />
     <nav>
       {#each TABS as [key, text, icon] (key)}
-        <button class:selected={tab === key} onclick={() => select(key)} aria-current={tab === key}>
+        <button
+          class:selected={nav.tab === key}
+          onclick={() => nav.select(key)}
+          aria-current={nav.tab === key}
+        >
           <span aria-hidden="true">{icon}</span>{text}
         </button>
       {/each}
@@ -59,11 +48,13 @@
         <p class="muted center">
           {app.connected ? "Waiting for the DSP…" : "Connecting to the server…"}
         </p>
-      {:else if tab === "mixer"}
+      {:else if nav.detail}
+        <ChannelDetail path={nav.detail} />
+      {:else if nav.tab === "mixer"}
         <Mixer />
-      {:else if tab === "matrix"}
+      {:else if nav.tab === "matrix"}
         <Matrix />
-      {:else if tab === "presets"}
+      {:else if nav.tab === "presets"}
         <Presets />
       {:else}
         <Settings />
