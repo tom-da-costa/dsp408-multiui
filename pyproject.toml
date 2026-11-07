@@ -7,7 +7,9 @@ license = "AGPL-3.0-or-later"
 license-files = ["LICENSE"]
 authors = [{ name = "Tom DA COSTA" }]
 requires-python = ">=3.12"
-dependencies = []
+dependencies = [
+    "pydantic>=2.9",
+]
 classifiers = [
     "Programming Language :: Python :: 3",
     "Operating System :: OS Independent",
@@ -60,13 +62,14 @@ ignore = ["RUF001", "RUF002", "RUF003"]
 # --- mypy -------------------------------------------------------------------
 [tool.mypy]
 python_version = "3.12"
+plugins = ["pydantic.mypy"]
 files = ["src"]
 warn_unused_configs = true
 warn_redundant_casts = true
 warn_unused_ignores = true
 
 [[tool.mypy.overrides]]
-module = ["dsp408_multiui.protocol.*"]  # add "dsp408_multiui.state.*" in phase 3
+module = ["dsp408_multiui.protocol.*", "dsp408_multiui.state.*"]
 strict = true
 
 # --- pytest -----------------------------------------------------------------

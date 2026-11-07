@@ -138,15 +138,19 @@ Rules:
 
 - The backend holds the **authoritative mirror** of the DSP state, filled from the config blob at
   connect time and after every recall or resync.
-- Every parameter has a **path**, e.g. `out.3.gain`, `out.3.peq.2` (whole band), `in.1.geq.17`,
-  `out.5.matrix`, `out.2.comp`. The registry maps each path to:
+- Every parameter has a **path**: its dotted location in the JSON snapshot, with zero-based
+  indexes, e.g. `outputs.3.gain_db`, `outputs.3.peq.2` (a whole band, partial objects are
+  merged), `inputs.1.geq.17`, `outputs.5.matrix` (one boolean per input),
+  `outputs.2.crossover.hpf`, `outputs.2.compressor`. Clients write with the same paths they use to
+  apply patches. The registry (`state/registry.py`) maps each path to:
   1. a schema with units and bounds (clients send **physical units**: dB, Hz, ms);
   2. a quantiser (snap to the device's steps);
   3. an encoder that builds the frame;
   4. a coalescing key.
 - `StateStore` keeps a monotonically increasing `rev`. Every change produces a `patch` with the
   new `rev`. A client that detects a gap asks for a full snapshot.
-- Unverified parameters are flagged `experimental` in the registry. They are hidden unless
+- Parameter kinds not yet verified on a DSP 408 are flagged in the registry
+  (`HARDWARE_VERIFIED` lists the verified ones). On a real DSP they are refused unless
   `--experimental` is given.
 
 ### 4.3 Command pipeline (DSP side)
