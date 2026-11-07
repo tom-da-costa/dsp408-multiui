@@ -56,10 +56,18 @@ Notes:
 - [ ] Capture session with the official editor (needs the owner's Windows PC; not blocking)
 
 ## Phase 3: Device layer
-- [ ] State models, registry, store
-- [ ] Command pipeline
-- [ ] Device session
-- [ ] Integration tests against the simulator
+- [x] State models, registry, store
+- [x] Command pipeline
+- [x] Device session
+- [x] Integration tests against the simulator
+
+**Status: done.** 341 tests, 96 % coverage.
+
+Notes:
+- Parameter paths are dotted JSON paths into the snapshot (`outputs.3.gain_db`), zero-based.
+- Idempotent reads (init sequence, config pages) are retried on timeout: without retries, a 5 %
+  loss rate made the ~55-request init fail almost every time.
+- A server-side disconnect is only noticed at the next request (at worst one meter period).
 
 ## Phase 4: Server
 - [ ] Auth, sessions, rate limit
@@ -96,3 +104,4 @@ Notes:
 | 2026-11-07 | Docs committed (SPEC, PLAN, PROTOCOL, SOURCES, README, CLAUDE.md). Phase 0 started. |
 | 2026-11-07 | Phase 0 done: scaffolding, protocol core, config layout confirmed on the real dump. |
 | 2026-11-07 | Phase 1 done: simulator, transport, probe/proxy tools. Phase 2 procedure written. |
+| 2026-11-07 | Phase 3 done: state models, registry, store, command pipeline, device session. |

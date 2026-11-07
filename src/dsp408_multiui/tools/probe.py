@@ -3,8 +3,14 @@
 from __future__ import annotations
 
 import asyncio
-from dataclasses import dataclass, field
 
+from dsp408_multiui.device.reader import (
+    DeviceSummary,
+    UnexpectedResponseError,
+    expect,
+    read_config_blob,
+    read_info,
+)
 from dsp408_multiui.device.transport import DspConnection
 from dsp408_multiui.protocol import commands as cmd
 from dsp408_multiui.protocol import config_map as cm
@@ -12,37 +18,8 @@ from dsp408_multiui.protocol import responses as rsp
 from dsp408_multiui.protocol.meters import decode_meters
 from dsp408_multiui.protocol.profile import MeterFormat, ProtocolProfile
 
-
-class ProbeError(RuntimeError):
-    """The device answered something unexpected."""
-
-
-def _expect[T: rsp.Response](reply: rsp.Response, kind: type[T]) -> T:
-    if not isinstance(reply, kind):
-        raise ProbeError(f"expected {kind.__name__}, got {reply!r}")
-    return reply
-
-
-@dataclass
-class DeviceSummary:
-    identity: str
-    handshake: bytes
-    status: bytes
-    active_slot: int
-    preset_names: list[str] = field(default_factory=list)
-
-
-async def read_info(conn: DspConnection) -> DeviceSummary:
-    p = conn.profile
-    handshake = _expect(await conn.request(cmd.Handshake()), rsp.HandshakeReply)
-    info = _expect(await conn.request(cmd.GetDeviceInfo()), rsp.DeviceInfo)
-    status = _expect(await conn.request(cmd.GetStatus()), rsp.Status)
-    active = _expect(await conn.request(cmd.GetActivePreset()), rsp.ActivePreset)
-    names = [
-        _expect(await conn.request(cmd.GetPresetName(i)), rsp.PresetName).name
-        for i in range(p.preset_count)
-    ]
-    return DeviceSummary(info.text, handshake.data, status.data, active.slot, names)
+ProbeError = UnexpectedResponseError
+_expect = expect
 
 
 def format_info(summary: DeviceSummary) -> str:
@@ -57,16 +34,6 @@ def format_info(summary: DeviceSummary) -> str:
     ]
     lines += [f"  U{i + 1:02d} {name}" for i, name in enumerate(summary.preset_names)]
     return "\n".join(lines)
-
-
-async def read_config_blob(conn: DspConnection) -> bytes:
-    pages = {}
-    for page in range(conn.profile.page_count):
-        reply = _expect(await conn.request(cmd.ReadConfigPage(page)), rsp.ConfigPage)
-        if reply.page != page:
-            raise ProbeError(f"asked for page {page}, got page {reply.page}")
-        pages[page] = reply.data
-    return cm.join_pages(pages, conn.profile)
 
 
 async def read_meters(conn: DspConnection) -> bytes:
@@ -117,3 +84,17 @@ async def watch_meters(conn: DspConnection, interval: float, count: int | None) 
         print(format_meters(await read_meters(conn), conn.profile), end="\n\n", flush=True)
         done += 1
         await asyncio.sleep(interval)
+
+
+__all__ = [
+    "DeviceSummary",
+    "ProbeError",
+    "format_diff",
+    "format_info",
+    "format_meters",
+    "read_config_blob",
+    "read_info",
+    "read_meters",
+    "send_raw",
+    "watch_meters",
+]
