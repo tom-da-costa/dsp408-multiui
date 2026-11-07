@@ -19,7 +19,7 @@ from fastapi import WebSocket, WebSocketDisconnect
 from dsp408_multiui import __version__
 from dsp408_multiui.device.pipeline import CommandTimeoutError, PipelineClosedError
 from dsp408_multiui.device.session import DeviceSession, DeviceStatus, DeviceUnavailableError
-from dsp408_multiui.protocol.codecs import COMPRESSOR_RATIOS
+from dsp408_multiui.protocol import codecs as c
 from dsp408_multiui.protocol.meters import MeterReading
 from dsp408_multiui.server.auth import AuthManager, ClientSession
 from dsp408_multiui.server.lock import LockManager, LockState
@@ -38,6 +38,23 @@ class RequestError(Exception):
         super().__init__(message or code)
         self.code = code
         self.message = message or code
+
+
+# Value ranges for the UI's controls (the server still clamps everything it receives).
+LIMITS: dict[str, Any] = {
+    "gain_db": [c.GAIN_MIN_DB, c.GAIN_MAX_DB],
+    "eq_gain_db": [c.EQ_GAIN_MIN_DB, c.EQ_GAIN_MAX_DB],
+    "attack_ms": list(c.ATTACK_RANGE_MS),
+    "release_ms": list(c.RELEASE_RANGE_MS),
+    "gate_release_ms": list(c.GATE_RELEASE_RANGE_MS),
+    "hold_ms": list(c.HOLD_RANGE_MS),
+    "threshold_db": [c.THRESHOLD_MIN_DB, c.DYNAMICS_THRESHOLD_MAX_DB],
+    "gate_threshold_db": [c.THRESHOLD_MIN_DB, c.GATE_THRESHOLD_MAX_DB],
+    "knee_db": [0, c.KNEE_MAX_DB],
+    "channel_name_length": c.CHANNEL_NAME_LENGTH,
+    "preset_name_length": c.PRESET_NAME_LENGTH,
+    "speed_of_sound_m_s": c.SPEED_OF_SOUND_M_S,
+}
 
 
 @dataclass(eq=False)
@@ -147,7 +164,7 @@ class Hub:
         self.broadcast(self.lock_message(state))
 
     def clients_message(self) -> dict[str, Any]:
-        unique = {c.id: c.session.name for c in self.clients}
+        unique = {cl.id: cl.session.name for cl in self.clients}
         return {
             "type": "clients",
             "clients": [{"id": cid, "name": name} for cid, name in sorted(unique.items())],
@@ -176,7 +193,7 @@ class Hub:
                 "preset_count": p.preset_count,
                 "peq_types": list(p.peq_types),
                 "slopes": list(p.slopes),
-                "ratios": list(COMPRESSOR_RATIOS),
+                "ratios": list(c.COMPRESSOR_RATIOS),
                 "freq_min_hz": p.freq_min_hz,
                 "freq_max_hz": p.freq_max_hz,
                 "q_min": p.q_min,
@@ -185,6 +202,7 @@ class Hub:
                 "meter_floor_db": p.meter_floor_db,
                 "meter_clip_db": p.meter_clip_db,
             },
+            "limits": LIMITS,
             "settings": self.settings_message(),
         }
 
@@ -322,7 +340,7 @@ class Hub:
                 raise RequestError("invalid", f"unknown message type {kind!r}")
 
     async def close_client_sessions(self, client_id: str) -> None:
-        for client in [c for c in self.clients if c.id == client_id]:
+        for client in [cl for cl in self.clients if cl.id == client_id]:
             with contextlib.suppress(Exception):
                 await client.websocket.close(code=4401)
 
