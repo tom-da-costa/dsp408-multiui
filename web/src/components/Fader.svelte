@@ -89,6 +89,7 @@
         inputmode="decimal"
         bind:value={draft}
         onblur={() => (editing = false)}
+        onfocus={(e) => e.currentTarget.select()}
         autofocus
         aria-label={`${label} gain in dB`}
       />

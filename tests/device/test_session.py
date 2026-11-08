@@ -2,6 +2,7 @@
 
 import asyncio
 from collections.abc import AsyncIterator
+from typing import Any
 
 import pytest
 
@@ -190,3 +191,63 @@ async def test_survives_a_stressed_link() -> None:
                 await s.wait_online(10)
         assert ok >= 20
         await s.stop()
+
+
+# Every channel-detail parameter (PLAN phase 7), as (path, value) pairs.
+DETAIL_WRITES: list[tuple[str, Any]] = [
+    ("inputs.1.phase", True),
+    ("inputs.1.peq_bypass", True),
+    ("inputs.1.peq.3", {"gain_db": -4.5, "freq_hz": 250.0, "q": 2.0, "type": 1}),
+    ("inputs.1.peq.7", {"bypass": True}),
+    ("inputs.1.crossover.hpf", {"freq_hz": 40.0, "slope": 5, "enabled": True}),
+    ("inputs.1.gate", {"threshold_db": -60.0, "attack_ms": 5, "hold_ms": 50, "release_ms": 200}),
+    ("inputs.1.geq.0", -6.0),
+    ("inputs.1.geq.30", 3.5),
+    ("inputs.1.name", "Vox"),
+    ("outputs.4.phase", True),
+    ("outputs.4.delay_ms", 12.5),
+    ("outputs.4.peq.8", {"gain_db": 6.0, "freq_hz": 8000.0, "q": 0.7, "type": 2}),
+    ("outputs.4.crossover.hpf", {"freq_hz": 120.0, "slope": 10, "enabled": True}),
+    ("outputs.4.crossover.lpf", {"freq_hz": 3000.0, "slope": 8, "enabled": True}),
+    ("outputs.4.crossover.lpf", {"enabled": False}),
+    ("outputs.4.compressor", {"ratio": 6, "knee_db": 3, "attack_ms": 20, "threshold_db": -12}),
+    ("outputs.4.limiter", {"attack_ms": 2, "release_ms": 100, "threshold_db": -3}),
+    ("outputs.4.name", "Mid L"),
+]
+
+
+async def test_detail_parameters_round_trip_through_the_device(
+    session: DeviceSession, sim: SimulatorServer
+) -> None:
+    for path, value in DETAIL_WRITES:
+        await session.write(path, value, "c")
+    before = session.store.state.model_dump()
+    state = session.store.state
+    assert state.inputs[1].peq[3].type == 1
+    assert state.inputs[1].peq[3].gain_db == -4.5
+    assert state.outputs[4].crossover.lpf == state.outputs[4].crossover.lpf.model_copy(
+        update={"enabled": False, "slope": 8}
+    )
+    assert state.outputs[4].delay_ms == pytest.approx(12.5, abs=0.011)
+    assert state.outputs[4].compressor.ratio == 6
+    assert state.inputs[1].name == "Vox"
+    # Re-read everything from the device: the simulator's config blob must give the same state.
+    await session.resync()
+    assert session.store.state.model_dump() == before
+
+
+async def test_concurrent_partial_writes_to_one_band_keep_every_field(
+    session: DeviceSession, sim: SimulatorServer
+) -> None:
+    # Two clients edit different fields of the same band before the first write is acked.
+    await asyncio.gather(
+        session.write("outputs.3.peq.2", {"gain_db": -3.0}, "a"),
+        session.write("outputs.3.peq.2", {"freq_hz": 500.0}, "b"),
+        session.write("outputs.3.peq.2", {"type": 1}, "a"),
+    )
+    band = session.store.state.outputs[3].peq[2]
+    assert band.gain_db == -3.0
+    assert band.freq_hz == pytest.approx(500, rel=0.02)
+    assert band.type == 1
+    await session.resync()
+    assert session.store.state.outputs[3].peq[2] == band

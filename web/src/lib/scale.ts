@@ -54,3 +54,53 @@ export function meterPos(db: number | null, floor: number, top = 12): number {
   if (db === null || db <= floor) return 0;
   return Math.min(1, (db - floor) / (top - floor));
 }
+
+// --- generic control scales (sliders) ------------------------------------------------------------
+
+/** How a slider maps a value to its position: linear, logarithmic, or square root (fine near 0). */
+export type Scale = "lin" | "log" | "sqrt";
+
+export function toPos(value: number, min: number, max: number, scale: Scale = "lin"): number {
+  let pos: number;
+  if (scale === "log") pos = Math.log(value / min) / Math.log(max / min);
+  else if (scale === "sqrt") pos = Math.sqrt(Math.max(0, value - min) / (max - min));
+  else pos = (value - min) / (max - min);
+  return Number.isFinite(pos) ? Math.min(1, Math.max(0, pos)) : 0;
+}
+
+export function fromPos(pos: number, min: number, max: number, scale: Scale = "lin"): number {
+  const p = Math.min(1, Math.max(0, pos));
+  if (scale === "log") return min * (max / min) ** p;
+  if (scale === "sqrt") return min + p * p * (max - min);
+  return min + p * (max - min);
+}
+
+/** Round to a multiple of `resolution` (if given) and clamp to [min, max]. */
+export function snap(value: number, min: number, max: number, resolution?: number): number {
+  let v = Math.min(max, Math.max(min, value));
+  if (resolution) v = Math.min(max, Math.max(min, Math.round(v / resolution) * resolution));
+  return Number(v.toFixed(6));
+}
+
+/** Parse a typed number: accepts a comma as decimal separator and a "k" suffix (1.5k = 1500). */
+export function parseNumber(text: string): number | null {
+  const match = /^\s*([+-]?\d*[.,]?\d+)\s*(k)?\s*$/i.exec(text);
+  if (!match) return null;
+  const value = Number(match[1]!.replace(",", ".")) * (match[2] ? 1000 : 1);
+  return Number.isFinite(value) ? value : null;
+}
+
+export function formatQ(q: number): string {
+  return q >= 10 ? q.toFixed(1) : q.toFixed(2);
+}
+
+/** ISO 1/3-octave centre frequencies of the 31-band graphic EQ. */
+export const GEQ_FREQS = [
+  20, 25, 31.5, 40, 50, 63, 80, 100, 125, 160, 200, 250, 315, 400, 500, 630, 800, 1000, 1250, 1600,
+  2000, 2500, 3150, 4000, 5000, 6300, 8000, 10000, 12500, 16000, 20000,
+];
+
+export function formatGeqFreq(hz: number): string {
+  if (hz >= 1000) return `${Number((hz / 1000).toFixed(2))}k`;
+  return `${hz}`;
+}

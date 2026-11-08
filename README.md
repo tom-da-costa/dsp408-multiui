@@ -10,10 +10,12 @@ every client on the local network and keeps them in sync in real time. It works 
 > built-in simulator: `uv run dsp408-multiui --simulator`, then open http://localhost:8080
 > (code `0000`). Progress is tracked in [docs/PROGRESS.md](docs/PROGRESS.md).
 
-## Planned features
+## Features
 
 - Gain, mute, phase, 4 → 8 routing matrix, PEQ (8 bands on inputs, 9 on outputs), high/low-pass
-  filters, delay, compressor and limiter; then noise gate, 31-band GEQ and channel names
+  filters, delay (in ms and metres), compressor, limiter, noise gate, 31-band GEQ and channel names.
+  Only gain, mute, matrix and GEQ are verified on a real DSP 408 so far; the others need
+  `--experimental` on real hardware
 - DSP presets U01–U20: recall, store, rename
 - Live meters per channel (level, peak, clip, limiter and compressor indicators), 5 Hz by default,
   adjustable from 1 to 10 Hz

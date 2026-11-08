@@ -84,6 +84,10 @@ class DeviceSession:
         self._pipeline: CommandPipeline | None = None
         self._task: asyncio.Task[None] | None = None
         self._online = asyncio.Event()
+        # Latest full value of each object parameter (PEQ band, filter, dynamics) written but
+        # not acked yet: a partial write merges onto it rather than onto the acked state, so two
+        # quick edits of different fields of one band both survive.
+        self._inflight: dict[str, dict[str, Any]] = {}
 
     def _default_connection(self) -> DspConnection:
         # Built at each attempt, so host/port can change (embedded simulator, reconfiguration).
@@ -225,8 +229,20 @@ class DeviceSession:
     async def write(self, path: str, value: Any, origin: str) -> Write:
         """Send a parameter change; the store is updated after the device's ACK."""
         pipeline = self._require_pipeline()
+        pending = self._inflight.get(path)
+        if pending is not None and isinstance(value, dict):
+            value = {**pending, **value}
         write = self.resolve(path, value)
-        await pipeline.submit(write.request, on_ack=lambda: self.store.apply(write.changes, origin))
+        mine = {p: v for p, v in write.changes if isinstance(v, dict)}
+        self._inflight.update(mine)
+        try:
+            await pipeline.submit(
+                write.request, on_ack=lambda: self.store.apply(write.changes, origin)
+            )
+        finally:
+            for p, v in mine.items():
+                if self._inflight.get(p) is v:
+                    del self._inflight[p]
         return write
 
     async def recall(self, slot: int, origin: str) -> None:

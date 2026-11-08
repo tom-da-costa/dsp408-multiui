@@ -211,6 +211,8 @@ def test_hello_snapshot_and_write(client: TestClient) -> None:
         assert hello["simulator"] is True
         assert hello["profile"]["output_count"] == 8
         assert len(hello["profile"]["slopes"]) == 21
+        assert hello["limits"]["threshold_db"] == [-90.0, 20.0]
+        assert hello["limits"]["channel_name_length"] == 8
         snapshot = receive_until(ws, "snapshot")
         assert snapshot["state"]["preset_name"] == "Demo 3-way"
         assert receive_until(ws, "device")["status"] == "online"
@@ -221,6 +223,28 @@ def test_hello_snapshot_and_write(client: TestClient) -> None:
         assert patch["changes"] == [{"path": "outputs.0.gain_db", "value": -6.0}]
         assert patch["origin"] == hello["client_id"]
         assert patch["rev"] > snapshot["rev"]
+
+
+def test_channel_detail_writes(client: TestClient) -> None:
+    login(client)
+    with client.websocket_connect("/ws") as ws:
+        receive_until(ws, "lock")
+        band = {"gain_db": 3.04, "freq_hz": 1000, "q": 1.4, "type": 0, "bypass": False}
+        assert request(ws, {"type": "set", "req": 1, "path": "outputs.2.peq.0", "value": band})[
+            "ok"
+        ]
+        value = receive_until(ws, "patch")["changes"][0]["value"]
+        assert value["gain_db"] == 3.0
+        assert value["freq_hz"] == pytest.approx(1000, rel=0.02)
+        comp = {"ratio": 4, "threshold_db": -20.2}
+        assert request(
+            ws, {"type": "set", "req": 2, "path": "outputs.2.compressor", "value": comp}
+        )["ok"]
+        value = receive_until(ws, "patch")["changes"][0]["value"]
+        assert value["ratio"] == 4
+        assert value["threshold_db"] == -20.0
+        bad = request(ws, {"type": "set", "req": 3, "path": "inputs.0.name", "value": "too long!"})
+        assert bad["error"] == "invalid"
 
 
 def test_meters_are_streamed(client: TestClient) -> None:

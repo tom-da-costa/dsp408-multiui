@@ -109,8 +109,27 @@ Notes:
 Windows executable on a real Windows machine.
 
 ## Phase 7: Remaining MVP parameters
-- [ ] PEQ, HPF/LPF, delay, compressor, limiter
-- [ ] Gate, GEQ, channel names
+- [x] PEQ, HPF/LPF, delay, compressor, limiter
+- [x] Gate, GEQ, channel names
+- [x] Channel detail screen (tap a strip name): sections per SPEC §8, verification badges
+
+**Status: done.** Every M and S parameter of SPEC §3.2 works end to end against the simulator.
+361 Python tests, 15 UI tests. Checked with headless Chromium on a 390 px phone and a 1366 px
+desktop: every section edited (drag, steppers, typing), live sync to a second client, read-only
+under another client's lock, back button.
+
+Notes:
+- The registry, codecs and simulator already covered these parameters (phases 0–3); this phase
+  added the end-to-end tests (write every parameter, re-read the whole config from the
+  simulator, compare) and the UI.
+- Bug fixed: a partial write (`{freq_hz}` on a PEQ band) was merged onto the acked state, so a
+  previous write to the same band that was not acked yet was lost (the pipeline coalesces per
+  key). Partial writes now merge onto the in-flight value.
+- `hello` carries `limits` (control ranges), so the UI does not hard-code them.
+- Inputs have crossover fields in the state model, but the UI shows HPF/LPF on outputs only
+  (SPEC §8); whether the 408 filters its inputs is unknown.
+- All of these parameters except gain, mute, matrix and GEQ stay "unverified" until phase 8: on a
+  real DSP they need `--experimental`, and the UI shows a badge.
 
 ## Phase 8: Hardware verification
 - [ ] Answer PROTOCOL §9 response-side questions on a real DSP 408
@@ -131,3 +150,4 @@ Windows executable on a real Windows machine.
 | 2026-11-07 | Phase 4 done: FastAPI server, auth, activity lock, WebSocket hub, `serve` CLI. |
 | 2026-11-07 | Phase 5 done: web UI (mixer, matrix, presets, settings, lock). |
 | 2026-11-07 | Phase 6: Docker image, compose, executables, release workflow (first release pending). |
+| 2026-11-07 | Phase 7 done: channel detail screens for every parameter; partial-write fix. |

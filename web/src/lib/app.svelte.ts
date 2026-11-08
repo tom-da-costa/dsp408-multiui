@@ -64,6 +64,16 @@ class App {
     return this.lockedByOther || this.status?.status !== "online";
   }
 
+  /** True when the parameter kind has been verified on a real DSP 408. */
+  verified(kind: string): boolean {
+    return this.hello?.verified_kinds.includes(kind) ?? false;
+  }
+
+  /** True when this client may change parameters of this kind right now. */
+  editable(kind: string): boolean {
+    return !this.readOnly && (this.verified(kind) || !!this.hello?.experimental);
+  }
+
   // --- lifecycle -------------------------------------------------------------------------------
   async start(): Promise<void> {
     const me = await api.currentSession().catch(() => null);

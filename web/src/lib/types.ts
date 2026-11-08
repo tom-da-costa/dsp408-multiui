@@ -94,6 +94,22 @@ export interface Profile {
   meter_clip_db: number;
 }
 
+/** Control ranges sent by the server (it still clamps every value it receives). */
+export interface Limits {
+  gain_db: [number, number];
+  eq_gain_db: [number, number];
+  attack_ms: [number, number];
+  release_ms: [number, number];
+  gate_release_ms: [number, number];
+  hold_ms: [number, number];
+  threshold_db: [number, number];
+  gate_threshold_db: [number, number];
+  knee_db: [number, number];
+  channel_name_length: number;
+  preset_name_length: number;
+  speed_of_sound_m_s: number;
+}
+
 export interface Hello {
   type: "hello";
   client_id: string;
@@ -103,6 +119,7 @@ export interface Hello {
   experimental: boolean;
   verified_kinds: string[];
   profile: Profile;
+  limits: Limits;
   settings: Settings;
 }
 
