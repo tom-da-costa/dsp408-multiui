@@ -2,9 +2,9 @@
 
 This document cross-references the reverse-engineering work of the projects listed in
 [`SOURCES.md`](SOURCES.md) and condenses it into a single, actionable reference for
-this project. It is **not** a verified specification yet: every item carries a confidence
-tag. The [implementation plan](PLAN.md) confirms the open points: Phase 2 (editor against
-our simulator) and Phase 8 (real hardware).
+this project. Every item carries a confidence tag. Phase 8 of the [plan](PLAN.md) verified most
+of it on a real DSP 408 (firmware V0104P, 2026-11-08): items tagged **HW** below. What is still
+open is listed in §9.
 
 ## 0. Sources and how much to trust them
 
@@ -20,6 +20,9 @@ headers, list the origin in `docs/SOURCES.md`).
 
 Confidence tags used below:
 
+- **HW**: verified by this project on a real DSP 408 (firmware V0104P): the device ACKed the
+  request and a config read showed exactly the expected bytes, or the value was compared with
+  the official editor. The recorded writes are in `tests/fixtures/hardware/write_diffs.json`.
 - **408**: observed on a DSP 408 over TCP (dsp-408-ui).
 - **SIB**: verified on a sibling model only (206 or 4x4 Mini); very likely the same on the 408.
 - **CONFLICT**: sources disagree; the value we will use first is marked ▶.
@@ -103,7 +106,7 @@ Bitmasks:
 | Threshold (gate / comp / limiter) | `dB = raw/2 − 90` (i.e. raw = 2·dB + 180) | gate −90…0, comp/lim −90…+20 | SIB (both siblings agree) |
 | Attack / release / hold | `ms = raw + 1` | attack 1–999, release 1/10–3000, hold 10–999 | SIB |
 | Knee | `dB = raw` | 0–12 | SIB |
-| Delay (`0x38`) | **CONFLICT**: 4x4 Mini `ms = raw/48` (48 kHz, max 680 ms); 206 `ms = raw/96`. ▶ **96 kHz** (206, same TCP generation); a profile setting. | uint16, max 680 ms | CONFLICT |
+| Delay (`0x38`) | `ms = raw/96` (samples at 96 kHz): the editor shows raw 426 as 4.44 ms. The 4x4 Mini uses 48 kHz. | uint16, max 680 ms (not tested) | HW |
 | Compressor ratio | enum 0–15: 1:1, 1:1.1, 1:1.3, 1:1.5, 1:1.7, 1:2, 1:2.5, 1:3, 1:3.5, 1:4, 1:5, 1:6, 1:8, 1:10, 1:20, Limit | | SIB |
 | Names | ASCII. Channel names are 8 bytes, zero-padded. Preset names are 14 bytes, space-padded. **Never send more than 14 characters** (that crashes the 4x4 Mini firmware). | | SIB |
 
@@ -138,49 +141,59 @@ Request payloads are shown without the framing. `ch` is a channel index (§3).
 
 | Op | Request | Response | Purpose | Conf. |
 |---|---|---|---|---|
-| `10` | `10` | `10 xx` (4x4 Mini: `10 1e`) | Handshake, always first | 408 |
-| `13` | `13` | `13` + ASCII model/firmware string | Device identification (lets us check that it is a 408) | 408 |
-| `2c` | `2c` | 8 bytes. 4x4 Mini: byte 6 = **lock flag**. dsp-408-ui reads byte 7 as "preset count". | Device info / lock status | CONFLICT |
+| `10` | `10` | `10 13` | Handshake, always first | HW |
+| `13` | `13` | `13` + ASCII `DSP408 V0104P` | Device identification (lets us check that it is a 408) | HW |
+| `2c` | `2c` | `2c 00 27 0f 00 00 00` | Device info / lock status. 4x4 Mini: byte 6 = **lock flag**; the 408 meaning is unknown | HW (bytes) |
 | `22` | `22` | `22 ff ff` + zeros | Active preset header (part of the editor's init sequence) | 408 (sent) |
-| `14` | `14` | `14 slot` | Active preset index (0 = F00, 1 = U01 …) | 408 (sent) + SIB |
+| `14` | `14` | `14 slot` | Active preset index (0 = F00, 1 = U01 …) | HW |
 | `12` | `12` | ACK | "Activate / config load done", sent after a config read | 408 + SIB |
-| `40` | `40` | meters (§6) | Meter poll, also acts as keepalive | 408 |
+| `40` | `40` | meters (§6) | Meter poll, also acts as keepalive | HW |
 | `2d` | `2d 00 p0 p1 p2 p3` (ASCII digits) | `2d 00 01` OK, `2d 00 00` wrong | Unlock a PIN-locked DSP | SIB |
 | `2f` | `2f p0 p1 p2 p3` | ACK, then the device **locks** | Set the device PIN. **Out of scope: dangerous** | SIB |
 
 **Init sequence** (editor and dsp-408-ui):
 `10` → `13` → `2c` → `22` → `14` → `29`×20 → `27`×29 → `12` → `40` loop.
 
+**The init sequence is required (HW).** On a fresh connection the 408 does not answer `27`
+(config pages) at all, and `40` is either not answered or returns stale, frozen levels. After the
+sequence above (up to the preset names) both work. Which request of the sequence unlocks them is
+not known; the simulator uses the handshake. Parameter writes work without it.
+
 ### 5.2 Presets
 
 | Op | Request | Response | Notes | Conf. |
 |---|---|---|---|---|
-| `29` | `29 i` (i = 0…19 → U01…U20) | `29 i` + 14-char name | Read a preset name. The 408 has **20 user presets** (4x4 Mini: 30). | 408 |
-| `20` | `20 slot` (0 = F00, 1…20 = U01…U20) | ACK, **slow** (allow 2 s) | Recall a preset. Afterwards, re-read the config (`27`×29) and send `12`. | 408 |
-| `26` | `26` + 14 bytes, space-padded | ACK | Set the name for the next store | 408 |
-| `21` | `21 slot` | ACK after ~2 s (flash write) | Store the current state. **Never use slot 0 (F00).** | 408 |
-| `27` | `27 n` (n = 0x00…0x1C) | `24 n` + 50 bytes (the last page has 48) | Read the live config page by page (§7) | 408 |
+| `29` | `29 i` (i = 0…19 → U01…U20) | `29 i` + 14-char name | Read a preset name. The 408 has **20 user presets** (4x4 Mini: 30). Names written by the official editor are Latin-1 (`e9` = é). | HW |
+| `20` | `20 slot` (0 = F00, 1…20 = U01…U20) | ACK after **~3.2 s** | Recall a preset. Afterwards, re-read the config (`27`×29) and send `12`. | HW |
+| `26` | `26` + 14 bytes, space-padded | `01 01` + the 14 name bytes (an ACK that echoes the name) | Set the name for the next store | HW |
+| `21` | `21 slot` | ACK after **~7.4 s** (flash write) | Store the current state. **Never use slot 0 (F00).** | HW |
+| `27` | `27 n` (n = 0x00…0x1C) | `24 n` + 50 bytes (the last page has 48) | Read the live config page by page (§7); needs the init sequence | HW |
 | `24`/`28` | `24 slot` then `28 n` | `28 n` + data | Read a stored preset without recalling it | SIB |
 
 ### 5.3 Parameters (write, ACK expected)
 
+Every write below was sent to the 408 and answered with the ACK `01`; the config read that
+followed shows the field changing at the offset given in §7 (HW). On a **linked** channel, the
+408 applies the write to every member of the link group, whichever member it is sent to, except
+the name (`3d`) and the matrix (`3a`).
+
 | Op | Payload | Applies to | Conf. |
 |---|---|---|---|
-| `34` | `34 ch lo hi`: gain (§4) | all | 408 |
-| `35` | `35 ch 00/01`: mute off/on | all | 408 |
-| `36` | `36 ch 00/01`: phase normal/inverted | all | SIB |
-| `3a` | `3a out mask`: matrix, full input mask each time | outputs | 408 |
-| `48` | `48 ch band val 00`: GEQ band (31 bands, ISO 1/3 octave 20 Hz–20 kHz; `val` = PEQ gain encoding) | inputs | 408 |
-| `33` | `33 ch band gain_lo gain_hi f_lo f_hi q type bypass`: PEQ band. Inputs have 8 bands, outputs 9 (DSP 408). | all | 408 (layout) / CONFLICT (encodings) |
-| `3c` | `3c ch 00/01`: bypass all PEQ bands of a channel | all? | SIB |
-| `32` | `32 ch f_lo f_hi slope`: high-pass | outputs (+inputs?) | 408 (layout) / SIB (values) |
-| `31` | `31 ch f_lo f_hi slope`: low-pass | outputs (+inputs?) | idem |
-| `38` | `38 ch lo hi`: delay (§4) | outputs (inputs?) | SIB / CONFLICT |
-| `30` | Compressor. **CONFLICT on layout**: 206 = `30 ch ratio(2) atk(2) rel(2) knee(2) thr(2)`; 4x4 Mini = `30 ch ratio(1) knee(1) atk(2) rel(2) thr(2)`. ▶ 206 layout: the 408 config blob stores exactly these five LE16 fields (§7). | outputs | CONFLICT |
-| `3f` | `3f ch atk(2) rel(2) ?(2) thr(2)`: limiter (206 only; the 4x4 Mini has no separate limiter) | outputs | SIB (206) |
-| `3e` | `3e ch atk(2) rel(2) hold(2) thr(2)`: noise gate | inputs | SIB |
-| `3d` | `3d ch` + 8 ASCII bytes: channel name | all | SIB |
-| `3b` / `2a` | Channel link: `2a master slave` per pair, then `3b ch flags` per channel, then `12`, then a full config re-read | all | SIB |
+| `34` | `34 ch lo hi`: gain (§4); the two-segment encoding is exact from +12 to −50 dB | all | HW |
+| `35` | `35 ch 00/01`: mute off/on | all | HW |
+| `36` | `36 ch 00/01`: phase normal/inverted | all | HW |
+| `3a` | `3a out mask`: matrix, full input mask each time | outputs | HW |
+| `48` | `48 ch band val 00`: GEQ band (31 bands, ISO 1/3 octave 20 Hz–20 kHz; `val` = PEQ gain encoding) | inputs | HW |
+| `33` | `33 ch band gain_lo gain_hi f_lo f_hi q type bypass`: PEQ band. Inputs have 8 bands, outputs 9. The bypass flag goes to a trailer mask (§7). | all | HW |
+| `3c` | `3c ch 00/01`: bypass the whole PEQ of a channel | all | HW |
+| `32` | `32 ch f_lo f_hi slope`: high-pass (slope 0 = bypass) | **all, inputs included** | HW |
+| `31` | `31 ch f_lo f_hi slope`: low-pass | all | HW |
+| `38` | `38 ch lo hi`: delay in samples at **96 kHz** (the editor shows 426 as 4.44 ms) | **all, inputs included** | HW |
+| `30` | `30 ch ratio(2) atk(2) rel(2) knee(2) thr(2)`: compressor (206 layout) | outputs | HW |
+| `3f` | `3f ch atk(2) rel(2) ?(2) thr(2)`: limiter | outputs | HW |
+| `3e` | `3e ch atk(2) rel(2) hold(2) thr(2)`: noise gate | inputs | HW |
+| `3d` | `3d ch` + 8 ASCII bytes (zero-padded): channel name | all | HW |
+| `3b` / `2a` | Channel link: `2a master slave` per pair, then `3b ch flags` per channel, then `12`, then a full config re-read | all | SIB (not tested) |
 | `39` | `39 mode freq_idx`: test generator (0 off, 1 pink, 2 white, 3 sine). **Out of scope: speaker safety** | global | SIB |
 | `15` | `15 unit`: delay display unit (cosmetic) | global | SIB |
 
@@ -193,29 +206,31 @@ one per input, which suggests that each matrix crosspoint has a gain. The opcode
 ## 6. Meters (`0x40` response)
 
 DSP 408 response: `LEN = 0x27` (39), i.e. payload = `40` + **12 × 3 bytes** (In A–D, then Out 1–8) +
-**2 tail bytes**. (408)
+**2 tail bytes**. (HW)
 
-**CONFLICT on the meaning of the 3 bytes per channel:**
+**Levels (HW).** Each triplet `b0 b1 b2` is the top three bytes of a little-endian IEEE-754
+**float32**: `value = float32(00 b2 b0 b1)` (b1 = sign + exponent, b0 and b2 = mantissa). The value
+is **linear, 1.0 = 0 dBFS**, so `dB = 20·log10(value)`.
 
-| Hypothesis | Source | Decoding |
-|---|---|---|
-| ▶ A: float16 + peak | dsp-408-ui (408), t.racks-DSP-control (206) | bytes 0–1 = IEEE-754 half float, little-endian, linear level; byte 2 = "peak" (0–255). `ff ff` = NaN, sent while the DSP recomputes a PEQ: treat it as "no data". dsp-408-ui observed an idle floor around 0.5 and a maximum around 2.0. |
-| B: 24-bit linear | miniDSP-Linux (4x4 Mini, confirmed with Ghidra) | `level24 = b2 + (b0<<8) + (b1<<16)`; editor dB = `20·log10(level24/2^19) + 28`; clip at level24 ≥ 74058. |
+How it was established: Out 4 was made transparent (filters, PEQ and dynamics off), fed from In A
+only, and its gain was stepped from +12 to −50 dB while music played. The difference between the
+Out 4 and In A meters moved by exactly 128 units of `b1:b0` per 6.02 dB (one octave), the
+signature of a float's exponent; the mapping held over the whole 62 dB range.
 
-Bytes 0–1 are the same in both hypotheses, so a short capture with a known signal settles it. The
-decoder must be pluggable, with calibration constants kept in configuration.
+- Levels are not clamped: with +24 dB of gain, Out 4 read 8.47 (+18.6 dBFS). CLIP is derived from
+  the level (≥ 0 dBFS); there is no clip flag.
+- An unconnected but unmuted input reads about 5·10⁻⁶ (−106 dBFS, the ADC noise floor); a muted
+  channel reads about 10⁻³⁵ (zero).
+- An input meter is measured after the input gain and **before** the input mute.
+- Before the init sequence (§5.1) the 408 returns frozen values (or nothing).
+- dsp-408-ui reads `b0 b1` as a float16. That is monotonic but wrong: it shows silence around
+  −8 dB and compresses the scale by a factor of 8.
 
-**Tail bytes (2 on the 408, 3 on the 4x4 Mini).** On the Mini, the tail holds:
+**Tail bytes (HW).** Byte 0 = per-output **compressor-active** mask (bit n = Out n+1), byte 1 =
+per-output **limiter-active** mask. Shown by pulling Out 4's compressor threshold to −60 dB
+(byte 0 gained `88`: Out 4 and its linked Out 8), then its limiter threshold (byte 1 gained `88`).
 
-- byte 25: per-output **limiter/compressor active** bitmask;
-- byte 26: state flag;
-- byte 27: "some input clips" flag.
-
-On the 408, the most likely mapping is one byte of limiter-active mask (Out 1–8) and one byte of
-clip or comp flags, but this is **UNKNOWN**. The UI needs it for the "limit" and "comp" LEDs.
-
-Clip LED fallback: derive it from the level (threshold calibrated per hypothesis), as the official
-editor does.
+The tests use real frames from `tests/fixtures/meters/dsp408_u08.txt`.
 
 ---
 
@@ -223,53 +238,68 @@ editor does.
 
 29 pages: 28 × 50 bytes + 1 × 48 bytes = **1448 bytes**. This is a live dump of the active preset.
 
-The layout below is **byte-exact on a real DSP 408 dump** (preset "Forest" from dsp-408-ui,
-stored as `tests/fixtures/config/forest_408.bin`). Every record has a fixed size, the values make
-sense (a 3-way system: sub 25–80 Hz BW-24, low 80–161 Hz, mid 370 Hz–4.8 kHz LR-24, GEQ cuts
-around 2 kHz), and the field layouts match the 206 command layouts. It is implemented in
+The record layout was first derived from a real dump (preset "Forest" from dsp-408-ui,
+`tests/fixtures/config/forest_408.bin`), then **verified field by field on hardware** (HW): every
+write of §5.3 was followed by a full read and a byte diff. The simulator reproduces all 40
+recorded writes byte for byte (`tests/hardware/test_write_diffs.py`). A complete dump of the
+owner's preset is in `tests/fixtures/config/dsp408_u08.bin`. Implemented in
 `protocol/config_map.py`.
 
 | Offset | Size | Content | Conf. |
 |---|---|---|---|
 | 0 | 2 | Marker: `ff ff` = modified user preset, `ff 00` = factory/empty | 408 |
-| 2 | 14 | Active preset name, space-padded | 408 |
-| 16 | 4 × 140 | Input records | 408 |
-| 576 | 8 × 104 | Output records | 408 |
-| 1408 | 40 | Trailer: unknown, preserved as-is | UNKNOWN |
+| 2 | 14 | Active preset name, space-padded, Latin-1 | HW |
+| 16 | 4 × 140 | Input records | HW |
+| 576 | 8 × 104 | Output records | HW |
+| 1408 | 40 | Trailer: masks (below) | HW (partly) |
 
 **Input record (140 bytes):**
 
 | Off | Field | Conf. |
 |---|---|---|
-| 0 | name (8 bytes, zero-padded) | 408 |
-| 8 | gate: attack, release, hold, threshold (4 × LE16; default `0, 99, 99, 0`) | 408 (order SIB) |
-| 16 | GEQ: 31 × LE16 (EQ gain encoding) | 408 |
-| 78 | PEQ: 8 bands × 6 bytes `[gain LE16][freq LE16][Q u8][type u8]` | 408 |
-| 126 | HPF freq LE16, LPF freq LE16, HPF slope u8, LPF slope u8 | 408 |
-| 132 | gain LE16 | 408 |
-| 134 | delay LE16 | HYP (zero in every dump) |
-| 136 | mute u8, phase u8 | HYP (zero in every dump) |
-| 138 | link flags LE16 (standalone = own bit: 1, 2, 4, 8) | 408 |
+| 0 | name (8 bytes, zero-padded) | HW |
+| 8 | gate: attack, release, hold, threshold (4 × LE16; default `0, 99, 99, 0`) | HW |
+| 16 | GEQ: 31 × LE16 (EQ gain encoding) | HW |
+| 78 | PEQ: 8 bands × 6 bytes `[gain LE16][freq LE16][Q u8][type u8]` | HW |
+| 126 | HPF freq LE16, LPF freq LE16, HPF slope u8, LPF slope u8 | HW |
+| 132 | gain LE16 | HW |
+| 134 | phase u8 (1 = inverted) | HW |
+| 135 | unknown u8 (zero in every dump) | UNKNOWN |
+| 136 | delay LE16, samples at 96 kHz | HW |
+| 138 | link mask LE16 | HW |
 
 **Output record (104 bytes):**
 
 | Off | Field | Conf. |
 |---|---|---|
-| 0 | name (8 bytes) | 408 |
-| 8 | matrix input mask LE16 | 408 |
+| 0 | name (8 bytes) | HW |
+| 8 | matrix input mask LE16 | HW |
 | 10 | 4 × crosspoint gain LE16 (280 = 0 dB) | 408 (meaning SIB) |
-| 18 | HPF freq, LPF freq, HPF slope, LPF slope (as inputs) | 408 |
-| 24 | PEQ: 9 bands × 6 bytes | 408 |
-| 78 | compressor: ratio, attack, release, knee, threshold (5 × LE16; default `0, 49, 499, 0, 220`) | 408 (= 206 command layout) |
-| 88 | limiter: attack, release, reserved, threshold (4 × LE16) | 408 (= 206 command layout) |
-| 96 | gain LE16 | 408 |
-| 98 | delay LE16 | HYP |
-| 100 | mute u8, phase u8 | HYP |
-| 102 | link flags LE16 (standalone: 1, 2, 4 … 128) | 408 |
+| 18 | HPF freq, LPF freq, HPF slope, LPF slope (as inputs) | HW |
+| 24 | PEQ: 9 bands × 6 bytes | HW |
+| 78 | compressor: ratio, attack, release, knee, threshold (5 × LE16) | HW |
+| 88 | limiter: attack, release, reserved, threshold (4 × LE16) | HW |
+| 96 | gain LE16 | HW |
+| 98 | phase u8 | HW |
+| 99 | unknown u8 (zero in every dump) | UNKNOWN |
+| 100 | delay LE16, samples at 96 kHz | HW |
+| 102 | link mask LE16 | HW |
 
-Not located yet: PEQ band bypass and channel PEQ bypass (not stored in the band data, as on the
-4x4 Mini), anything in the trailer. The hypothetical fields (HYP) are the only zero bytes left in
-the records, so they are the natural candidates; one diff capture each settles them (Q11).
+**Trailer (offsets from 1408):**
+
+| Off | Field | Conf. |
+|---|---|---|
+| 0 | input mute mask (bit n = input n) | HW |
+| 2 | output mute mask (bit n = Out n+1) | HW |
+| 4 | PEQ band bypass: 12 × LE16, by protocol channel index (In A = 0 … Out 8 = 11); bit n = band n+1 | HW |
+| 34 | input PEQ bypass mask | HW |
+| 36 | output PEQ bypass mask | HW |
+| 1, 3, 28–33, 35, 37–39 | unknown (zero everywhere; preserved) | UNKNOWN |
+
+**Link masks (HW).** The first channel of a linked group holds the mask of all members (itself
+included); the other members hold 0. On the owner's DSP: In A = `03` (A+B), Out 1 = `11`
+(Out 1+5), Out 2 = `22`, Out 3 = `44`, Out 4 = `88`. An unlinked channel holds its own bit (In C =
+`04`) or 0.
 
 dsp-408-ui finds records by searching for the strings `"InA"` / `"Out1"`. That breaks as soon as
 a user renames a channel. We use the fixed offsets above.
@@ -280,37 +310,39 @@ a user renames a channel. We use the fixed offsets above.
 
 - **Fader bursts:** the editor sends roughly one gain frame per 150 ms of fader movement, each
   ACKed, and polls only when the fader is idle. The backend must coalesce bursts (see [SPEC](SPEC.md), "Command pipeline").
-- **Preset recall** takes up to ~2 s before the ACK. After a recall or a link change, re-read the
-  whole config.
+- **Preset recall** takes ~3.2 s and **store** ~7.4 s before the ACK (HW). After a recall or a
+  link change, re-read the whole config.
+- **Linked channels:** a write to any member of a link group changes every member (HW), except
+  names and matrix. The backend copies the change into its state for every member.
 - After `12`, give the DSP a short grace period before polling again (4x4 Mini: back-to-back
   polls can time out).
 - The front panel of the DSP can change values without notifying the client. Only a periodic
   config re-read detects that.
-- A `0x40` answer with `ff ff` levels happens during DSP recomputation; it is not an error.
+- No unsolicited frame was seen during the phase 8 session (HW).
 
 ---
 
 ## 9. Open questions
 
 Until they are answered, every uncertain value is a field of the `ProtocolProfile` (SPEC §4.6),
-with the ▶ choice as default. The *Side* column says what is needed to answer each question:
-**req** = the editor's requests, which can be captured against our simulator without a DSP
-(PLAN, Phase 2); **resp** = the device's answers, which need a real DSP 408 (PLAN, Phase 8).
+with the ▶ choice as default. Phase 8 (2026-11-08, firmware V0104P) answered most of them.
 
-| # | Question | How | Side |
-|---|---|---|---|
-| Q1 | Meter encoding (float16 vs 24-bit) and meaning of the 2 tail bytes (limit/comp/clip) | Sine at a known level; trigger the limiter on one output; clip one input | resp |
-| Q2 | Frequency step count (300 vs 1000) and Q scale (100 vs 255) | Set PEQ band to 1 kHz / Q 1.0 in the editor and capture | req |
-| Q3 | Delay unit (/48 vs /96) and maximum | Sweep delay in the editor | req |
-| Q4 | Compressor `0x30` and limiter `0x3f` layouts on the 408 | One capture per parameter | req |
-| Q5 | Slope table on the 408 (number of entries) and bypass | Sweep slopes | req |
-| Q6 | Gate `0x3e`, phase `0x36`, names `0x3d`, link `0x3b`/`0x2a` on the 408 | One capture each | req |
-| Q7 | Matrix crosspoint gain opcode | Capture | req |
-| Q8 | `0x2c` and `0x10` responses on the 408; DSP PIN lock behaviour | Capture at connect | resp |
-| Q9 | Write ACK format; any unsolicited frames | Observe | resp |
-| Q10 | Second TCP client: refused, accepted, or kicks the first one? Idle timeout? | Two sockets | resp |
-| Q11 | Remaining config-blob fields (HYP offsets for delay/mute/phase, band bypass, trailer); the record layout itself is confirmed (§7) | Diff dumps before/after each single change | resp |
-| Q12 | Input HPF/LPF and input delay availability | Editor UI + capture | req |
+| # | Question | Status |
+|---|---|---|
+| Q1 | Meter encoding and tail bytes | **Answered (HW)**: float32 top bytes, tail = comp / limit masks (§6) |
+| Q2 | Frequency step count (300 vs 1000) and Q scale (100 vs 255) | **Mostly answered**: 300 steps from the blob (408); raw values are stored as sent (HW). Still to do: compare a few Hz / Q values with the editor's display |
+| Q3 | Delay unit and maximum | **Answered (HW)**: samples at 96 kHz (426 = 4.44 ms in the editor). Maximum (680 ms) not tested |
+| Q4 | Compressor `0x30` and limiter `0x3f` layouts | **Answered (HW)**: 206 layout |
+| Q5 | Slope table on the 408 and bypass | **Partly**: slope 0 = bypass and raw slopes are stored as sent (HW); the names of the 21 entries are still to compare with the editor |
+| Q6 | Gate, phase, names, link on the 408 | **Answered (HW)** for gate, phase and names; link opcodes `3b`/`2a` not tested (link is read-only here) |
+| Q7 | Matrix crosspoint gain opcode | Open |
+| Q8 | `0x2c` and `0x10` responses; DSP PIN lock | **Answered (HW)** for the responses (§5.1); PIN lock not tested |
+| Q9 | Write ACK format; unsolicited frames | **Answered (HW)**: ACK = `01` (the `26` ACK echoes the name); no unsolicited frames seen |
+| Q10 | Second TCP client: refused, accepted, or kicks the first one? Idle timeout? | Open |
+| Q11 | Remaining config-blob fields | **Answered (HW)** (§7), except a few trailer bytes and bytes 135 / 99 of the records |
+| Q12 | Input HPF/LPF and input delay | **Answered (HW)**: both are accepted and stored |
+| Q13 | Compressor ratio table (16 entries, index 15 = "Limit" from the 206) | Open: compare with the editor |
 
-Capture method: Wireshark on the PC that runs the official editor (`tcp.port == 9761`), or the
-built-in `proxy` sub-command of this project (see PLAN, Phase 1).
+Capture method: Wireshark on the PC that runs the official editor (`tcp.port == 9761`), the
+built-in `proxy` sub-command, or a write + `probe dump-config` + `probe diff-config` cycle on a
+test preset (what phase 8 did).
