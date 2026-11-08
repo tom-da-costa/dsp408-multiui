@@ -1,0 +1,12 @@
+# Live configuration blob of the owner's DSP 408 (firmware V0104P), preset U08, read with the
+# init sequence + 29 x 0x27 pages on 2026-11-08. Complete (no missing bytes).
+device = "DSP 408"
+firmware = "V0104P"
+size = 1448
+source = "owner's device, read by this project (probe dump-config)"
+notes = """
+4-way stereo system: Out1/Out5 Sub, Out2/Out6 Kick, Out3/Out7 Mid, Out4/Out8 High.
+Links: In A+B, Out1+5, Out2+6, Out3+7, Out4+8 (masks 03, 11, 22, 44, 88 on the first member).
+Delays (editor shows 4.44 / 5.65 / 5.74 ms): 426 / 542 / 551 samples at 96 kHz.
+Preset name "Pas touché svp" with a Latin-1 0xe9.
+"""

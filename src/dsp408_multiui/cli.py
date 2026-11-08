@@ -133,6 +133,9 @@ def build_parser() -> argparse.ArgumentParser:
     diff.add_argument("after", type=Path)
     raw = actions.add_parser("raw", help="send a raw payload, e.g. '34 04 18 01'")
     raw.add_argument("payload", nargs="+")
+    raw.add_argument(
+        "--no-init", action="store_true", help="skip the init sequence sent before the frame"
+    )
 
     # proxy
     proxy = sub.add_parser(
@@ -235,6 +238,9 @@ async def _probe(args: argparse.Namespace, profile: ProtocolProfile) -> int:
     if args.timeout:
         profile = profile.with_overrides({"timing": {"command_timeout_s": args.timeout}})
     async with DspConnection(args.dsp_host, args.dsp_port, profile) as conn:
+        if args.action != "info" and not getattr(args, "no_init", False):
+            # The 408 serves config pages and meters only after the init sequence.
+            await probe.read_info(conn)
         if args.action == "info":
             print(probe.format_info(await probe.read_info(conn)))
         elif args.action == "meters":

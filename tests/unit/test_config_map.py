@@ -38,7 +38,9 @@ def test_input_fields(forest: cm.RawConfig) -> None:
     # GEQ band 20 (2 kHz) cut by 4.7 dB, all other bands flat
     assert ina.geq == (cm.EQ_FLAT_RAW,) * 20 + (73,) + (cm.EQ_FLAT_RAW,) * 10
     assert forest.inputs[2].geq[17:21] == (60, 60, 60, 90)
-    assert ina.peq[0] == cm.RawPeqBand(gain=150, freq=188, q=0, type=0)  # +3 dB
+    # +3 dB, bypassed (trailer band-bypass mask of In A = 0x0001)
+    assert ina.peq[0] == cm.RawPeqBand(gain=150, freq=188, q=0, type=0, bypass=True)
+    assert not any(b.bypass for b in ina.peq[1:])
     assert [b.freq for b in forest.inputs[1].peq] == list(cm.DEFAULT_INPUT_PEQ_FREQS)
     assert ina.crossover == cm.RawCrossover(hpf_freq=0, lpf_freq=300, hpf_slope=0, lpf_slope=0)
     assert [c.link for c in forest.inputs] == [1, 2, 4, 8]
@@ -55,6 +57,9 @@ def test_output_fields(forest: cm.RawConfig) -> None:
     assert out1.compressor == cm.RawCompressor(0, 49, 499, 0, 220)
     assert out1.limiter == cm.RawLimiter(49, 499, 0, 220)
     assert out3.peq[4] == cm.RawPeqBand(gain=160, freq=244, q=10, type=2)  # high shelf
+    # unused bands bypassed: Out2 bands 3-9 (mask 0x1fc), Out3 bands 7-9 (0x1c0)
+    assert [b.bypass for b in out2.peq] == [False, False] + [True] * 7
+    assert [b.bypass for b in out3.peq] == [False] * 6 + [True] * 3
     assert [b.freq for b in out1.peq] == list(cm.DEFAULT_OUTPUT_PEQ_FREQS)
     assert [o.link for o in forest.outputs] == [1 << i for i in range(8)]
     assert all(o.gain == cm.UNITY_GAIN_RAW for o in forest.outputs)
@@ -66,19 +71,57 @@ def test_roundtrip_is_byte_exact(forest_blob: bytes, forest: cm.RawConfig) -> No
 
 def test_edit_changes_only_the_expected_bytes(forest_blob: bytes, forest: cm.RawConfig) -> None:
     outputs = list(forest.outputs)
-    outputs[2] = replace(outputs[2], gain=200, mute=True, delay=960)
+    outputs[2] = replace(outputs[2], gain=200, mute=True, delay=960, phase=True)
     edited = cm.encode_config(replace(forest, outputs=tuple(outputs)))
     changed = [i for i, (a, b) in enumerate(zip(forest_blob, edited, strict=True)) if a != b]
     base = cm.output_offset(2)
-    # gain 280 -> 200 (both bytes), delay 0 -> 960 (both bytes), mute flag
-    assert changed == [base + 96, base + 97, base + 98, base + 99, base + 100]
-    assert cm.decode_config(edited).outputs[2].delay == 960
+    # gain 280 -> 200 (2 bytes), phase byte, delay 0 -> 960 (2 bytes), bit 2 of the mute mask
+    assert changed == [base + 96, base + 97, base + 98, base + 100, base + 101, cm.OUTPUT_MUTE_MASK]
+    out3 = cm.decode_config(edited).outputs[2]
+    assert (out3.delay, out3.mute, out3.phase) == (960, True, True)
+    assert edited[cm.OUTPUT_MUTE_MASK] == 0b100
+
+
+def test_trailer_masks_roundtrip(forest_blob: bytes, forest: cm.RawConfig) -> None:
+    inputs = list(forest.inputs)
+    inputs[3] = replace(inputs[3], mute=True, peq_bypass=True, phase=True, delay=96)
+    outputs = list(forest.outputs)
+    bands = list(outputs[7].peq)
+    bands[8] = replace(bands[8], bypass=True)
+    outputs[7] = replace(outputs[7], peq=tuple(bands), peq_bypass=True)
+    edited = cm.encode_config(replace(forest, inputs=tuple(inputs), outputs=tuple(outputs)))
+    assert edited[cm.INPUT_MUTE_MASK] == 0b1000
+    assert edited[cm.INPUT_PEQ_BYPASS_MASK] == 0b1000
+    assert edited[cm.OUTPUT_PEQ_BYPASS_MASK] == 0b1000_0000
+    # Out8 = protocol channel 11; band 9 = bit 8 of its u16 mask
+    assert edited[cm.BAND_BYPASS_BASE + 22 : cm.BAND_BYPASS_BASE + 24] == b"\x00\x01"
+    assert edited[cm.input_offset(3) + 134] == 1
+    assert edited[cm.input_offset(3) + 136] == 96
+    decoded = cm.decode_config(edited)
+    ind = decoded.inputs[3]
+    assert (ind.mute, ind.peq_bypass, ind.phase) == (True, True, True)
+    assert (decoded.outputs[7].peq[8].bypass, decoded.outputs[7].peq_bypass) == (True, True)
+    assert cm.encode_config(decoded) == edited
+
+
+def test_link_group() -> None:
+    # Out1-Out5, Out2-Out6, … as on the hardware: the master holds the mask, slaves hold 0
+    masks = [0x11, 0x22, 0x44, 0x88, 0, 0, 0, 0]
+    assert cm.link_group(masks, 0) == (0, 4)
+    assert cm.link_group(masks, 4) == (0, 4)
+    assert cm.link_group(masks, 7) == (3, 7)
+    assert cm.link_group([0x03, 0, 0x04, 0x08], 1) == (0, 1)
+    assert cm.link_group([0x03, 0, 0x04, 0x08], 2) == (2,)  # own bit only: not linked
+    assert cm.link_group([1, 2, 4, 8], 3) == (3,)
 
 
 def test_unknown_bytes_are_preserved(forest_blob: bytes) -> None:
     blob = bytearray(forest_blob)
-    blob[cm.TRAILER_BASE + 5] = 0xAB
-    assert cm.encode_config(cm.decode_config(bytes(blob)))[cm.TRAILER_BASE + 5] == 0xAB
+    blob[cm.TRAILER_BASE + 30] = 0xAB  # unknown trailer byte
+    blob[cm.output_offset(1) + 99] = 0xCD  # unknown byte after the phase
+    blob[cm.BAND_BYPASS_BASE + 1] |= 0x80  # In A band mask bit 15: no such band
+    out = cm.encode_config(cm.decode_config(bytes(blob)))
+    assert out == bytes(blob)
 
 
 def test_pages(forest_blob: bytes) -> None:
@@ -126,8 +169,14 @@ def test_layout_errors(forest: cm.RawConfig) -> None:
         (cm.output_offset(0) + 13, "out0.crosspoints[1]"),
         (cm.output_offset(7) + 24 + 6 * 8 + 5, "out7.peq[8].type"),
         (cm.output_offset(2) + 86, "out2.compressor.threshold"),
-        (cm.output_offset(2) + 100, "out2.mute (HYP)"),
+        (cm.output_offset(2) + 98, "out2.phase"),
+        (cm.output_offset(2) + 100, "out2.delay"),
+        (cm.input_offset(1) + 136, "in1.delay"),
         (cm.TRAILER_BASE + 3, "trailer[3]"),
+        (cm.INPUT_MUTE_MASK, "inputs.mute_mask"),
+        (cm.OUTPUT_MUTE_MASK, "outputs.mute_mask"),
+        (cm.BAND_BYPASS_BASE + 8, "out0.peq_band_bypass_mask"),
+        (cm.OUTPUT_PEQ_BYPASS_MASK, "outputs.peq_bypass_mask"),
     ],
 )
 def test_field_at(offset: int, name: str) -> None:

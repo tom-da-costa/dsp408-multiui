@@ -4,8 +4,12 @@ Layout of the data after the opcode: one 3-byte triplet per channel (inputs firs
 outputs), then ``meter_tail_length`` tail bytes. How a triplet encodes the level is a profile
 setting because the sources disagree:
 
-* ``float16``: bytes 0-1 are an IEEE-754 half float (little-endian, linear level), byte 2 is a
-  "peak" byte. ``ff ff`` (NaN) means "no data" (the DSP is recomputing a filter).
+* ``float32`` (DSP 408, verified on hardware): the triplet is the top three bytes of a
+  little-endian IEEE-754 float32 (byte 2 = bits 8-15, byte 0 = bits 16-23, byte 1 = bits
+  24-31), i.e. ``float32(00 b2 b0 b1)``. The value is linear, 1.0 = 0 dBFS, and can exceed 1.0.
+  A muted channel reads about 1e-35; NaN/inf means "no data".
+* ``float16``: bytes 0-1 read as a half float (dsp-408-ui). Wrong on a real 408 (it gives a
+  compressed, offset scale); kept for comparison.
 * ``level24``: ``level = b2 | b0 << 8 | b1 << 16`` (24-bit linear, 4x4 Mini).
 
 Levels are reported in dB relative to ``meter_reference`` and floored at ``meter_floor_db``.
@@ -52,6 +56,11 @@ def _db_to_linear(db: float, profile: ProtocolProfile) -> float:
 
 
 def _decode_triplet(triplet: bytes, profile: ProtocolProfile) -> float | None:
+    if profile.meter_format is MeterFormat.FLOAT32:
+        (value,) = struct.unpack("<f", bytes((0, triplet[2], triplet[0], triplet[1])))
+        if not math.isfinite(value):
+            return None
+        return float(abs(value))
     if profile.meter_format is MeterFormat.FLOAT16:
         (linear,) = struct.unpack("<e", triplet[:2])
         if not math.isfinite(linear):
@@ -63,6 +72,9 @@ def _decode_triplet(triplet: bytes, profile: ProtocolProfile) -> float | None:
 
 
 def _encode_triplet(linear: float | None, profile: ProtocolProfile) -> bytes:
+    if profile.meter_format is MeterFormat.FLOAT32:
+        raw = struct.pack("<f", math.nan if linear is None else linear)
+        return bytes((raw[2], raw[3], raw[1]))
     if profile.meter_format is MeterFormat.FLOAT16:
         if linear is None:
             return b"\xff\xff\x00"

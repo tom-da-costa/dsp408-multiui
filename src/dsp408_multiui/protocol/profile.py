@@ -11,8 +11,9 @@ from typing import Any
 
 
 class MeterFormat(StrEnum):
-    FLOAT16 = "float16"
-    LEVEL24 = "level24"
+    FLOAT32 = "float32"  # DSP 408 (verified): top 3 bytes of a little-endian float32
+    FLOAT16 = "float16"  # dsp-408-ui's reading; wrong on a real 408
+    LEVEL24 = "level24"  # 4x4 Mini
 
 
 class CompressorLayout(StrEnum):
@@ -94,17 +95,17 @@ class ProtocolProfile:
     peq_types: tuple[str, ...] = ()
     slopes: tuple[str, ...] = ()
     # meters
-    meter_format: MeterFormat = MeterFormat.FLOAT16
+    meter_format: MeterFormat = MeterFormat.FLOAT32
     meter_tail_length: int = 2
-    meter_tail_limit_byte: int | None = 0
-    meter_tail_comp_byte: int | None = None
-    meter_tail_clip_byte: int | None = 1
+    meter_tail_limit_byte: int | None = 1
+    meter_tail_comp_byte: int | None = 0
+    meter_tail_clip_byte: int | None = None
     meter_reference: float = 1.0
-    meter_clip_db: float = 6.0
+    meter_clip_db: float = 0.0
     meter_floor_db: float = -90.0
     # timing
     command_timeout_s: float = 0.5
-    slow_command_timeout_s: float = 3.0
+    slow_command_timeout_s: float = 10.0
 
     def __post_init__(self) -> None:
         positive = (

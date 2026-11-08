@@ -103,6 +103,7 @@ class SimulatorServer:
                 log.info("kicking client %s", old.get_extra_info("peername"))
                 old.close()
         log.info("client connected: %s", peer)
+        self.device.on_connect()
         task = asyncio.current_task()
         assert task is not None
         self._clients[writer] = task

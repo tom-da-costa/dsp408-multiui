@@ -8,7 +8,7 @@ from pathlib import Path
 import pytest
 
 from dsp408_multiui import cli
-from dsp408_multiui.device.transport import DspConnection
+from dsp408_multiui.device.transport import DspConnection, TransportTimeoutError
 from dsp408_multiui.framelog import FrameLog
 from dsp408_multiui.protocol import commands as c
 from dsp408_multiui.protocol import config_map as cm
@@ -31,7 +31,7 @@ async def sim() -> AsyncIterator[SimulatorServer]:
 async def test_read_info(sim: SimulatorServer) -> None:
     async with DspConnection("127.0.0.1", sim.bound_port, P) as conn:
         summary = await probe.read_info(conn)
-    assert summary.identity == "DSP408 V1.04"
+    assert summary.identity == "DSP408 V0104P"
     assert summary.active_slot == 1
     assert summary.preset_names[:2] == ["Demo 3-way", "Mono Sub"]
     text = probe.format_info(summary)
@@ -41,6 +41,9 @@ async def test_read_info(sim: SimulatorServer) -> None:
 
 async def test_dump_config_matches_the_device(sim: SimulatorServer) -> None:
     async with DspConnection("127.0.0.1", sim.bound_port, P) as conn:
+        with pytest.raises(TransportTimeoutError):  # like the 408: nothing before the init
+            await probe.read_config_blob(conn)
+        await probe.read_info(conn)
         blob = await probe.read_config_blob(conn)
     assert blob == sim.device.config_blob
     assert cm.decode_config(blob).preset_name == "Demo 3-way"
@@ -48,6 +51,7 @@ async def test_dump_config_matches_the_device(sim: SimulatorServer) -> None:
 
 async def test_meters_and_raw(sim: SimulatorServer) -> None:
     async with DspConnection("127.0.0.1", sim.bound_port, P) as conn:
+        await probe.read_info(conn)
         data = await probe.read_meters(conn)
         text = probe.format_meters(data, P)
         assert text.splitlines()[0].startswith("chan")

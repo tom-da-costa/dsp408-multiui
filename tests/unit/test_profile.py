@@ -20,13 +20,15 @@ def test_default_profile_values() -> None:
     assert p.config_size == 1448
     assert p.freq_steps == 300
     assert p.q_steps == 100
-    assert p.meter_format is MeterFormat.FLOAT16
+    assert p.meter_format is MeterFormat.FLOAT32
     assert p.compressor_layout is CompressorLayout.WIDE
     assert len(p.peq_types) == 9
     assert len(p.slopes) == 21
     assert p.slopes[0] == "Off"
     assert p.slopes[10] == "LR-24"
-    assert p.meter_tail_comp_byte is None
+    assert (p.meter_tail_comp_byte, p.meter_tail_limit_byte, p.meter_tail_clip_byte) == (0, 1, None)
+    assert p.meter_clip_db == 0.0
+    assert p.slow_command_timeout_s == 10.0
 
 
 def test_channel_helpers() -> None:

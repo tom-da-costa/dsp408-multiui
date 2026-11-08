@@ -16,6 +16,7 @@ from dsp408_multiui.server.auth import AuthManager, LoginError, RateLimitedError
 from dsp408_multiui.server.lock import LockManager
 from dsp408_multiui.server.settings import ServerConfig
 from dsp408_multiui.simulator import Faults, SimulatedDevice, apply_scenario
+from dsp408_multiui.state import registry
 
 P = DEFAULT_PROFILE.with_overrides({"timing": {"command_timeout_s": 0.3}})
 
@@ -253,7 +254,7 @@ def test_meters_are_streamed(client: TestClient) -> None:
         meters = receive_until(ws, "meters")
         assert len(meters["levels"]) == 12
         assert len(meters["limit"]) == 8
-        assert meters["comp"] is None
+        assert len(meters["comp"]) == 8
 
 
 def test_invalid_requests(client: TestClient) -> None:
@@ -348,7 +349,11 @@ def test_presets_settings_rename_resync(client: TestClient) -> None:
         assert receive_until(ws, "snapshot")
 
 
-def test_unverified_parameters_need_experimental_on_real_hardware(web_dir: Path) -> None:
+def test_unverified_parameters_need_experimental_on_real_hardware(
+    web_dir: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # Every current kind is verified; pretend delay is not, to exercise the gate.
+    monkeypatch.setattr(registry, "HARDWARE_VERIFIED", registry.HARDWARE_VERIFIED - {"delay_ms"})
     app, _ = make_app(web_dir)
     ctx: AppContext = app.state.ctx
     ctx.config.simulator = False  # pretend this is a real DSP without --experimental

@@ -41,7 +41,7 @@ async def test_request_response_roundtrip(server: SimulatorServer) -> None:
         info = await conn.request(c.GetDeviceInfo())
         assert isinstance(info, r.DeviceInfo)
         assert await conn.request(c.SetGain(4, 250)) == r.Ack()
-        assert await conn.request(c.SetPresetName("Over TCP")) == r.Ack()
+        assert isinstance(await conn.request(c.SetPresetName("Over TCP")), r.Ack)
         assert await conn.request(c.StorePreset(1)) == r.Ack()
         assert await conn.request(c.GetPresetName(0)) == r.PresetName(0, "Over TCP")
     assert not conn.connected

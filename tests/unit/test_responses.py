@@ -43,7 +43,15 @@ def test_unknown_opcode_is_kept() -> None:
     assert reply.encode() == H("77 01 02")
 
 
-@pytest.mark.parametrize("payload", ["", "01 00", "14", "14 01 02", "2d 01", "29", "24"])
+def test_ack_with_name_echo() -> None:
+    # 408: SetPresetName (0x26) is answered with 01 01 + the 14-byte name
+    reply = r.decode_response(H("01 01") + b"U01 test copy ")
+    assert isinstance(reply, r.Ack)
+    assert reply.data == b"\x01U01 test copy "
+    assert r.decode_response(H("01")) == r.Ack()
+
+
+@pytest.mark.parametrize("payload", ["", "14", "14 01 02", "2d 01", "29", "24"])
 def test_malformed(payload: str) -> None:
     with pytest.raises(r.ResponseError):
         r.decode_response(H(payload))
