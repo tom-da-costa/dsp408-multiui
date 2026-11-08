@@ -49,6 +49,9 @@ export interface Channel {
   peq: PeqBand[];
   peq_bypass: boolean;
   crossover: Crossover;
+  delay_ms: number;
+  /** Other members of the link group (indices among inputs or outputs). */
+  linked: number[];
 }
 
 export interface InputChannel extends Channel {
@@ -57,7 +60,6 @@ export interface InputChannel extends Channel {
 }
 
 export interface OutputChannel extends Channel {
-  delay_ms: number;
   matrix: boolean[];
   crosspoints_db: number[];
   compressor: Compressor;

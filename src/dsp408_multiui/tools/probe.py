@@ -16,7 +16,7 @@ from dsp408_multiui.protocol import commands as cmd
 from dsp408_multiui.protocol import config_map as cm
 from dsp408_multiui.protocol import responses as rsp
 from dsp408_multiui.protocol.meters import decode_meters
-from dsp408_multiui.protocol.profile import MeterFormat, ProtocolProfile
+from dsp408_multiui.protocol.profile import ProtocolProfile
 
 ProbeError = UnexpectedResponseError
 _expect = expect
@@ -41,26 +41,29 @@ async def read_meters(conn: DspConnection) -> bytes:
 
 
 def format_meters(data: bytes, profile: ProtocolProfile) -> str:
-    """Raw triplets with both interpretations, to settle PROTOCOL Q1 on hardware.
-
-    ``float16 dB`` uses the profile's reference; ``level24`` is the raw 24-bit integer
-    (``b2 | b0 << 8 | b1 << 16``), which only means something once calibrated.
-    """
-    f16_profile = profile.with_overrides({"meters": {"format": MeterFormat.FLOAT16.value}})
+    """Raw triplets with the profile's decoding (float32 dBFS on a 408) and the tail flags."""
     try:
-        f16 = decode_meters(data, f16_profile).levels_db
+        reading = decode_meters(data, profile)
     except ValueError as exc:
         return f"cannot decode ({exc}): {data.hex(' ')}"
     names = [f"In{chr(65 + i)}" for i in range(profile.input_count)] + [
         f"Out{i + 1}" for i in range(profile.output_count)
     ]
-    lines = ["chan    raw       float16 dB   level24"]
+    lines = [f"chan    raw       {profile.meter_format.value} dB"]
     for i, name in enumerate(names):
-        t = data[3 * i : 3 * i + 3]
-        level24 = t[2] | t[0] << 8 | t[1] << 16
-        db = "   n/a" if f16[i] is None else f"{f16[i]:6.1f}"
-        lines.append(f"{name:<6}  {t.hex(' ')}  {db}      {level24:8d}")
+        level = reading.levels_db[i]
+        db = "   n/a" if level is None else f"{level:6.1f}"
+        clip = "  CLIP" if reading.clip[i] else ""
+        lines.append(f"{name:<6}  {data[3 * i : 3 * i + 3].hex(' ')}  {db}{clip}")
+
+    def outputs(flags: tuple[bool, ...] | None) -> str:
+        if flags is None:
+            return "n/a"
+        return " ".join(f"Out{i + 1}" for i, on in enumerate(flags) if on) or "-"
+
     lines.append(f"tail    {data[3 * len(names) :].hex(' ')}")
+    lines.append(f"comp    {outputs(reading.comp)}")
+    lines.append(f"limit   {outputs(reading.limit)}")
     return "\n".join(lines)
 
 

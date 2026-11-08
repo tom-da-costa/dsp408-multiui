@@ -63,9 +63,13 @@ class Channel(_Model):
     gain_db: float = Field(0.0, ge=-60.0, le=12.0)
     mute: bool = False
     phase: bool = False
+    delay_ms: float = Field(0.0, ge=0.0)
     peq: list[PeqBand]
     peq_bypass: bool = False
     crossover: Crossover = Field(default_factory=Crossover)
+    # Other members of this channel's link group (indices among inputs or outputs). The DSP
+    # copies every write except the name and the matrix to them. Read-only for now.
+    linked: list[int] = Field(default_factory=list)
 
 
 class InputChannel(Channel):
@@ -74,7 +78,6 @@ class InputChannel(Channel):
 
 
 class OutputChannel(Channel):
-    delay_ms: float = Field(0.0, ge=0.0)
     matrix: list[bool]  # one flag per input
     crosspoints_db: list[float]  # one gain per input (read-only for now)
     compressor: Compressor = Field(default_factory=Compressor)

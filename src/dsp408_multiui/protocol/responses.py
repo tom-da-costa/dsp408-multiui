@@ -69,7 +69,20 @@ class Unknown(Response):
 
 @dataclass(frozen=True)
 class Ack(Response):
+    """ACK. Usually empty; the 408 answers a preset-name set (0x26) with ``01`` + the name."""
+
     OPCODE = Opcode.ACK
+    data: bytes = b""
+
+    def _pack(self) -> bytes:
+        return self.data
+
+    @classmethod
+    def _unpack(cls, data: bytes) -> Self:
+        return cls(bytes(data))
+
+    def __repr__(self) -> str:
+        return f"Ack({self.data.hex(' ')})" if self.data else "Ack()"
 
 
 @dataclass(frozen=True)

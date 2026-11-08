@@ -28,8 +28,29 @@ from dsp408_multiui.state.models import (
     PeqBand,
 )
 
-# Parameter kinds whose encoding has been seen working on a real DSP 408 (dsp-408-ui).
-HARDWARE_VERIFIED = frozenset({"gain_db", "mute", "matrix", "geq"})
+# Parameter kinds verified on a real DSP 408 (firmware V0104P): the device ACKs the write and
+# its config read shows exactly the expected bytes (docs/PROTOCOL.md §7). Kinds added later
+# stay out of this set (and behind --experimental on hardware) until they are verified.
+HARDWARE_VERIFIED = frozenset(
+    {
+        "gain_db",
+        "mute",
+        "phase",
+        "delay_ms",
+        "matrix",
+        "peq",
+        "peq_bypass",
+        "crossover",
+        "geq",
+        "gate",
+        "compressor",
+        "limiter",
+        "name",
+    }
+)
+
+# The DSP copies writes to the other members of a link group, except these.
+NOT_LINKED = frozenset({"name", "matrix"})
 
 
 class ParamError(ValueError):
@@ -83,6 +104,19 @@ def _check_choice(value: int, choices: tuple[str, ...], what: str, *, first: int
 
 
 def resolve(path: str, value: Any, state: DeviceState, profile: ProtocolProfile) -> Write:
+    """Validate and quantise a write; the changes include the channel's linked partners."""
+    write = _resolve(path, value, state, profile)
+    if write.kind in NOT_LINKED:
+        return write
+    group_name, index, *rest = path.split(".")
+    group = state.inputs if group_name == "inputs" else state.outputs
+    partners = group[int(index)].linked
+    new_value = write.changes[0][1]
+    extra = tuple((".".join((group_name, str(p), *rest)), new_value) for p in partners)
+    return Write(write.request, write.changes + extra, write.kind)
+
+
+def _resolve(path: str, value: Any, state: DeviceState, profile: ProtocolProfile) -> Write:
     parts = path.split(".")
     if len(parts) < 3 or parts[0] not in ("inputs", "outputs"):
         raise ParamError(f"unknown parameter path: {path!r}")
@@ -115,7 +149,7 @@ def resolve(path: str, value: Any, state: DeviceState, profile: ProtocolProfile)
             except ValueError as exc:
                 raise ParamError(str(exc)) from exc
             return done(cmd.SetChannelName(ch, value), value)
-        case "delay_ms" if isinstance(channel, OutputChannel):
+        case "delay_ms":
             raw = c.delay_ms_to_raw(_number(value), profile)
             return done(cmd.SetDelay(ch, raw), round(c.delay_raw_to_ms(raw, profile), 3))
         case "matrix" if isinstance(channel, OutputChannel):

@@ -132,7 +132,29 @@ Notes:
   real DSP they need `--experimental`, and the UI shows a badge.
 
 ## Phase 8: Hardware verification
-- [ ] Answer PROTOCOL §9 response-side questions on a real DSP 408
+- [x] Read-only checks on the owner's DSP 408 (V0104P): `probe info`, meters, config dump
+- [x] Write session on a test copy (U01 → U04, approved by the owner); every parameter written
+  and diffed; DSP restored to its starting state (U08, byte-identical config)
+- [x] Meter calibration (gain steps against a reference channel)
+- [x] `config_map`, profile defaults, simulator and fixtures updated; PROTOCOL.md tags **HW**
+- [x] Full stack (`serve` + UI) checked read-only against the DSP
+- [ ] Remaining open points (PROTOCOL §9): Hz / Q / slope / ratio names against the editor's
+  display, second TCP client, crosspoint gains, PIN lock
+
+**Status: done** for every MVP parameter. 420 Python tests.
+
+Findings (details in PROTOCOL.md):
+- The 408 serves config pages and meters only after the init sequence (`probe` now runs it).
+- Meters are float32 (top three bytes), 1.0 = 0 dBFS. dsp-408-ui's float16 reading was wrong
+  (silence showed as −8 dB). Tail byte 0 = compressor mask, byte 1 = limiter mask.
+- Blob: phase at +98/+134, delay at +100/+136; mute, PEQ bypass and band bypass are trailer
+  masks. The "HYP" offsets were wrong (delay was being read as mute + phase).
+- Inputs have a delay and HPF/LPF. Linked channels follow each other (except name and
+  matrix); the server state now mirrors that.
+- Recall ~3.2 s, store ~7.4 s (slow timeout raised to 10 s, UI preset timeout 30 s); the
+  preset-name ACK echoes the name; stored names are Latin-1.
+- The simulator reproduces all 40 recorded writes byte for byte
+  (`tests/fixtures/hardware/write_diffs.json`).
 
 ## Phase 9: Hardening and later items
 - [ ] (see PLAN)
@@ -151,3 +173,4 @@ Notes:
 | 2026-11-07 | Phase 5 done: web UI (mixer, matrix, presets, settings, lock). |
 | 2026-11-07 | Phase 6: Docker image, compose, executables, release workflow (first release pending). |
 | 2026-11-07 | Phase 7 done: channel detail screens for every parameter; partial-write fix. |
+| 2026-11-08 | Phase 8: DSP 408 verified on hardware; protocol, simulator and UI updated. |

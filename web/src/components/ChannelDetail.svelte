@@ -40,6 +40,11 @@
   const comp = $derived(isOutput ? (app.meters?.comp?.[index] ?? null) : null);
   const floor = $derived(app.hello?.profile.meter_floor_db ?? -90);
   const limits = $derived(app.hello?.limits);
+  const linkedNames = $derived(
+    (channel?.linked ?? [])
+      .map((i) => slotLabel(`${isOutput ? "outputs" : "inputs"}.${i}`))
+      .join(", "),
+  );
 
   // Channel name editing.
   let nameDraft = $state("");
@@ -97,6 +102,13 @@
       {#if limit !== null}<span class="led" class:on={limit}>LIM</span>{/if}
       {#if comp !== null}<span class="led" class:on={comp}>COMP</span>{/if}
     </div>
+
+    {#if channel.linked.length}
+      <p class="linked">
+        🔗 Linked with {linkedNames}: the DSP applies every change except the name and the
+        routing to {channel.linked.length > 1 ? "them" : "it"} too.
+      </p>
+    {/if}
 
     <div class="sections">
       <Section id="channel" title="Channel">
@@ -160,12 +172,12 @@
         </p>
       </Section>
 
-      {#if output && limits}
+      {#if limits}
         {@const c = limits.speed_of_sound_m_s}
         <Section id="delay" title="Delay" kind="delay_ms">
           <Field
             label="Delay"
-            value={output.delay_ms}
+            value={channel.delay_ms}
             min={0}
             max={app.hello?.profile.delay_max_ms ?? 680}
             unit="ms"
@@ -178,7 +190,7 @@
           />
           <Field
             label="Distance"
-            value={(output.delay_ms * c) / 1000}
+            value={(channel.delay_ms * c) / 1000}
             min={0}
             max={((app.hello?.profile.delay_max_ms ?? 680) * c) / 1000}
             unit="m"
@@ -190,8 +202,8 @@
             onchange={(m) => app.set(`${path}.delay_ms`, (m * 1000) / c)}
           />
         </Section>
-        <CrossoverSection channel={output} {path} />
       {/if}
+      <CrossoverSection {channel} {path} />
 
       <PeqSection {channel} {path} />
 
@@ -288,6 +300,13 @@
   .led.clip {
     background: var(--danger);
     color: #fff;
+  }
+  .linked {
+    margin: -4px 0 10px;
+    padding: 8px 10px;
+    border-radius: 6px;
+    background: var(--panel-2);
+    font-size: 0.85rem;
   }
   .sections {
     columns: 2 420px;

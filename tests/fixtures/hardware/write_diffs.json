@@ -1,0 +1,1017 @@
+{
+ "description": "Parameter writes sent to a real DSP 408 (firmware V0104P) on 2026-11-08, in this order, starting from dsp408_u04_base.bin (a copy of the owner's preset U01). After each write the whole config was read back (29 x 0x27) and diffed. 'changes' lists every changed byte: [offset, old, new, field name at capture time]. The simulator must reproduce every diff exactly (tests/hardware/test_write_diffs.py).",
+ "base": "dsp408_u04_base.bin",
+ "steps": [
+  {
+   "label": "mute Out4 on",
+   "request": "35 07 01",
+   "reply": "01",
+   "changes": [
+    [
+     1410,
+     "00",
+     "88",
+     "trailer[2]"
+    ]
+   ]
+  },
+  {
+   "label": "mute Out4 off",
+   "request": "35 07 00",
+   "reply": "01",
+   "changes": [
+    [
+     1410,
+     "88",
+     "00",
+     "trailer[2]"
+    ]
+   ]
+  },
+  {
+   "label": "phase Out4 on",
+   "request": "36 07 01",
+   "reply": "01",
+   "changes": [
+    [
+     986,
+     "00",
+     "01",
+     "out3.delay (HYP)"
+    ],
+    [
+     1402,
+     "00",
+     "01",
+     "out7.delay (HYP)"
+    ]
+   ]
+  },
+  {
+   "label": "phase Out4 off",
+   "request": "36 07 00",
+   "reply": "01",
+   "changes": [
+    [
+     986,
+     "01",
+     "00",
+     "out3.delay (HYP)"
+    ],
+    [
+     1402,
+     "01",
+     "00",
+     "out7.delay (HYP)"
+    ]
+   ]
+  },
+  {
+   "label": "mute InC on",
+   "request": "35 02 01",
+   "reply": "01",
+   "changes": []
+  },
+  {
+   "label": "mute InC off",
+   "request": "35 02 00",
+   "reply": "01",
+   "changes": [
+    [
+     1408,
+     "0c",
+     "00",
+     "trailer[0]"
+    ]
+   ]
+  },
+  {
+   "label": "phase InC on",
+   "request": "36 02 01",
+   "reply": "01",
+   "changes": [
+    [
+     430,
+     "00",
+     "01",
+     "in2.delay (HYP)"
+    ],
+    [
+     570,
+     "00",
+     "01",
+     "in3.delay (HYP)"
+    ]
+   ]
+  },
+  {
+   "label": "gain Out4 -6 dB (raw 220)",
+   "request": "34 07 dc 00",
+   "reply": "01",
+   "changes": [
+    [
+     984,
+     "f0",
+     "dc",
+     "out3.gain"
+    ],
+    [
+     1400,
+     "f0",
+     "dc",
+     "out7.gain"
+    ]
+   ]
+  },
+  {
+   "label": "delay Out4 96 samples (1 ms)",
+   "request": "38 07 60 00",
+   "reply": "01",
+   "changes": [
+    [
+     988,
+     "fa",
+     "60",
+     "out3.mute (HYP)"
+    ],
+    [
+     989,
+     "01",
+     "00",
+     "out3.phase (HYP)"
+    ],
+    [
+     1404,
+     "fa",
+     "60",
+     "out7.mute (HYP)"
+    ],
+    [
+     1405,
+     "01",
+     "00",
+     "out7.phase (HYP)"
+    ]
+   ]
+  },
+  {
+   "label": "peq Out4 band1 g=-3 f=150 q=50 type=1",
+   "request": "33 07 00 5a 00 96 00 32 01 00",
+   "reply": "01",
+   "changes": [
+    [
+     912,
+     "9f",
+     "5a",
+     "out3.peq[0].gain"
+    ],
+    [
+     914,
+     "f5",
+     "96",
+     "out3.peq[0].freq"
+    ],
+    [
+     916,
+     "0a",
+     "32",
+     "out3.peq[0].q"
+    ],
+    [
+     917,
+     "02",
+     "01",
+     "out3.peq[0].type"
+    ],
+    [
+     1328,
+     "9f",
+     "5a",
+     "out7.peq[0].gain"
+    ],
+    [
+     1330,
+     "f5",
+     "96",
+     "out7.peq[0].freq"
+    ],
+    [
+     1332,
+     "0a",
+     "32",
+     "out7.peq[0].q"
+    ],
+    [
+     1333,
+     "02",
+     "01",
+     "out7.peq[0].type"
+    ]
+   ]
+  },
+  {
+   "label": "peq Out4 band1 bypass",
+   "request": "33 07 00 5a 00 96 00 32 01 01",
+   "reply": "01",
+   "changes": [
+    [
+     1426,
+     "00",
+     "01",
+     "trailer[18]"
+    ],
+    [
+     1434,
+     "00",
+     "01",
+     "trailer[26]"
+    ]
+   ]
+  },
+  {
+   "label": "peq Out4 band9 g=+2 f=280 q=10 type=2",
+   "request": "33 07 08 8c 00 18 01 0a 02 00",
+   "reply": "01",
+   "changes": [
+    [
+     960,
+     "78",
+     "8c",
+     "out3.peq[8].gain"
+    ],
+    [
+     962,
+     "1d",
+     "18",
+     "out3.peq[8].freq"
+    ],
+    [
+     964,
+     "23",
+     "0a",
+     "out3.peq[8].q"
+    ],
+    [
+     965,
+     "00",
+     "02",
+     "out3.peq[8].type"
+    ],
+    [
+     1376,
+     "78",
+     "8c",
+     "out7.peq[8].gain"
+    ],
+    [
+     1378,
+     "1d",
+     "18",
+     "out7.peq[8].freq"
+    ],
+    [
+     1380,
+     "23",
+     "0a",
+     "out7.peq[8].q"
+    ],
+    [
+     1381,
+     "00",
+     "02",
+     "out7.peq[8].type"
+    ]
+   ]
+  },
+  {
+   "label": "peq bypass Out4 on",
+   "request": "3c 07 01",
+   "reply": "01",
+   "changes": [
+    [
+     1444,
+     "00",
+     "88",
+     "trailer[36]"
+    ]
+   ]
+  },
+  {
+   "label": "peq bypass Out4 off",
+   "request": "3c 07 00",
+   "reply": "01",
+   "changes": [
+    [
+     1444,
+     "88",
+     "00",
+     "trailer[36]"
+    ]
+   ]
+  },
+  {
+   "label": "hpf Out4 f=100 slope=3",
+   "request": "32 07 64 00 03",
+   "reply": "01",
+   "changes": [
+    [
+     906,
+     "b2",
+     "64",
+     "out3.crossover.hpf_freq"
+    ],
+    [
+     910,
+     "0a",
+     "03",
+     "out3.crossover.hpf_slope"
+    ],
+    [
+     1322,
+     "b2",
+     "64",
+     "out7.crossover.hpf_freq"
+    ],
+    [
+     1326,
+     "0a",
+     "03",
+     "out7.crossover.hpf_slope"
+    ]
+   ]
+  },
+  {
+   "label": "hpf Out4 off (slope 0)",
+   "request": "32 07 64 00 00",
+   "reply": "01",
+   "changes": [
+    [
+     910,
+     "03",
+     "00",
+     "out3.crossover.hpf_slope"
+    ],
+    [
+     1326,
+     "03",
+     "00",
+     "out7.crossover.hpf_slope"
+    ]
+   ]
+  },
+  {
+   "label": "lpf Out4 f=250 slope=8",
+   "request": "31 07 fa 00 08",
+   "reply": "01",
+   "changes": [
+    [
+     908,
+     "2c",
+     "fa",
+     "out3.crossover.lpf_freq"
+    ],
+    [
+     909,
+     "01",
+     "00",
+     "out3.crossover.lpf_freq"
+    ],
+    [
+     911,
+     "00",
+     "08",
+     "out3.crossover.lpf_slope"
+    ],
+    [
+     1324,
+     "2c",
+     "fa",
+     "out7.crossover.lpf_freq"
+    ],
+    [
+     1325,
+     "01",
+     "00",
+     "out7.crossover.lpf_freq"
+    ],
+    [
+     1327,
+     "00",
+     "08",
+     "out7.crossover.lpf_slope"
+    ]
+   ]
+  },
+  {
+   "label": "comp Out4 ratio4 a19 r199 knee3 th150",
+   "request": "30 07 04 00 13 00 c7 00 03 00 96 00",
+   "reply": "01",
+   "changes": [
+    [
+     966,
+     "0f",
+     "04",
+     "out3.compressor.ratio"
+    ],
+    [
+     968,
+     "95",
+     "13",
+     "out3.compressor.attack"
+    ],
+    [
+     970,
+     "e7",
+     "c7",
+     "out3.compressor.release"
+    ],
+    [
+     971,
+     "03",
+     "00",
+     "out3.compressor.release"
+    ],
+    [
+     972,
+     "00",
+     "03",
+     "out3.compressor.knee"
+    ],
+    [
+     974,
+     "9d",
+     "96",
+     "out3.compressor.threshold"
+    ],
+    [
+     1382,
+     "0f",
+     "04",
+     "out7.compressor.ratio"
+    ],
+    [
+     1384,
+     "95",
+     "13",
+     "out7.compressor.attack"
+    ],
+    [
+     1386,
+     "e7",
+     "c7",
+     "out7.compressor.release"
+    ],
+    [
+     1387,
+     "03",
+     "00",
+     "out7.compressor.release"
+    ],
+    [
+     1388,
+     "00",
+     "03",
+     "out7.compressor.knee"
+    ],
+    [
+     1390,
+     "9d",
+     "96",
+     "out7.compressor.threshold"
+    ]
+   ]
+  },
+  {
+   "label": "limiter Out4 a4 r99 th170",
+   "request": "3f 07 04 00 63 00 00 00 aa 00",
+   "reply": "01",
+   "changes": [
+    [
+     976,
+     "00",
+     "04",
+     "out3.limiter.attack"
+    ],
+    [
+     978,
+     "e7",
+     "63",
+     "out3.limiter.release"
+    ],
+    [
+     979,
+     "03",
+     "00",
+     "out3.limiter.release"
+    ],
+    [
+     982,
+     "a9",
+     "aa",
+     "out3.limiter.threshold"
+    ],
+    [
+     1392,
+     "00",
+     "04",
+     "out7.limiter.attack"
+    ],
+    [
+     1394,
+     "e7",
+     "63",
+     "out7.limiter.release"
+    ],
+    [
+     1395,
+     "03",
+     "00",
+     "out7.limiter.release"
+    ],
+    [
+     1398,
+     "a9",
+     "aa",
+     "out7.limiter.threshold"
+    ]
+   ]
+  },
+  {
+   "label": "gate InC a9 r49 h29 th60",
+   "request": "3e 02 09 00 31 00 1d 00 3c 00",
+   "reply": "01",
+   "changes": [
+    [
+     304,
+     "00",
+     "09",
+     "in2.gate.attack"
+    ],
+    [
+     306,
+     "63",
+     "31",
+     "in2.gate.release"
+    ],
+    [
+     308,
+     "63",
+     "1d",
+     "in2.gate.hold"
+    ],
+    [
+     310,
+     "00",
+     "3c",
+     "in2.gate.threshold"
+    ],
+    [
+     444,
+     "00",
+     "09",
+     "in3.gate.attack"
+    ],
+    [
+     446,
+     "63",
+     "31",
+     "in3.gate.release"
+    ],
+    [
+     448,
+     "63",
+     "1d",
+     "in3.gate.hold"
+    ],
+    [
+     450,
+     "00",
+     "3c",
+     "in3.gate.threshold"
+    ]
+   ]
+  },
+  {
+   "label": "geq InC band6 raw100",
+   "request": "48 02 05 64 00",
+   "reply": "01",
+   "changes": [
+    [
+     322,
+     "78",
+     "64",
+     "in2.geq[5]"
+    ],
+    [
+     462,
+     "78",
+     "64",
+     "in3.geq[5]"
+    ]
+   ]
+  },
+  {
+   "label": "hpf InC f=60 slope=5",
+   "request": "32 02 3c 00 05",
+   "reply": "01",
+   "changes": [
+    [
+     422,
+     "00",
+     "3c",
+     "in2.crossover.hpf_freq"
+    ],
+    [
+     426,
+     "00",
+     "05",
+     "in2.crossover.hpf_slope"
+    ],
+    [
+     562,
+     "00",
+     "3c",
+     "in3.crossover.hpf_freq"
+    ],
+    [
+     566,
+     "00",
+     "05",
+     "in3.crossover.hpf_slope"
+    ]
+   ]
+  },
+  {
+   "label": "peq InC band8 g=+1",
+   "request": "33 02 07 82 00 c8 00 23 00 00",
+   "reply": "01",
+   "changes": [
+    [
+     416,
+     "78",
+     "82",
+     "in2.peq[7].gain"
+    ],
+    [
+     418,
+     "0e",
+     "c8",
+     "in2.peq[7].freq"
+    ],
+    [
+     419,
+     "01",
+     "00",
+     "in2.peq[7].freq"
+    ],
+    [
+     556,
+     "78",
+     "82",
+     "in3.peq[7].gain"
+    ],
+    [
+     558,
+     "0e",
+     "c8",
+     "in3.peq[7].freq"
+    ],
+    [
+     559,
+     "01",
+     "00",
+     "in3.peq[7].freq"
+    ]
+   ]
+  },
+  {
+   "label": "name Out4 'TstOut4'",
+   "request": "3d 07 54 73 74 4f 75 74 34 00",
+   "reply": "01",
+   "changes": [
+    [
+     888,
+     "48",
+     "54",
+     "out3.name"
+    ],
+    [
+     889,
+     "69",
+     "73",
+     "out3.name"
+    ],
+    [
+     890,
+     "67",
+     "74",
+     "out3.name"
+    ],
+    [
+     891,
+     "68",
+     "4f",
+     "out3.name"
+    ],
+    [
+     892,
+     "00",
+     "75",
+     "out3.name"
+    ],
+    [
+     893,
+     "00",
+     "74",
+     "out3.name"
+    ],
+    [
+     894,
+     "00",
+     "34",
+     "out3.name"
+    ]
+   ]
+  },
+  {
+   "label": "name InC 'TstInC'",
+   "request": "3d 02 54 73 74 49 6e 43 00 00",
+   "reply": "01",
+   "changes": [
+    [
+     296,
+     "49",
+     "54",
+     "in2.name"
+    ],
+    [
+     297,
+     "6e",
+     "73",
+     "in2.name"
+    ],
+    [
+     298,
+     "43",
+     "74",
+     "in2.name"
+    ],
+    [
+     299,
+     "00",
+     "49",
+     "in2.name"
+    ],
+    [
+     300,
+     "00",
+     "6e",
+     "in2.name"
+    ],
+    [
+     301,
+     "00",
+     "43",
+     "in2.name"
+    ]
+   ]
+  },
+  {
+   "label": "matrix Out4 = In C",
+   "request": "3a 07 04",
+   "reply": "01",
+   "changes": [
+    [
+     896,
+     "03",
+     "04",
+     "out3.matrix"
+    ]
+   ]
+  },
+  {
+   "label": "mute Out1 on",
+   "request": "35 04 01",
+   "reply": "01",
+   "changes": [
+    [
+     1410,
+     "00",
+     "11",
+     "trailer[2]"
+    ]
+   ]
+  },
+  {
+   "label": "mute Out1 off",
+   "request": "35 04 00",
+   "reply": "01",
+   "changes": [
+    [
+     1410,
+     "11",
+     "00",
+     "trailer[2]"
+    ]
+   ]
+  },
+  {
+   "label": "mute InA on",
+   "request": "35 00 01",
+   "reply": "01",
+   "changes": [
+    [
+     1408,
+     "00",
+     "03",
+     "trailer[0]"
+    ]
+   ]
+  },
+  {
+   "label": "mute InA off",
+   "request": "35 00 00",
+   "reply": "01",
+   "changes": [
+    [
+     1408,
+     "03",
+     "00",
+     "trailer[0]"
+    ]
+   ]
+  },
+  {
+   "label": "peq bypass InC on",
+   "request": "3c 02 01",
+   "reply": "01",
+   "changes": [
+    [
+     1442,
+     "00",
+     "0c",
+     "trailer[34]"
+    ]
+   ]
+  },
+  {
+   "label": "peq bypass InA on",
+   "request": "3c 00 01",
+   "reply": "01",
+   "changes": [
+    [
+     1442,
+     "0c",
+     "0f",
+     "trailer[34]"
+    ]
+   ]
+  },
+  {
+   "label": "peq bypass InA off",
+   "request": "3c 00 00",
+   "reply": "01",
+   "changes": [
+    [
+     1442,
+     "0f",
+     "0c",
+     "trailer[34]"
+    ]
+   ]
+  },
+  {
+   "label": "band3 bypass InC",
+   "request": "33 02 02 78 00 64 00 23 00 01",
+   "reply": "01",
+   "changes": [
+    [
+     388,
+     "65",
+     "64",
+     "in2.peq[2].freq"
+    ],
+    [
+     528,
+     "65",
+     "64",
+     "in3.peq[2].freq"
+    ],
+    [
+     1416,
+     "00",
+     "04",
+     "trailer[8]"
+    ],
+    [
+     1418,
+     "00",
+     "04",
+     "trailer[10]"
+    ]
+   ]
+  },
+  {
+   "label": "band9 bypass Out4",
+   "request": "33 07 08 8c 00 18 01 0a 02 01",
+   "reply": "01",
+   "changes": [
+    [
+     1427,
+     "00",
+     "01",
+     "trailer[19]"
+    ],
+    [
+     1435,
+     "00",
+     "01",
+     "trailer[27]"
+    ]
+   ]
+  },
+  {
+   "label": "band1 bypass Out1",
+   "request": "33 04 00 78 00 1f 00 23 00 01",
+   "reply": "01",
+   "changes": [
+    [
+     1420,
+     "00",
+     "01",
+     "trailer[12]"
+    ],
+    [
+     1428,
+     "00",
+     "01",
+     "trailer[20]"
+    ]
+   ]
+  },
+  {
+   "label": "SLAVE gain Out8 raw 200",
+   "request": "34 0b c8 00",
+   "reply": "01",
+   "changes": [
+    [
+     984,
+     "dc",
+     "c8",
+     "out3.gain"
+    ],
+    [
+     1400,
+     "dc",
+     "c8",
+     "out7.gain"
+    ]
+   ]
+  },
+  {
+   "label": "SLAVE mute Out8 on",
+   "request": "35 0b 01",
+   "reply": "01",
+   "changes": [
+    [
+     1410,
+     "00",
+     "88",
+     "trailer[2]"
+    ]
+   ]
+  },
+  {
+   "label": "SLAVE mute Out8 off",
+   "request": "35 0b 00",
+   "reply": "01",
+   "changes": [
+    [
+     1410,
+     "88",
+     "00",
+     "trailer[2]"
+    ]
+   ]
+  },
+  {
+   "label": "delay InC 96",
+   "request": "38 02 60 00",
+   "reply": "01",
+   "changes": [
+    [
+     432,
+     "00",
+     "60",
+     "in2.mute (HYP)"
+    ],
+    [
+     572,
+     "00",
+     "60",
+     "in3.mute (HYP)"
+    ]
+   ]
+  }
+ ]
+}

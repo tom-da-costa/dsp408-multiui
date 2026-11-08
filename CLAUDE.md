@@ -29,8 +29,14 @@ doing anything substantial:
 - **One-command launch** in every mode: `uv run` from a clone (works without Node, because the
   built UI in `src/dsp408_multiui/web/` is committed), standalone PyInstaller executable,
   `docker run`, `docker compose up`.
-- **No DSP hardware available yet.** Develop and test against the simulator. Never assume an
-  unverified protocol detail is true: put it in the `ProtocolProfile` (SPEC §4.6).
+- **Develop and test against the simulator.** It reproduces the DSP 408's recorded behaviour
+  (`tests/hardware/`). Never assume an unverified protocol detail is true: put it in the
+  `ProtocolProfile` (SPEC §4.6).
+- **The owner's real DSP 408 is in production use.** Read-only commands (`probe info`, `probe
+  meters`, `probe dump-config`, `serve` without clients writing) are fine. **Never write to it,
+  recall or store a preset without the owner's explicit approval in the current session**, and
+  never touch the preset they flag as live. When writes are approved, work on a copy of a preset
+  in a free slot, dump the config first, and restore and compare at the end.
 - Mobile-first UI. A fader only moves on a drag that starts on its knob.
 
 ## Architecture rules

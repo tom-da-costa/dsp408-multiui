@@ -22,14 +22,18 @@ from dsp408_multiui.state.models import (
 DEFAULT_SLOPE = 10  # LR-24, the device default when a filter is bypassed
 
 
-def peq_band(raw: cm.RawPeqBand, bypass: bool, profile: ProtocolProfile) -> PeqBand:
+def peq_band(raw: cm.RawPeqBand, profile: ProtocolProfile) -> PeqBand:
     return PeqBand(
         gain_db=c.eq_gain_raw_to_db(raw.gain),
         freq_hz=round(c.freq_raw_to_hz(raw.freq, profile), 2),
         q=round(c.q_raw_to_q(raw.q, profile), 3),
         type=raw.type,
-        bypass=bypass,
+        bypass=raw.bypass,
     )
+
+
+def linked(masks: list[int], index: int) -> list[int]:
+    return [m for m in cm.link_group(masks, index) if m != index]
 
 
 def filter_from_raw(
@@ -92,21 +96,12 @@ def build_state(
     preset_names: list[str],
     active_slot: int,
     previous: DeviceState | None = None,
-    peq_band_bypass: dict[tuple[int, int], bool] | None = None,
-    peq_channel_bypass: dict[int, bool] | None = None,
 ) -> DeviceState:
     """Build the state from a config read.
 
-    Band/channel PEQ bypass is not part of the blob; it comes from ``previous`` (what we last
-    wrote) unless given explicitly.
+    ``previous`` only provides the remembered slope of bypassed filters (the device stores
+    slope 0 for a bypassed filter).
     """
-    band_bypass = dict(peq_band_bypass or {})
-    chan_bypass = dict(peq_channel_bypass or {})
-    if previous is not None:
-        for prev_ch in [*previous.inputs, *previous.outputs]:
-            chan_bypass.setdefault(prev_ch.index, prev_ch.peq_bypass)
-            for b, band in enumerate(prev_ch.peq):
-                band_bypass.setdefault((prev_ch.index, b), band.bypass)
 
     def prev_input(i: int) -> InputChannel | None:
         return previous.inputs[i] if previous and i < len(previous.inputs) else None
@@ -114,34 +109,33 @@ def build_state(
     def prev_output(i: int) -> OutputChannel | None:
         return previous.outputs[i] if previous and i < len(previous.outputs) else None
 
+    input_links = [ch.link for ch in raw.inputs]
+    output_links = [ch.link for ch in raw.outputs]
     inputs = []
     for i, raw_in in enumerate(raw.inputs):
-        idx = i
         prev = prev_input(i)
         inputs.append(
             InputChannel(
-                index=idx,
+                index=i,
                 name=raw_in.name,
                 gain_db=c.gain_raw_to_db(raw_in.gain),
                 mute=raw_in.mute,
                 phase=raw_in.phase,
-                peq=[
-                    peq_band(b, band_bypass.get((idx, n), False), profile)
-                    for n, b in enumerate(raw_in.peq)
-                ],
-                peq_bypass=chan_bypass.get(idx, False),
+                delay_ms=round(c.delay_raw_to_ms(raw_in.delay, profile), 3),
+                peq=[peq_band(b, profile) for b in raw_in.peq],
+                peq_bypass=raw_in.peq_bypass,
                 crossover=crossover(raw_in.crossover, profile, prev.crossover if prev else None),
+                linked=linked(input_links, i),
                 geq=[c.eq_gain_raw_to_db(v) for v in raw_in.geq],
                 gate=gate(raw_in.gate),
             )
         )
     outputs = []
     for i, raw_out in enumerate(raw.outputs):
-        idx = profile.input_count + i
         prev_out = prev_output(i)
         outputs.append(
             OutputChannel(
-                index=idx,
+                index=profile.input_count + i,
                 name=raw_out.name,
                 gain_db=c.gain_raw_to_db(raw_out.gain),
                 mute=raw_out.mute,
@@ -149,14 +143,12 @@ def build_state(
                 delay_ms=round(c.delay_raw_to_ms(raw_out.delay, profile), 3),
                 matrix=[bool(raw_out.matrix >> n & 1) for n in range(profile.input_count)],
                 crosspoints_db=[c.gain_raw_to_db(v) for v in raw_out.crosspoints],
-                peq=[
-                    peq_band(b, band_bypass.get((idx, n), False), profile)
-                    for n, b in enumerate(raw_out.peq)
-                ],
-                peq_bypass=chan_bypass.get(idx, False),
+                peq=[peq_band(b, profile) for b in raw_out.peq],
+                peq_bypass=raw_out.peq_bypass,
                 crossover=crossover(
                     raw_out.crossover, profile, prev_out.crossover if prev_out else None
                 ),
+                linked=linked(output_links, i),
                 compressor=compressor(raw_out.compressor),
                 limiter=limiter(raw_out.limiter),
             )

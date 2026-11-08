@@ -1,0 +1,16 @@
+# Meter frames (0x40 response data, without the opcode) from a real DSP 408, firmware V0104P,
+# preset U08, 2026-11-08. Music on In A and In B; In C and In D unconnected (not muted:
+# ADC noise floor, about -106 dBFS). Outputs: 4-way stereo (Sub, Kick, Mid, High).
+# Format (verified by stepping gains, docs/PROTOCOL.md §6): each triplet is the top three bytes
+# of a little-endian float32, linear, 1.0 = 0 dBFS; tail byte 0 = compressor-active mask,
+# tail byte 1 = limiter-active mask.
+41 3c 38 13 3c 2c a8 36 ca ad 36 ed 5b 3a 0b d0 3b 6e 0f 3c 23 ed 3a 39 5b 3a 0b d0 3b 6e d5 3b ae 9b 3a 5f 00 00
+4b 3c 70 67 3c 04 a9 36 15 aa 36 fb ba 3a 86 01 3c c9 01 3c d2 ab 3a 03 ba 3a 86 01 3c c9 fc 3b ed a3 3a be 00 00
+4e 3c ca 1d 3c f1 ad 36 79 a6 36 c6 71 3a 29 ce 3b e8 05 3c c4 ae 3a e6 78 3a 73 d2 3b 7d da 3b 5b 99 3a 70 00 00
+3f 3c f7 1f 3c d3 ad 36 e2 a8 36 d5 cb 3a a7 cd 3b 7f 04 3c 49 ac 3a ba cb 3a a7 cd 3b 7f ed 3b d6 b5 3a 14 00 00
+38 3c b1 36 3c 14 a7 36 15 a5 36 c2 a5 3a 95 d2 3b 7c d6 3b 17 f5 3a a9 a5 3a 95 d2 3b 7c f5 3b f4 a5 3a dc 00 00
+43 3c 53 37 3c 2f aa 36 b5 af 36 b2 e3 3a 7f a9 3b 7d 09 3c 11 c1 3a 6c e3 3a 7f a9 3b 7d f4 3b 11 a3 3a 43 00 00
+31 3c 3b 59 3c 6f a5 36 fb ae 36 f2 19 3b 19 a4 3b 03 d3 3b 3e 16 3b b6 19 3b 19 a4 3b 03 08 3c d7 dd 3a 0c 00 00
+48 3c 07 45 3c d2 a7 36 6e af 36 d8 90 3a 51 cf 3b 77 fe 3b c8 01 3b 60 8c 3a 65 d6 3b 90 09 3c 6e ee 3a bf 00 00
+57 3c 0c 4c 3c aa a7 36 6a aa 36 86 ad 3a f0 12 3c 08 f2 3b d0 01 3b 42 ad 3a f0 12 3c 08 e8 3b 5d c0 3a 68 00 00
+7b 3c 59 54 3c 14 a9 36 a3 a6 36 7d d7 3a bf 24 3c 78 01 3c bd ce 3a 6d d7 3a bf 24 3c 78 0d 3c c8 a9 3a a1 00 00

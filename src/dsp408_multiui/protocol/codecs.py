@@ -191,5 +191,15 @@ def encode_name(name: str, length: int, pad: bytes = b"\x00") -> bytes:
 
 
 def decode_name(raw: bytes) -> str:
-    text = raw.split(b"\x00", 1)[0].decode("ascii", errors="replace")
-    return "".join(c if 0x20 <= ord(c) < 0x7F else "?" for c in text).rstrip()
+    """Decode a stored name. The official editor writes Latin-1 (e.g. ``e9`` = é)."""
+    text = raw.split(b"\x00", 1)[0].decode("latin-1")
+    return "".join(c if c.isprintable() else "?" for c in text).rstrip()
+
+
+def encode_stored_name(name: str, length: int, pad: bytes = b"\x00") -> bytes:
+    """Encode a name read from the device back into a config image (Latin-1, not validated).
+
+    Only for round-tripping what the device already holds; names written by clients go
+    through ``encode_name`` (printable ASCII only).
+    """
+    return name.encode("latin-1", errors="replace")[:length].ljust(length, pad)

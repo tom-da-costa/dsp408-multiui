@@ -6,16 +6,15 @@ at once (phones first), with live metering.
 One backend process owns the TCP connection to the DSP. It serves a mobile-first web UI to
 every client on the local network and keeps them in sync in real time. It works fully offline.
 
-> **Status: in development, not yet tested on a real DSP 408.** Everything runs against the
-> built-in simulator: `uv run dsp408-multiui --simulator`, then open http://localhost:8080
-> (code `0000`). Progress is tracked in [docs/PROGRESS.md](docs/PROGRESS.md).
+> **Status: in development, verified on a real DSP 408 (firmware V0104P).** Try it without a
+> DSP: `uv run dsp408-multiui --simulator`, then open http://localhost:8080 (code `0000`).
+> Progress is tracked in [docs/PROGRESS.md](docs/PROGRESS.md).
 
 ## Features
 
 - Gain, mute, phase, 4 → 8 routing matrix, PEQ (8 bands on inputs, 9 on outputs), high/low-pass
-  filters, delay (in ms and metres), compressor, limiter, noise gate, 31-band GEQ and channel names.
-  Only gain, mute, matrix and GEQ are verified on a real DSP 408 so far; the others need
-  `--experimental` on real hardware
+  filters and delay (in ms and metres) on every channel, compressor and limiter on outputs, noise
+  gate and 31-band GEQ on inputs, channel names; linked channels follow each other as on the DSP
 - DSP presets U01–U20: recall, store, rename
 - Live meters per channel (level, peak, clip, limiter and compressor indicators), 5 Hz by default,
   adjustable from 1 to 10 Hz

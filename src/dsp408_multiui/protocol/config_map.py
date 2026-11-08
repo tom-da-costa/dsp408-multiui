@@ -1,18 +1,18 @@
 """DSP 408 configuration blob (29 × 0x24 pages = 1448 bytes) ↔ raw config model.
 
 The layout was derived from a real DSP 408 dump (``tests/fixtures/config/forest_408.bin``) and
-matches the 206/4x4 Mini command layouts (docs/PROTOCOL.md §7). Fields marked ``HYP`` sit in
-bytes that were zero in every dump we have; their meaning is a hypothesis to verify on hardware.
+then verified field by field on a DSP 408 (firmware V0104P): every parameter write was followed
+by a config read and a byte diff (``tests/fixtures/hardware/write_diffs.json``, PROTOCOL §7).
 
 Encoding starts from the original image, so unknown bytes are preserved exactly.
 
 Layout::
 
     0    u16  marker (ff ff = modified user preset, ff 00 = factory/empty)
-    2    14   preset name (space padded)
+    2    14   preset name (space padded, Latin-1 as written by the official editor)
     16   4 × 140  input records
     576  8 × 104  output records
-    1408 40   trailer (unknown, preserved)
+    1408 40   trailer: masks (below)
 
 Input record (140 bytes)::
 
@@ -20,9 +20,9 @@ Input record (140 bytes)::
     16  31×u16 GEQ gains             78  8×6    PEQ bands
     126 u16    HPF freq              128 u16    LPF freq
     130 u8     HPF slope             131 u8     LPF slope
-    132 u16    gain                  134 u16    delay        (HYP)
-    136 u8     mute (HYP)            137 u8     phase        (HYP)
-    138 u16    link flags
+    132 u16    gain                  134 u8     phase (1 = inverted)
+    135 u8     unknown (preserved)   136 u16    delay, samples at 96 kHz
+    138 u16    link mask
 
 Output record (104 bytes)::
 
@@ -30,24 +30,37 @@ Output record (104 bytes)::
     10  4×u16  crosspoint gains      18  6      crossover (as inputs)
     24  9×6    PEQ bands             78  5×u16  compressor ratio, attack, release, knee, threshold
     88  4×u16  limiter attack, release, reserved, threshold
-    96  u16    gain                  98  u16    delay        (HYP)
-    100 u8     mute (HYP)            101 u8     phase        (HYP)
-    102 u16    link flags
+    96  u16    gain                  98  u8     phase
+    99  u8     unknown (preserved)   100 u16    delay, samples at 96 kHz
+    102 u16    link mask
 
-PEQ band (6 bytes): u16 gain, u16 freq, u8 Q, u8 type. Band bypass is **not** stored in the band
-and its location is unknown.
+Trailer (offsets from 1408)::
+
+    0   u8      input mute mask (bit n = input n)
+    2   u8      output mute mask (bit n = output n)
+    4   12×u16  PEQ band bypass mask per channel (protocol index 0-11; bit n = band n)
+    34  u8      input PEQ bypass mask
+    36  u8      output PEQ bypass mask
+    other bytes unknown (preserved)
+
+PEQ band (6 bytes): u16 gain, u16 freq, u8 Q, u8 type.
+
+Link mask: the first channel of a linked group holds the mask of every member (itself
+included), the other members hold 0; an unlinked channel holds its own bit or 0. The device
+copies every write to the other members of the group, except the name and the matrix.
 """
 
 from __future__ import annotations
 
 import struct
+from collections.abc import Sequence
 from dataclasses import dataclass, field, replace
 
 from dsp408_multiui.protocol.codecs import (
     CHANNEL_NAME_LENGTH,
     PRESET_NAME_LENGTH,
     decode_name,
-    encode_name,
+    encode_stored_name,
 )
 from dsp408_multiui.protocol.profile import ProtocolProfile
 
@@ -58,6 +71,13 @@ INPUT_RECORD = 140
 OUTPUT_BASE = 576
 OUTPUT_RECORD = 104
 TRAILER_BASE = 1408
+INPUT_MUTE_MASK = TRAILER_BASE + 0
+OUTPUT_MUTE_MASK = TRAILER_BASE + 2
+BAND_BYPASS_BASE = TRAILER_BASE + 4  # 12 × u16, by protocol channel index
+INPUT_PEQ_BYPASS_MASK = TRAILER_BASE + 34
+OUTPUT_PEQ_BYPASS_MASK = TRAILER_BASE + 36
+INPUT_COUNT = 4
+OUTPUT_COUNT = 8
 PEQ_BAND_SIZE = 6
 
 MARKER_MODIFIED = 0xFFFF
@@ -77,6 +97,7 @@ class RawPeqBand:
     freq: int = 0
     q: int = 35
     type: int = 0
+    bypass: bool = False  # stored in the trailer's band bypass mask
 
 
 @dataclass(frozen=True, slots=True)
@@ -124,6 +145,7 @@ class RawInput:
     mute: bool
     phase: bool
     link: int
+    peq_bypass: bool = False
 
 
 @dataclass(frozen=True, slots=True)
@@ -140,6 +162,7 @@ class RawOutput:
     mute: bool
     phase: bool
     link: int
+    peq_bypass: bool = False
 
 
 @dataclass(frozen=True, slots=True)
@@ -149,6 +172,17 @@ class RawConfig:
     inputs: tuple[RawInput, ...]
     outputs: tuple[RawOutput, ...]
     image: bytes = field(repr=False)  # original blob; unknown bytes are preserved from it
+
+
+def link_group(masks: Sequence[int], index: int) -> tuple[int, ...]:
+    """Members of the linked group of channel ``index`` (indices within inputs or outputs).
+
+    ``masks`` are the link masks of the channels of one kind (4 inputs or 8 outputs).
+    """
+    for mask in masks:
+        if mask >> index & 1 and mask & ~(1 << index):
+            return tuple(i for i in range(len(masks)) if mask >> i & 1)
+    return (index,)
 
 
 def check_layout(profile: ProtocolProfile) -> None:
@@ -175,7 +209,7 @@ def output_offset(index: int) -> int:
 
 
 # --- decoding -----------------------------------------------------------------------------
-def _u16(blob: bytes, offset: int) -> int:
+def _u16(blob: bytes | bytearray, offset: int) -> int:
     value: int = struct.unpack_from("<H", blob, offset)[0]
     return value
 
@@ -184,11 +218,17 @@ def _u16s(blob: bytes, offset: int, count: int) -> tuple[int, ...]:
     return struct.unpack_from(f"<{count}H", blob, offset)
 
 
-def _peq(blob: bytes, offset: int, count: int) -> tuple[RawPeqBand, ...]:
-    return tuple(
-        RawPeqBand(*struct.unpack_from("<HHBB", blob, offset + i * PEQ_BAND_SIZE))
-        for i in range(count)
-    )
+def _peq(blob: bytes, offset: int, count: int, channel: int) -> tuple[RawPeqBand, ...]:
+    bypass = _u16(blob, BAND_BYPASS_BASE + 2 * channel)
+    bands = []
+    for i in range(count):
+        gain, freq, q, kind = struct.unpack_from("<HHBB", blob, offset + i * PEQ_BAND_SIZE)
+        bands.append(RawPeqBand(gain, freq, q, kind, bool(bypass >> i & 1)))
+    return tuple(bands)
+
+
+def _bit(blob: bytes, offset: int, index: int) -> bool:
+    return bool(blob[offset] >> index & 1)
 
 
 def _crossover(blob: bytes, offset: int) -> RawCrossover:
@@ -201,13 +241,14 @@ def _decode_input(blob: bytes, index: int) -> RawInput:
         name=decode_name(blob[o : o + CHANNEL_NAME_LENGTH]),
         gate=RawGate(*_u16s(blob, o + 8, 4)),
         geq=_u16s(blob, o + 16, 31),
-        peq=_peq(blob, o + 78, 8),
+        peq=_peq(blob, o + 78, 8, index),
         crossover=_crossover(blob, o + 126),
         gain=_u16(blob, o + 132),
-        delay=_u16(blob, o + 134),
-        mute=bool(blob[o + 136]),
-        phase=bool(blob[o + 137]),
+        phase=bool(blob[o + 134]),
+        delay=_u16(blob, o + 136),
         link=_u16(blob, o + 138),
+        mute=_bit(blob, INPUT_MUTE_MASK, index),
+        peq_bypass=_bit(blob, INPUT_PEQ_BYPASS_MASK, index),
     )
 
 
@@ -218,14 +259,15 @@ def _decode_output(blob: bytes, index: int) -> RawOutput:
         matrix=_u16(blob, o + 8),
         crosspoints=_u16s(blob, o + 10, 4),
         crossover=_crossover(blob, o + 18),
-        peq=_peq(blob, o + 24, 9),
+        peq=_peq(blob, o + 24, 9, INPUT_COUNT + index),
         compressor=RawCompressor(*_u16s(blob, o + 78, 5)),
         limiter=RawLimiter(*_u16s(blob, o + 88, 4)),
         gain=_u16(blob, o + 96),
-        delay=_u16(blob, o + 98),
-        mute=bool(blob[o + 100]),
-        phase=bool(blob[o + 101]),
+        phase=bool(blob[o + 98]),
+        delay=_u16(blob, o + 100),
         link=_u16(blob, o + 102),
+        mute=_bit(blob, OUTPUT_MUTE_MASK, index),
+        peq_bypass=_bit(blob, OUTPUT_PEQ_BYPASS_MASK, index),
     )
 
 
@@ -235,22 +277,32 @@ def decode_config(blob: bytes) -> RawConfig:
     return RawConfig(
         marker=struct.unpack_from(">H", blob, 0)[0],
         preset_name=decode_name(blob[2:HEADER_SIZE]),
-        inputs=tuple(_decode_input(blob, i) for i in range(4)),
-        outputs=tuple(_decode_output(blob, i) for i in range(8)),
+        inputs=tuple(_decode_input(blob, i) for i in range(INPUT_COUNT)),
+        outputs=tuple(_decode_output(blob, i) for i in range(OUTPUT_COUNT)),
         image=bytes(blob),
     )
 
 
 # --- encoding -----------------------------------------------------------------------------
 def _put_name(buf: bytearray, offset: int, name: str) -> None:
-    buf[offset : offset + CHANNEL_NAME_LENGTH] = encode_name(name, CHANNEL_NAME_LENGTH)
+    buf[offset : offset + CHANNEL_NAME_LENGTH] = encode_stored_name(name, CHANNEL_NAME_LENGTH)
 
 
-def _put_peq(buf: bytearray, offset: int, bands: tuple[RawPeqBand, ...], count: int) -> None:
+def _put_bit(buf: bytearray, offset: int, index: int, on: bool) -> None:
+    buf[offset] = buf[offset] | (1 << index) if on else buf[offset] & ~(1 << index)
+
+
+def _put_peq(
+    buf: bytearray, offset: int, bands: tuple[RawPeqBand, ...], count: int, channel: int
+) -> None:
     if len(bands) != count:
         raise ConfigError(f"expected {count} PEQ bands, got {len(bands)}")
+    mask_offset = BAND_BYPASS_BASE + 2 * channel
+    mask = _u16(buf, mask_offset) & ~((1 << count) - 1)  # keep unknown high bits
     for i, b in enumerate(bands):
         struct.pack_into("<HHBB", buf, offset + i * PEQ_BAND_SIZE, b.gain, b.freq, b.q, b.type)
+        mask |= int(b.bypass) << i
+    struct.pack_into("<H", buf, mask_offset, mask)
 
 
 def _put_crossover(buf: bytearray, offset: int, x: RawCrossover) -> None:
@@ -265,9 +317,12 @@ def _encode_input(buf: bytearray, index: int, ch: RawInput) -> None:
     g = ch.gate
     struct.pack_into("<4H", buf, o + 8, g.attack, g.release, g.hold, g.threshold)
     struct.pack_into("<31H", buf, o + 16, *ch.geq)
-    _put_peq(buf, o + 78, ch.peq, 8)
+    _put_peq(buf, o + 78, ch.peq, 8, index)
     _put_crossover(buf, o + 126, ch.crossover)
-    struct.pack_into("<HHBBH", buf, o + 132, ch.gain, ch.delay, ch.mute, ch.phase, ch.link)
+    struct.pack_into("<HB", buf, o + 132, ch.gain, ch.phase)
+    struct.pack_into("<HH", buf, o + 136, ch.delay, ch.link)
+    _put_bit(buf, INPUT_MUTE_MASK, index, ch.mute)
+    _put_bit(buf, INPUT_PEQ_BYPASS_MASK, index, ch.peq_bypass)
 
 
 def _encode_output(buf: bytearray, index: int, ch: RawOutput) -> None:
@@ -277,22 +332,25 @@ def _encode_output(buf: bytearray, index: int, ch: RawOutput) -> None:
     _put_name(buf, o, ch.name)
     struct.pack_into("<H4H", buf, o + 8, ch.matrix, *ch.crosspoints)
     _put_crossover(buf, o + 18, ch.crossover)
-    _put_peq(buf, o + 24, ch.peq, 9)
+    _put_peq(buf, o + 24, ch.peq, 9, INPUT_COUNT + index)
     c = ch.compressor
     struct.pack_into("<5H", buf, o + 78, c.ratio, c.attack, c.release, c.knee, c.threshold)
     lim = ch.limiter
     struct.pack_into("<4H", buf, o + 88, lim.attack, lim.release, lim.reserved, lim.threshold)
-    struct.pack_into("<HHBBH", buf, o + 96, ch.gain, ch.delay, ch.mute, ch.phase, ch.link)
+    struct.pack_into("<HB", buf, o + 96, ch.gain, ch.phase)
+    struct.pack_into("<HH", buf, o + 100, ch.delay, ch.link)
+    _put_bit(buf, OUTPUT_MUTE_MASK, index, ch.mute)
+    _put_bit(buf, OUTPUT_PEQ_BYPASS_MASK, index, ch.peq_bypass)
 
 
 def encode_config(config: RawConfig) -> bytes:
-    if len(config.inputs) != 4 or len(config.outputs) != 8:
+    if len(config.inputs) != INPUT_COUNT or len(config.outputs) != OUTPUT_COUNT:
         raise ConfigError("the DSP 408 layout needs 4 inputs and 8 outputs")
     buf = bytearray(config.image)
     if len(buf) != CONFIG_SIZE:
         raise ConfigError("config image has the wrong size")
     struct.pack_into(">H", buf, 0, config.marker)
-    buf[2:HEADER_SIZE] = encode_name(config.preset_name, PRESET_NAME_LENGTH, b" ")
+    buf[2:HEADER_SIZE] = encode_stored_name(config.preset_name, PRESET_NAME_LENGTH, b" ")
     for i, inp in enumerate(config.inputs):
         _encode_input(buf, i, inp)
     for i, out in enumerate(config.outputs):
@@ -384,9 +442,9 @@ _INPUT_FIELDS: tuple[tuple[int, int, str], ...] = (
     (130, 1, "crossover.hpf_slope"),
     (131, 1, "crossover.lpf_slope"),
     (132, 2, "gain"),
-    (134, 2, "delay (HYP)"),
-    (136, 1, "mute (HYP)"),
-    (137, 1, "phase (HYP)"),
+    (134, 1, "phase"),
+    (135, 1, "unknown"),
+    (136, 2, "delay"),
     (138, 2, "link"),
 )
 _OUTPUT_FIELDS: tuple[tuple[int, int, str], ...] = (
@@ -406,12 +464,31 @@ _OUTPUT_FIELDS: tuple[tuple[int, int, str], ...] = (
     (92, 2, "limiter.reserved"),
     (94, 2, "limiter.threshold"),
     (96, 2, "gain"),
-    (98, 2, "delay (HYP)"),
-    (100, 1, "mute (HYP)"),
-    (101, 1, "phase (HYP)"),
+    (98, 1, "phase"),
+    (99, 1, "unknown"),
+    (100, 2, "delay"),
     (102, 2, "link"),
 )
 _PEQ_FIELDS = ("gain", "gain", "freq", "freq", "q", "type")
+
+
+def _channel_name(channel: int) -> str:
+    return f"in{channel}" if channel < INPUT_COUNT else f"out{channel - INPUT_COUNT}"
+
+
+def _trailer_field(offset: int) -> str:
+    named = {
+        INPUT_MUTE_MASK: "inputs.mute_mask",
+        OUTPUT_MUTE_MASK: "outputs.mute_mask",
+        INPUT_PEQ_BYPASS_MASK: "inputs.peq_bypass_mask",
+        OUTPUT_PEQ_BYPASS_MASK: "outputs.peq_bypass_mask",
+    }
+    if offset in named:
+        return named[offset]
+    if BAND_BYPASS_BASE <= offset < BAND_BYPASS_BASE + 24:
+        channel = (offset - BAND_BYPASS_BASE) // 2
+        return f"{_channel_name(channel)}.peq_band_bypass_mask"
+    return f"trailer[{offset - TRAILER_BASE}]"
 
 
 def field_at(offset: int) -> str:
@@ -423,7 +500,7 @@ def field_at(offset: int) -> str:
     if offset < HEADER_SIZE:
         return "preset_name"
     if offset >= TRAILER_BASE:
-        return f"trailer[{offset - TRAILER_BASE}]"
+        return _trailer_field(offset)
     if offset < OUTPUT_BASE:
         index, rel = divmod(offset - INPUT_BASE, INPUT_RECORD)
         prefix = f"in{index}"

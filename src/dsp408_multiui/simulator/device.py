@@ -24,7 +24,7 @@ from dsp408_multiui.simulator.meters import MeterSimulator
 
 log = logging.getLogger(__name__)
 
-DEFAULT_IDENTITY = "DSP408 V1.04"  # HYP: the real 0x13 string of a DSP 408 is not documented
+DEFAULT_IDENTITY = "DSP408 V0104P"  # 408: identity string of firmware V0104P
 EMPTY_PRESET_NAME = "Default Preset"
 
 
@@ -37,11 +37,11 @@ class Reply:
 
 @dataclass(slots=True)
 class Timing:
-    """Response delays. Recall/store are slow on the real device (~1-2 s)."""
+    """Response delays, as measured on a DSP 408 (recall ~3.2 s, store ~7.4 s)."""
 
     default_s: float = 0.002
-    recall_s: float = 1.2
-    store_s: float = 1.8
+    recall_s: float = 3.2
+    store_s: float = 7.4
 
 
 @dataclass
@@ -55,9 +55,10 @@ class SimulatedDevice:
     live: cm.RawConfig = field(init=False)
     active_slot: int = field(init=False, default=0)
     pending_name: str = field(init=False, default=EMPTY_PRESET_NAME)
-    # Not stored in the config blob (location unknown): kept here, per live state only.
-    peq_band_bypass: dict[tuple[int, int], bool] = field(init=False, default_factory=dict)
-    peq_channel_bypass: dict[int, bool] = field(init=False, default_factory=dict)
+    # The 408 serves config pages and meters only after the init sequence on the connection
+    # (which request of it unlocks them is not known; the simulator uses the handshake).
+    # True by default so that direct ``handle()`` calls work; the TCP server resets it.
+    session_ready: bool = field(init=False, default=True)
     meters: MeterSimulator = field(init=False)
     requests_handled: int = field(init=False, default=0)
 
@@ -77,8 +78,10 @@ class SimulatedDevice:
     def load(self, slot: int) -> None:
         self.live = self.presets[slot]
         self.active_slot = slot
-        self.peq_band_bypass.clear()
-        self.peq_channel_bypass.clear()
+
+    def on_connect(self) -> None:
+        """A new TCP connection: config pages and meters wait for the init sequence again."""
+        self.session_ready = False
 
     @property
     def config_blob(self) -> bytes:
@@ -109,11 +112,12 @@ class SimulatedDevice:
     def _dispatch(self, r: cmd.Request) -> Reply:
         match r:
             case cmd.Handshake():
+                self.session_ready = True
                 return self._reply(rsp.HandshakeReply(bytes((self.profile.preset_count,))))
             case cmd.GetDeviceInfo():
                 return self._reply(rsp.DeviceInfo(self.identity))
             case cmd.GetStatus():
-                return self._reply(rsp.Status(bytes.fromhex("00 27 0f 00 00 00 00")))
+                return self._reply(rsp.Status(bytes.fromhex("00 27 0f 00 00 00")))
             case cmd.GetPresetHeader():
                 return self._reply(rsp.PresetHeader(b"\xff\xff" + bytes(28)))
             case cmd.GetActivePreset():
@@ -122,6 +126,8 @@ class SimulatedDevice:
                 return self._reply(rsp.PresetName(index, self.presets[index + 1].preset_name))
             case cmd.Activate():
                 return self._ack()
+            case cmd.PollMeters() | cmd.ReadConfigPage() if not self.session_ready:
+                return Reply(None)  # the 408 stays silent before the init sequence
             case cmd.PollMeters():
                 return self._reply(rsp.MeterFrame(self.meters.render(self.live)))
             case cmd.ReadConfigPage(page=page):
@@ -132,7 +138,9 @@ class SimulatedDevice:
                 return self._ack(self.timing.recall_s)
             case cmd.SetPresetName(name=name):
                 self.pending_name = name
-                return self._ack()
+                # 408: the ACK echoes the name
+                echo = b"\x01" + name.encode("ascii").ljust(PRESET_NAME_LENGTH, b" ")
+                return Reply(rsp.Ack(echo), self.timing.default_s)
             case cmd.StorePreset(slot=slot):
                 stored = replace(
                     self.live, marker=cm.MARKER_MODIFIED, preset_name=self.pending_name
@@ -149,62 +157,66 @@ class SimulatedDevice:
                 return self._ack()
 
     def _apply(self, r: cmd.Request) -> None:
-        """Apply a parameter write to the live config."""
+        """Apply a parameter write to the live config (and to linked channels, like the 408)."""
         match r:
             case cmd.SetGain(channel=ch, raw=raw):
-                self._update(ch, gain=raw)
+                self._update(ch, lambda c: {"gain": raw})
             case cmd.SetMute(channel=ch, on=on):
-                self._update(ch, mute=on)
+                self._update(ch, lambda c: {"mute": on})
             case cmd.SetPhase(channel=ch, on=on):
-                self._update(ch, phase=on)
+                self._update(ch, lambda c: {"phase": on})
             case cmd.SetDelay(channel=ch, raw=raw):
-                self._update(ch, delay=raw)
+                self._update(ch, lambda c: {"delay": raw})
             case cmd.SetChannelName(channel=ch, name=name):
-                self._update(ch, name=name)
+                self._update(ch, lambda c: {"name": name}, linked=False)
             case cmd.SetMatrix(channel=ch, mask=mask):
-                self._update(ch, matrix=mask)
+                self._update(ch, lambda c: {"matrix": mask}, linked=False)
             case cmd.SetHighPass(channel=ch, freq=freq, slope=slope):
-                x = self._channel(ch).crossover
-                self._update(ch, crossover=replace(x, hpf_freq=freq, hpf_slope=slope))
+                self._update(
+                    ch,
+                    lambda c: {"crossover": replace(c.crossover, hpf_freq=freq, hpf_slope=slope)},
+                )
             case cmd.SetLowPass(channel=ch, freq=freq, slope=slope):
-                x = self._channel(ch).crossover
-                self._update(ch, crossover=replace(x, lpf_freq=freq, lpf_slope=slope))
+                self._update(
+                    ch,
+                    lambda c: {"crossover": replace(c.crossover, lpf_freq=freq, lpf_slope=slope)},
+                )
             case cmd.SetPeqBand() as b:
-                bands = list(self._channel(b.channel).peq)
-                bands[b.band] = cm.RawPeqBand(b.gain, b.freq, b.q, b.type)
-                self._update(b.channel, peq=tuple(bands))
-                self.peq_band_bypass[(b.channel, b.band)] = b.bypass
+                band = cm.RawPeqBand(b.gain, b.freq, b.q, b.type, b.bypass)
+                self._update(
+                    b.channel,
+                    lambda c: {"peq": (*c.peq[: b.band], band, *c.peq[b.band + 1 :])},
+                )
             case cmd.SetPeqBypass(channel=ch, on=on):
-                self.peq_channel_bypass[ch] = on
-            case cmd.SetGeqBand(channel=ch, band=band, raw=raw):
-                geq = list(self.live.inputs[ch].geq)
-                geq[band] = raw
-                self._update(ch, geq=tuple(geq))
-            case cmd.SetCompressor() as c:
-                comp = cm.RawCompressor(c.ratio, c.attack, c.release, c.knee, c.threshold)
-                self._update(c.channel, compressor=comp)
+                self._update(ch, lambda c: {"peq_bypass": on})
+            case cmd.SetGeqBand(channel=ch, band=n, raw=raw):
+                self._update(ch, lambda c: {"geq": (*c.geq[:n], raw, *c.geq[n + 1 :])})  # type: ignore[union-attr]
+            case cmd.SetCompressor() as k:
+                comp = cm.RawCompressor(k.ratio, k.attack, k.release, k.knee, k.threshold)
+                self._update(k.channel, lambda c: {"compressor": comp})
             case cmd.SetLimiter() as lim:
                 limiter = cm.RawLimiter(lim.attack, lim.release, lim.reserved, lim.threshold)
-                self._update(lim.channel, limiter=limiter)
+                self._update(lim.channel, lambda c: {"limiter": limiter})
             case cmd.SetGate() as g:
-                self._update(g.channel, gate=cm.RawGate(g.attack, g.release, g.hold, g.threshold))
+                gate = cm.RawGate(g.attack, g.release, g.hold, g.threshold)
+                self._update(g.channel, lambda c: {"gate": gate})
             case _:  # pragma: no cover - every request type is handled above
                 raise AssertionError(f"unhandled request {r!r}")
 
-    def _channel(self, ch: int) -> cm.RawInput | cm.RawOutput:
-        if self.profile.is_input(ch):
-            return self.live.inputs[ch]
-        return self.live.outputs[ch - self.profile.input_count]
-
-    def _update(self, ch: int, **changes: object) -> None:
-        """Replace fields of one channel and mark the live config as modified."""
-        if self.profile.is_input(ch):
-            inputs = list(self.live.inputs)
-            inputs[ch] = replace(inputs[ch], **changes)  # type: ignore[arg-type]
-            live = replace(self.live, inputs=tuple(inputs))
-        else:
-            outputs = list(self.live.outputs)
-            idx = ch - self.profile.input_count
-            outputs[idx] = replace(outputs[idx], **changes)  # type: ignore[arg-type]
-            live = replace(self.live, outputs=tuple(outputs))
+    def _update(
+        self,
+        ch: int,
+        changes: Callable[[cm.RawInput | cm.RawOutput], dict[str, object]],
+        *,
+        linked: bool = True,
+    ) -> None:
+        """Change one channel (and its linked group) and mark the live config as modified."""
+        inputs, outputs = list(self.live.inputs), list(self.live.outputs)
+        is_input = self.profile.is_input(ch)
+        group: list[cm.RawInput] | list[cm.RawOutput] = inputs if is_input else outputs
+        index = ch if is_input else ch - self.profile.input_count
+        members = cm.link_group([c.link for c in group], index) if linked else (index,)
+        for m in members:
+            group[m] = replace(group[m], **changes(group[m]))  # type: ignore[arg-type,assignment]
+        live = replace(self.live, inputs=tuple(inputs), outputs=tuple(outputs))
         self.live = replace(live, marker=cm.MARKER_MODIFIED)

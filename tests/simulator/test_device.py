@@ -1,3 +1,5 @@
+from dataclasses import replace
+
 import pytest
 
 from dsp408_multiui.protocol import commands as c
@@ -115,16 +117,53 @@ def test_writes_show_up_in_the_config(device: SimulatedDevice) -> None:
     assert out[7].name == "MonR"
 
 
-def test_peq_bypass_is_tracked_outside_the_blob(device: SimulatedDevice) -> None:
+def test_bypass_and_mute_live_in_the_trailer_masks(device: SimulatedDevice) -> None:
     ask(device, c.SetPeqBand(4, 1, 120, 50, 35, 0, True))
     ask(device, c.SetPeqBypass(5, True))
-    assert device.peq_band_bypass[(4, 1)] is True
-    assert device.peq_channel_bypass[5] is True
+    ask(device, c.SetMute(2, True))
+    blob = device.config_blob
+    assert blob[cm.BAND_BYPASS_BASE + 2 * 4] == 0b10
+    assert blob[cm.OUTPUT_PEQ_BYPASS_MASK] == 0b10
+    assert blob[cm.INPUT_MUTE_MASK] == 0b100
+    config = read_config(device)
+    assert config.outputs[0].peq[1].bypass
+    assert config.outputs[1].peq_bypass
+    assert config.inputs[2].mute
+
+
+def test_linked_channels_follow_writes_like_the_408(device: SimulatedDevice) -> None:
+    # Link Out1+Out5 the way the 408 stores it: mask on the first member, 0 on the other.
+    outputs = list(device.live.outputs)
+    outputs[0] = replace(outputs[0], link=0x11)
+    outputs[4] = replace(outputs[4], link=0)
+    device.live = replace(device.live, outputs=tuple(outputs))
+    ask(device, c.SetGain(8, 200))  # written on the slave (Out5)
+    ask(device, c.SetPeqBand(4, 2, 100, 50, 20, 1, True))
+    ask(device, c.SetMute(4, True))
+    ask(device, c.SetChannelName(4, "Solo"))  # names and matrix are not copied
+    ask(device, c.SetMatrix(4, 0b1000))
+    out1, out5 = read_config(device).outputs[0], read_config(device).outputs[4]
+    assert (out1.gain, out5.gain) == (200, 200)
+    assert out1.peq[2] == out5.peq[2] == cm.RawPeqBand(100, 50, 20, 1, True)
+    assert (out1.mute, out5.mute) == (True, True)
+    assert (out1.name, out5.name) == ("Solo", "Out5")
+    assert (out1.matrix, out5.matrix) == (0b1000, 0b0001)
+    assert read_config(device).outputs[1].gain == cm.UNITY_GAIN_RAW
+
+
+def test_pages_and_meters_need_the_init_sequence(device: SimulatedDevice) -> None:
+    device.on_connect()
+    assert device.handle(c.PollMeters().encode(P)).response is None
+    assert device.handle(c.ReadConfigPage(0).encode(P)).response is None
+    assert isinstance(ask(device, c.SetGain(4, 200)), r.Ack)  # writes still work
+    ask(device, c.Handshake())
+    assert isinstance(ask(device, c.PollMeters()), r.MeterFrame)
 
 
 def test_store_and_recall(device: SimulatedDevice) -> None:
     ask(device, c.SetGain(4, 123))
-    assert ask(device, c.SetPresetName("My Show")) == r.Ack()
+    # the 408 echoes the name in its ACK
+    assert ask(device, c.SetPresetName("My Show")) == r.Ack(b"\x01My Show       ")
     reply = device.handle(c.StorePreset(3).encode(P))
     assert reply.response == r.Ack()
     assert reply.delay_s == device.timing.store_s
@@ -215,7 +254,7 @@ def test_scenarios(name: str) -> None:
     if name == "clipping":
         reply = ask(device, c.PollMeters())
         assert isinstance(reply, r.MeterFrame)
-        assert decode_meters(reply.data, P).input_clip_flag
+        assert any(decode_meters(reply.data, P).clip[:4])
     if name == "stress":
         assert faults.drop_rate > 0
     if name == "demo":

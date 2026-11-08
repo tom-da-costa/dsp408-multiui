@@ -58,8 +58,8 @@ feature whose encoding is not yet verified on hardware (PROTOCOL §9) stays hidd
 | F-P-3 | Phase / polarity invert | all | M |
 | F-P-4 | Routing matrix 4 → 8 (on/off per crosspoint) | outputs | M |
 | F-P-5 | Parametric EQ: per band gain, frequency, Q, type and bypass, plus whole-channel PEQ bypass | 8 bands on inputs, 9 on outputs | M |
-| F-P-6 | High-pass and low-pass: frequency and slope (bypass = slope "off"; the server remembers the last active slope) | outputs (inputs if supported) | M |
-| F-P-7 | Delay in ms, also shown in m (cosmetic) | outputs | M |
+| F-P-6 | High-pass and low-pass: frequency and slope (bypass = slope "off"; the server remembers the last active slope) | all (the 408 filters its inputs too) | M |
+| F-P-7 | Delay in ms, also shown in m (cosmetic) | all (the 408 delays its inputs too) | M |
 | F-P-8 | Compressor: ratio, knee, attack, release, threshold | outputs | M |
 | F-P-9 | Limiter: attack, release, threshold | outputs | M |
 | F-P-10 | Noise gate: attack, hold, release, threshold | inputs | S |
@@ -321,8 +321,11 @@ fader. ± step buttons allow precise adjustments. Tapping a strip name opens the
 
 **Channel detail** (sections):
 
-- Inputs: gain/mute/phase, PEQ (8 bands), Gate, GEQ (31 sliders, horizontally scrollable), name.
+- Inputs: gain/mute/phase, delay, HPF/LPF, PEQ (8 bands), Gate, GEQ (31 sliders, horizontally
+  scrollable), name.
 - Outputs: gain/mute/phase, delay, HPF/LPF, PEQ (9 bands), compressor, limiter, name.
+- A linked channel shows which channels it is linked with: the DSP applies every change except
+  the name and the matrix to the whole group, and the server mirrors that in its state.
 
 Each PEQ band is a row with enable, type, frequency, gain and Q. Each field can be set by typing a
 number, with steppers, or with a slider. There are **no response curves**.
