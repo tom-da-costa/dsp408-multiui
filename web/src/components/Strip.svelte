@@ -32,7 +32,12 @@
     title={`${slotLabel(path)} ${channel.name}: open the channel settings`}
     onclick={() => nav.open(path)}
   >
-    <span class="slot">{slotLabel(path)}</span>
+    <span class="slot"
+      >{slotLabel(path)}{#if channel.linked.length}<span
+          class="link"
+          title="Linked: changes also apply to the other channels of the group">🔗</span
+        >{/if}</span
+    >
     <span class="label">{channel.name || "—"}</span>
   </button>
   <div class="body">
@@ -92,6 +97,10 @@
   .slot {
     font-size: 0.7rem;
     color: var(--muted);
+  }
+  .link {
+    margin-left: 2px;
+    font-size: 0.6rem;
   }
   .label {
     font-weight: 600;

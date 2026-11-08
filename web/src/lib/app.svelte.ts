@@ -25,6 +25,9 @@ interface Pending {
 }
 
 const REQUEST_TIMEOUT_MS = 10_000;
+// Preset recall (~3 s) and store (~7.5 s) on a DSP 408, plus re-reading the configuration.
+const SLOW_REQUEST_TIMEOUT_MS = 30_000;
+const SLOW_REQUESTS = new Set(["preset.recall", "preset.store", "resync"]);
 const ACTIVITY_INTERVAL_MS = 10_000;
 
 class App {
@@ -208,10 +211,11 @@ class App {
   request(message: { type: string; [key: string]: unknown }): Promise<ResultMessage> {
     const req = this.nextReq++;
     return new Promise((resolve) => {
+      const timeout = SLOW_REQUESTS.has(message.type) ? SLOW_REQUEST_TIMEOUT_MS : REQUEST_TIMEOUT_MS;
       const timer = setTimeout(() => {
         this.pending.delete(req);
         resolve({ type: "result", req, ok: false, error: "timeout", message: "no answer" });
-      }, REQUEST_TIMEOUT_MS);
+      }, timeout);
       this.pending.set(req, { resolve, timer });
       this.send({ ...message, req });
     });
