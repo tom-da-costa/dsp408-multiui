@@ -43,8 +43,8 @@
   <div class="bar">
     <div class="fill" style:transform={`scaleY(${pos})`}></div>
     {#if peakPos > 0}<div class="peak" style:bottom={`${peakPos * 100}%`}></div>{/if}
-    <!-- 0 dB of the threshold scale (compressor / limiter thresholds are on the same scale) -->
-    <div class="tick" style:bottom={`${dbToPos(0) * 100}%`} title="0 dB"></div>
+    <!-- 0 dBu (compressor / limiter / gate thresholds are on the same scale) -->
+    <div class="tick" style:bottom={`${dbToPos(0) * 100}%`} title="0 dBu"></div>
   </div>
 </div>
 

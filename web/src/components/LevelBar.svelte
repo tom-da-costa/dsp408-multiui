@@ -24,7 +24,7 @@
 
 <div class="meter" class:compact aria-label="Level">
   <div class="level" class:clip style:width={`${meterPos(level, floor, top) * 100}%`}></div>
-  <span class="db">{level === null ? "—" : `${formatDb(level)} dB`}</span>
+  <span class="db">{level === null ? "—" : `${formatDb(level)} dBu`}</span>
   {#if clip}<span class="led clip">CLIP</span>{/if}
   {#if limit !== null}<span class="led" class:on={limit}>LIM</span>{/if}
   {#if comp !== null}<span class="led" class:on={comp}>COMP</span>{/if}

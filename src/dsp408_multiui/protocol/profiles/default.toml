@@ -46,9 +46,9 @@ tail_length = 2            # 408 (LEN = 0x27)
 tail_comp_byte = 0         # 408: per-output "compressor active" bitmask
 tail_limit_byte = 1        # 408: per-output "limiter active" bitmask
 # tail_clip_byte is unset: the 408 has no clip flag; CLIP is derived from the level
-reference = 0.1            # 408: linear 0.1 = 0 dB on the scale of the dynamics thresholds,
-                           # so levels and thresholds compare directly (HW, observed ±1 dB)
-clip_db = 20.0             # CLIP at linear 1.0 (full scale = +20 dB); levels can go above
+reference = 0.1            # 408: levels in dBu, the unit of the dynamics thresholds: full scale
+                           # (linear 1.0) = +20 dBu, so 0 dBu = 0.1 (HW, observed ±1 dB)
+clip_db = 20.0             # CLIP at full scale (+20 dBu); levels can go above
 floor_db = -90.0
 
 [timing]

@@ -6,9 +6,10 @@ setting because the sources disagree:
 
 * ``float32`` (DSP 408, verified on hardware): the triplet is the top three bytes of a
   little-endian IEEE-754 float32 (byte 2 = bits 8-15, byte 0 = bits 16-23, byte 1 = bits
-  24-31), i.e. ``float32(00 b2 b0 b1)``. The value is linear and can exceed 1.0. With the
-  default reference (0.1 = 0 dB), levels are on the scale of the dynamics thresholds: a
-  compressor set to +1 dB engages when the meter reads about +1 dB.
+  24-31), i.e. ``float32(00 b2 b0 b1)``. The value is linear, relative to full scale, and can
+  exceed 1.0. Full scale is +20 dBu, so with the default reference (0.1 = 0 dBu) levels are in
+  dBu, the unit of the dynamics thresholds: a compressor set to +1 dBu engages when the meter
+  reads about +1 dBu.
   A muted channel reads about 1e-35; NaN/inf means "no data".
 * ``float16``: bytes 0-1 read as a half float (dsp-408-ui). Wrong on a real 408 (it gives a
   compressed, offset scale); kept for comparison.

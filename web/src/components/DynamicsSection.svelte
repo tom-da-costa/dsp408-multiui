@@ -84,7 +84,7 @@
           value={values[key] ?? 0}
           {min}
           {max}
-          unit="dB"
+          unit="dBu"
           step={0.5}
           resolution={0.5}
           disabled={!editable}

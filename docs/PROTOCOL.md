@@ -103,7 +103,7 @@ Bitmasks:
 | PEQ / GEQ gain | `dB = (raw − 120)/10` | raw 0–240 = ±12 dB | 408 |
 | Frequency (PEQ, HPF, LPF) | `Hz = 19.70 · (20160/19.70)^(raw/N)` | **N = 300**. The 4x4 Mini and the 206 agree, and the 408 config dump only makes sense with N = 300: evenly spaced default PEQ bands (raw 31, 63 … 285) and crossover points of a coherent 3-way system (25/80 Hz, 80/161 Hz, 370 Hz/4.8 kHz). dsp-408-ui uses N = 1000, which is wrong. | 408 (dump) + SIB |
 | PEQ Q | `Q = 0.4 · 320^(raw/M)` | **CONFLICT** on M: ▶ **M = 100** (the 4x4 Mini formula and the 206 formula `10^((raw−16)/40)` are the same curve). dsp-408-ui uses M = 255. | CONFLICT |
-| Threshold (gate / comp / limiter) | `dB = raw/2 − 90` (i.e. raw = 2·dB + 180) | gate −90…0, comp/lim −90…+20 | SIB (both siblings agree) |
+| Threshold (gate / comp / limiter), in **dBu** | `dBu = raw/2 − 90` (i.e. raw = 2·dBu + 180) | gate −90…0, comp/lim −90…+20 dBu | SIB (both siblings agree); unit dBu confirmed by the owner |
 | Attack / release / hold | `ms = raw + 1` | attack 1–999, release 1/10–3000, hold 10–999 | SIB |
 | Knee | `dB = raw` | 0–12 | SIB |
 | Delay (`0x38`) | `ms = raw/96` (samples at 96 kHz): the editor shows raw 426 as 4.44 ms. The 4x4 Mini uses 48 kHz. | uint16, max 680 ms (not tested) | HW |
@@ -212,23 +212,24 @@ DSP 408 response: `LEN = 0x27` (39), i.e. payload = `40` + **12 × 3 bytes** (In
 **float32**: `value = float32(00 b2 b0 b1)` (b1 = sign + exponent, b0 and b2 = mantissa). The value
 is **linear**: `dB = 20·log10(value / reference)`.
 
-**Reference (HW, observed, ±1 dB).** With `reference = 0.1`, the meter reads on the **same dB
-scale as the compressor, limiter and gate thresholds**; full scale (1.0) is then +20 dB. Observed
+**Reference: dBu (HW, observed ±1 dB; unit confirmed by the owner).** The value is relative to
+full scale, and **full scale = +20 dBu**. So `dBu = 20·log10(value) + 20`, i.e. `reference = 0.1`.
+The compressor, limiter and gate thresholds are in **dBu** too, so levels and thresholds compare
+directly. Observed
 on 2026-11-09, read-only, with music on the live preset: Out 1/5 (compressor ratio "Limit",
 threshold +1 dB) had the compressor-active bit set in 12 of 374 frames, at meter readings of
 −5.9…+1.7 dB with this reference (median +1.0); never above +2.3. Out 2/6 (threshold −7 dB) peaked
 at −5.8 and never set the bit. The earlier assumption "1.0 = 0 dBFS" put the meter 20 dB below the
-thresholds. The threshold scale is probably dBu (0 dB full scale ≈ +20 dBu), not verified. A
-steady-tone sweep of a threshold on a test preset would pin the offset more precisely.
+thresholds. A steady-tone sweep of a threshold on a test preset would pin the +20 dBu more precisely.
 
 How it was established: Out 4 was made transparent (filters, PEQ and dynamics off), fed from In A
 only, and its gain was stepped from +12 to −50 dB while music played. The difference between the
 Out 4 and In A meters moved by exactly 128 units of `b1:b0` per 6.02 dB (one octave), the
 signature of a float's exponent; the mapping held over the whole 62 dB range.
 
-- Levels are not clamped: with +24 dB of gain, Out 4 read 8.47 (+38.6 dB with the 0.1 reference).
-  CLIP is derived from the level (≥ full scale, +20 dB); there is no clip flag.
-- An unconnected but unmuted input reads about 5·10⁻⁶ (−86 dB, the ADC noise floor); a muted
+- Levels are not clamped: with +24 dB of gain, Out 4 read 8.47 (+38.6 dBu).
+  CLIP is derived from the level (≥ full scale, +20 dBu); there is no clip flag.
+- An unconnected but unmuted input reads about 5·10⁻⁶ (−86 dBu, the ADC noise floor); a muted
   channel reads about 10⁻³⁵ (zero).
 - An input meter is measured after the input gain and **before** the input mute.
 - Before the init sequence (§5.1) the 408 returns frozen values (or nothing).

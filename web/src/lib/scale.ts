@@ -55,7 +55,7 @@ export function meterPos(db: number | null, floor: number, top = 20): number {
   return Math.min(1, (db - floor) / (top - floor));
 }
 
-// Vertical meters: levels are on the device's threshold scale, full scale (CLIP) = +20 dB.
+// Vertical meters: levels in dBu (like the dynamics thresholds), full scale (CLIP) = +20 dBu.
 const METER_POINTS: [number, number][] = [
   [0, -60],
   [0.2, -40],
