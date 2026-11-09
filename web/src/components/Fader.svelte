@@ -75,9 +75,12 @@
     if (db === from) return;
     pending = db;
     clearTimeout(settle);
-    settle = setTimeout(() => (pending = null), 1500);
-    onchange(db);
+    settle = setTimeout(() => (pending = null), 2000);
+    stepSender.push(db);
   }
+
+  // A held − / + shows every step at once but sends at most every 500 ms (the latest value).
+  const stepSender = throttleLatest((db: number) => onchange(db), 500);
 
   function key(event: KeyboardEvent) {
     const steps: Record<string, number> = { ArrowUp: 1, ArrowDown: -1, PageUp: 10, PageDown: -10 };
@@ -123,7 +126,7 @@
   {/if}
   <button
     class="step"
-    use:holdRepeat={{ step: (n) => nudge(n), disabled }}
+    use:holdRepeat={{ step: () => nudge(1), end: () => stepSender.flush(), disabled }}
     {disabled}
     aria-label="gain up (hold to repeat)">+</button
   >
@@ -149,7 +152,7 @@
   </div>
   <button
     class="step"
-    use:holdRepeat={{ step: (n) => nudge(-n), disabled }}
+    use:holdRepeat={{ step: () => nudge(-1), end: () => stepSender.flush(), disabled }}
     {disabled}
     aria-label="gain down (hold to repeat)">−</button
   >

@@ -2,6 +2,7 @@
   // One numeric parameter: label, value (tap to type), − / + steppers and a knob-drag slider.
   import type { Snippet } from "svelte";
   import { holdRepeat } from "../lib/repeat";
+  import { throttleLatest } from "../lib/throttle";
   import { type Direction, parseNumber, type Scale, snap } from "../lib/scale";
   import Slider from "./Slider.svelte";
 
@@ -74,9 +75,12 @@
     if (q === from) return;
     pending = q;
     clearTimeout(settle);
-    settle = setTimeout(() => (pending = null), 1500); // never stay stuck on a refused value
-    onchange(q);
+    settle = setTimeout(() => (pending = null), 2000); // never stay stuck on a refused value
+    sender.push(q);
   }
+
+  // A held − / + shows every step at once but sends at most every 500 ms (the latest value).
+  const sender = throttleLatest((v: number) => onchange(v), 500);
 
   $effect(() => {
     // The device reached the value we sent: show it again.
@@ -103,7 +107,7 @@
   <span class="label">{label}</span>
   <button
     class="step minus"
-    use:holdRepeat={{ step: (n) => stepBy(-n), disabled }}
+    use:holdRepeat={{ step: () => stepBy(-1), end: () => sender.flush(), disabled }}
     {disabled}
     aria-label={`${label} down (hold to repeat)`}>−</button
   >
@@ -128,7 +132,7 @@
   {/if}
   <button
     class="step plus"
-    use:holdRepeat={{ step: (n) => stepBy(n), disabled }}
+    use:holdRepeat={{ step: () => stepBy(1), end: () => sender.flush(), disabled }}
     {disabled}
     aria-label={`${label} up (hold to repeat)`}>+</button
   >

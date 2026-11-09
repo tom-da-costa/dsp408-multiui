@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { HOLD_DELAY_MS, holdRepeat, repeatInterval, repeatSteps } from "./repeat";
+import { HOLD_DELAY_MS, holdRepeat, REPEAT_MS } from "./repeat";
 
 // No DOM in these tests: Node's EventTarget stands in for the button.
 function button(): HTMLElement {
@@ -18,20 +18,19 @@ describe("holdRepeat", () => {
   beforeEach(() => vi.useFakeTimers());
   afterEach(() => vi.useRealTimers());
 
-  it("steps once on a tap, then repeats faster while held", () => {
+  it("steps once on a tap, then repeats at a constant rate while held", () => {
     const node = button();
     const step = vi.fn();
     const end = vi.fn();
     const action = holdRepeat(node, { step, end });
 
     press(node, "pointerdown");
-    expect(step).toHaveBeenLastCalledWith(1);
     vi.advanceTimersByTime(HOLD_DELAY_MS - 1);
     expect(step).toHaveBeenCalledTimes(1); // a short tap: one step only
     vi.advanceTimersByTime(1);
     expect(step).toHaveBeenCalledTimes(2);
-    vi.advanceTimersByTime(5 * 150 + 10 * 70 + 10 * 30);
-    expect(step).toHaveBeenCalledTimes(2 + 5 + 10 + 10);
+    vi.advanceTimersByTime(25 * REPEAT_MS);
+    expect(step).toHaveBeenCalledTimes(2 + 25);
 
     press(node, "pointerup");
     expect(end).toHaveBeenCalledTimes(1);
@@ -54,12 +53,5 @@ describe("holdRepeat", () => {
     action.destroy();
   });
 
-  it("accelerates", () => {
-    expect(repeatInterval(0)).toBe(150);
-    expect(repeatInterval(5)).toBe(70);
-    expect(repeatInterval(15)).toBe(30);
-    expect([repeatSteps(0), repeatSteps(39), repeatSteps(40), repeatSteps(140)]).toEqual([
-      1, 1, 5, 25,
-    ]);
-  });
+
 });
