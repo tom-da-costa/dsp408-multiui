@@ -18,7 +18,7 @@ from dataclasses import dataclass, field, replace
 from dsp408_multiui.protocol import commands as cmd
 from dsp408_multiui.protocol import config_map as cm
 from dsp408_multiui.protocol import responses as rsp
-from dsp408_multiui.protocol.codecs import PRESET_NAME_LENGTH
+from dsp408_multiui.protocol.codecs import PRESET_NAME_LENGTH, encode_stored_name
 from dsp408_multiui.protocol.profile import ProtocolProfile
 from dsp408_multiui.simulator.meters import MeterSimulator
 
@@ -44,21 +44,30 @@ class Timing:
     store_s: float = 7.4
 
 
+@dataclass(slots=True)
+class Link:
+    """One host connection. The 408 serves config pages and meters on a connection only after
+    the init sequence was sent on it (which request of it unlocks them is not known; the
+    simulator uses the handshake). Several connections each have their own state."""
+
+    ready: bool = False
+
+
 @dataclass
 class SimulatedDevice:
     profile: ProtocolProfile
     identity: str = DEFAULT_IDENTITY
     timing: Timing = field(default_factory=Timing)
     clock: Callable[[], float] | None = None  # for meters; defaults to time.monotonic
+    # Called after a preset recall or store (the standalone simulator persists presets with it).
+    on_preset_change: Callable[[], None] | None = None
 
     presets: list[cm.RawConfig] = field(init=False)
     live: cm.RawConfig = field(init=False)
     active_slot: int = field(init=False, default=0)
     pending_name: str = field(init=False, default=EMPTY_PRESET_NAME)
-    # The 408 serves config pages and meters only after the init sequence on the connection
-    # (which request of it unlocks them is not known; the simulator uses the handshake).
-    # True by default so that direct ``handle()`` calls work; the TCP server resets it.
-    session_ready: bool = field(init=False, default=True)
+    # Used by ``handle()`` calls without a link (tests, demo scenarios): already initialised.
+    default_link: Link = field(init=False, default_factory=lambda: Link(ready=True))
     meters: MeterSimulator = field(init=False)
     requests_handled: int = field(init=False, default=0)
 
@@ -79,16 +88,18 @@ class SimulatedDevice:
         self.live = self.presets[slot]
         self.active_slot = slot
 
-    def on_connect(self) -> None:
-        """A new TCP connection: config pages and meters wait for the init sequence again."""
-        self.session_ready = False
+    def recall(self, slot: int) -> None:
+        """Recall a preset (over the network, or from the front panel)."""
+        self.load(slot)
+        self._preset_changed()
 
     @property
     def config_blob(self) -> bytes:
         return cm.encode_config(self.live)
 
     # --- request handling -----------------------------------------------------------------------
-    def handle(self, payload: bytes) -> Reply:
+    def handle(self, payload: bytes, link: Link | None = None) -> Reply:
+        """Answer one request received on ``link`` (a TCP connection)."""
         self.requests_handled += 1
         if (
             payload[:1] == bytes((cmd.Opcode.SET_PRESET_NAME,))
@@ -101,7 +112,7 @@ class SimulatedDevice:
         except cmd.CommandError as exc:
             log.warning("ignoring invalid request %s: %s", payload.hex(" "), exc)
             return Reply(None, self.timing.default_s)
-        return self._dispatch(request)
+        return self._dispatch(request, link or self.default_link)
 
     def _ack(self, delay: float | None = None) -> Reply:
         return Reply(rsp.Ack(), self.timing.default_s if delay is None else delay)
@@ -109,10 +120,10 @@ class SimulatedDevice:
     def _reply(self, response: rsp.Response) -> Reply:
         return Reply(response, self.timing.default_s)
 
-    def _dispatch(self, r: cmd.Request) -> Reply:
+    def _dispatch(self, r: cmd.Request, link: Link) -> Reply:
         match r:
             case cmd.Handshake():
-                self.session_ready = True
+                link.ready = True
                 return self._reply(rsp.HandshakeReply(bytes((self.profile.preset_count,))))
             case cmd.GetDeviceInfo():
                 return self._reply(rsp.DeviceInfo(self.identity))
@@ -126,7 +137,7 @@ class SimulatedDevice:
                 return self._reply(rsp.PresetName(index, self.presets[index + 1].preset_name))
             case cmd.Activate():
                 return self._ack()
-            case cmd.PollMeters() | cmd.ReadConfigPage() if not self.session_ready:
+            case cmd.PollMeters() | cmd.ReadConfigPage() if not link.ready:
                 return Reply(None)  # the 408 stays silent before the init sequence
             case cmd.PollMeters():
                 return self._reply(rsp.MeterFrame(self.meters.render(self.live)))
@@ -134,12 +145,12 @@ class SimulatedDevice:
                 pages = cm.split_pages(self.config_blob, self.profile)
                 return self._reply(rsp.ConfigPage(page, pages[page]))
             case cmd.RecallPreset(slot=slot):
-                self.load(slot)
+                self.recall(slot)
                 return self._ack(self.timing.recall_s)
             case cmd.SetPresetName(name=name):
                 self.pending_name = name
                 # 408: the ACK echoes the name
-                echo = b"\x01" + name.encode("ascii").ljust(PRESET_NAME_LENGTH, b" ")
+                echo = b"\x01" + encode_stored_name(name, PRESET_NAME_LENGTH, b" ")
                 return Reply(rsp.Ack(echo), self.timing.default_s)
             case cmd.StorePreset(slot=slot):
                 stored = replace(
@@ -149,12 +160,17 @@ class SimulatedDevice:
                 self.presets[slot] = stored
                 self.live = stored
                 self.active_slot = slot
+                self._preset_changed()
                 return self._ack(self.timing.store_s)
             case cmd.SubmitPin():
                 return self._reply(rsp.PinResult(True))  # the simulated device is never locked
             case _:
                 self._apply(r)
                 return self._ack()
+
+    def _preset_changed(self) -> None:
+        if self.on_preset_change is not None:
+            self.on_preset_change()
 
     def _apply(self, r: cmd.Request) -> None:
         """Apply a parameter write to the live config (and to linked channels, like the 408)."""

@@ -10,7 +10,7 @@ from enum import StrEnum
 from dsp408_multiui.framelog import FROM_DEVICE, TO_DEVICE, FrameLog
 from dsp408_multiui.protocol.commands import Opcode
 from dsp408_multiui.protocol.framing import DEVICE, HOST, Frame, FrameDecoder
-from dsp408_multiui.simulator.device import SimulatedDevice
+from dsp408_multiui.simulator.device import Link, SimulatedDevice
 from dsp408_multiui.simulator.faults import Faults
 
 log = logging.getLogger(__name__)
@@ -59,6 +59,21 @@ class SimulatorServer:
     def client_count(self) -> int:
         return len(self._clients)
 
+    @property
+    def running(self) -> bool:
+        return self._server is not None
+
+    def peers(self) -> list[str]:
+        """Addresses of the connected clients."""
+        return [_peer(writer) for writer in self._clients]
+
+    def kick(self) -> int:
+        """Close every client connection (the clients see the DSP drop them)."""
+        writers = list(self._clients)
+        for writer in writers:
+            writer.close()
+        return len(writers)
+
     async def start(self) -> None:
         self._server = await asyncio.start_server(self._on_connect, self.host, self.port)
         log.info("simulator listening on %s:%d", self.host, self.bound_port)
@@ -103,7 +118,6 @@ class SimulatorServer:
                 log.info("kicking client %s", old.get_extra_info("peername"))
                 old.close()
         log.info("client connected: %s", peer)
-        self.device.on_connect()
         task = asyncio.current_task()
         assert task is not None
         self._clients[writer] = task
@@ -120,6 +134,7 @@ class SimulatorServer:
 
     async def _serve(self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> None:
         decoder = FrameDecoder()
+        link = Link()  # the init sequence is needed again on each connection
         handled = 0
         while not writer.is_closing():
             data = await reader.read(4096)
@@ -130,7 +145,7 @@ class SimulatorServer:
                     self.frame_log.write(TO_DEVICE, frame)
                 if frame.from_device:
                     continue  # ignore echoes of device frames
-                if not await self._handle(frame, writer):
+                if not await self._handle(frame, writer, link):
                     return
                 handled += 1
                 limit = self.faults.disconnect_after
@@ -138,12 +153,12 @@ class SimulatorServer:
                     log.info("fault injection: disconnecting after %d requests", handled)
                     return
 
-    async def _handle(self, frame: Frame, writer: asyncio.StreamWriter) -> bool:
+    async def _handle(self, frame: Frame, writer: asyncio.StreamWriter, link: Link) -> bool:
         """Process one request. Returns False when the connection must close."""
         async with self._device_lock:
             if frame.opcode == Opcode.METERS and self.faults.roll(self.faults.nan_meter_rate):
                 self.device.meters.nan_next = True
-            reply = self.device.handle(frame.payload)
+            reply = self.device.handle(frame.payload, link)
             delay = reply.delay_s + self.faults.extra_latency_s
             if delay:
                 await asyncio.sleep(delay)
@@ -160,3 +175,8 @@ class SimulatorServer:
         writer.write(bytes(wire))
         await writer.drain()
         return True
+
+
+def _peer(writer: asyncio.StreamWriter) -> str:
+    peer = writer.get_extra_info("peername")
+    return f"{peer[0]}:{peer[1]}" if isinstance(peer, tuple) else str(peer)
