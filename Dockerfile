@@ -1,5 +1,6 @@
 # syntax=docker/dockerfile:1
 # dsp408-multiui: single-process web controller for the t.racks DSP 408.
+# The image also contains the simulated DSP: run it with `--entrypoint dsp408-sim` (compose.sim.yaml).
 # The web UI is pre-built and committed (src/dsp408_multiui/web), so no Node stage is needed.
 
 FROM python:3.12-slim AS build
@@ -15,7 +16,8 @@ FROM python:3.12-slim
 LABEL org.opencontainers.image.title="dsp408-multiui" \
       org.opencontainers.image.description="Multi-client web controller for the t.racks DSP 408" \
       org.opencontainers.image.licenses="AGPL-3.0-or-later"
-RUN useradd --system --uid 10001 --home-dir /app dsp408
+RUN useradd --system --uid 10001 --home-dir /app dsp408 \
+ && mkdir -p /app/state && chown dsp408:dsp408 /app/state   # dsp408-sim --state-dir
 COPY --from=build --chown=dsp408:dsp408 /app/.venv /app/.venv
 ENV PATH="/app/.venv/bin:$PATH" \
     PYTHONUNBUFFERED=1 \
@@ -23,7 +25,7 @@ ENV PATH="/app/.venv/bin:$PATH" \
     DSP408_LISTEN_PORT=8080
 USER dsp408
 WORKDIR /app
-EXPOSE 8080
+EXPOSE 8080 9761
 HEALTHCHECK --interval=30s --timeout=3s --start-period=10s \
   CMD ["python", "-c", "import os, urllib.request; urllib.request.urlopen(f\"http://127.0.0.1:{os.environ.get('DSP408_LISTEN_PORT', '8080')}/api/health\", timeout=2)"]
 ENTRYPOINT ["dsp408-multiui"]

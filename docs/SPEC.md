@@ -196,8 +196,16 @@ protocol.
 - It also logs every frame it receives. Pointing the **official editor** at the simulator
   captures the editor's requests (how it encodes a frequency, a delay, a compressor) without a
   DSP. See PLAN, Phase 2.
-- Uses: UI development, automated integration tests, demos (`dsp408-multiui simulate`, or
-  `serve --simulator` to run both in one process).
+- It keeps stored presets across restarts in a state directory (`--state-dir`), loads config
+  dumps from a real device (`--preset 8=u08.bin`), and has an interactive console to change
+  faults and input signals while it runs (`kick`, `offline 10`, `drop 0.1`, `signal A steady -3`…).
+- Each TCP connection needs its own init sequence, as on the 408.
+- It is a **separate program**, `dsp408-sim` (separate executable, same Docker image with
+  `--entrypoint dsp408-sim`, `compose.sim.yaml`). The backend connects to it over TCP exactly
+  as to a real DSP, so it tests the real network path: reconnects, timeouts, several clients.
+- The **demo mode** (`serve --demo`) runs the same simulated device inside the backend process,
+  for a one-command demo without any DSP.
+- Uses: UI development, automated integration tests, test benches, demos.
 
 ### 4.6 Protocol profile
 
@@ -231,7 +239,7 @@ WebSocket `/ws` (cookie auth plus an `Origin` check). JSON messages `{type, ...}
 
 | Direction | Type | Payload |
 |---|---|---|
-| S→C | `hello` | `client_id`, `name`, `server_version`, `simulator`, `experimental`, `verified_kinds`, `profile` (channel counts, PEQ types, slopes, ratios, frequency/Q/delay ranges), `limits` (control ranges), `settings` |
+| S→C | `hello` | `client_id`, `name`, `server_version`, `demo`, `experimental`, `verified_kinds`, `profile` (channel counts, PEQ types, slopes, ratios, frequency/Q/delay ranges), `limits` (control ranges), `settings` |
 | S→C | `snapshot` | `rev`, full `state` (device info, presets, channels) |
 | S→C | `patch` | `rev`, `changes: [{path, value}]`, `origin` (client_id or `device`) |
 | S→C | `meters` | `seq`, `levels` (12 values in dB or `null`; the whole field is `null` when the poll failed), `clip` (12 bools), `limit` (8 bools or `null`), `comp` (8 bools or `null`), `input_clip` |
@@ -278,11 +286,13 @@ dsp408-multiui serve --dsp-host 192.168.1.50 [options]   # "serve" is the defaul
   --pin 0000               --meter-rate 5        (1–10 Hz)
   --lock-idle-timeout 120  --resync-interval 0   (seconds, 0 = off)
   --command-timeout 0.5    --experimental        --profile file.toml
-  --simulator              (run an embedded simulator instead of connecting to a DSP)
+  --demo                   (demo mode: a simulated DSP inside this process, no device needed)
   --log-level info
-dsp408-multiui simulate --port 9761 [--profile file.toml] [--scenario demo]   # fake DSP 408
 dsp408-multiui probe  --dsp-host IP {info|meters|dump-config|diff-config|raw HEX}  # dev / RE
 dsp408-multiui proxy  --listen 0.0.0.0:9761 --dsp-host IP --log frames.jsonl
+
+dsp408-sim [--host 0.0.0.0] [--port 9761] [--scenario demo] [--state-dir DIR]   # separate program:
+           [--preset SLOT=FILE] [--active N] [--fast] [--latency-ms] [--drop-rate] …  # fake DSP 408
 ```
 
 The server keeps **no persistent state**: presets live in the DSP and settings come from the CLI,
@@ -296,7 +306,8 @@ with live changes kept in memory. There is **no database** and no data volume.
 | Standalone executable | Download `dsp408-multiui-<version>-<os>-<arch>` from the Gitea release page, then `./dsp408-multiui --dsp-host IP` | Nothing (Python is bundled). Targets: linux-amd64, linux-arm64, windows-amd64. |
 | Docker | `docker run -d -p 8080:8080 -e DSP408_PIN=1234 <registry>/dsp408-multiui --dsp-host IP` | Docker |
 | Docker Compose | `docker compose up -d` with the provided `compose.yaml` (settings through environment variables) | Docker Compose |
-| Demo without a DSP | any of the above with `--simulator` | — |
+| Demo without a DSP | any of the above with `--demo` | — |
+| Test bench without a DSP | `dsp408-sim` (executable, `uv run dsp408-sim`, or `docker compose -f compose.sim.yaml up`), then the app with `--dsp-host` pointing at it | — |
 
 ## 8. User interface
 
@@ -304,7 +315,7 @@ Mobile-first, dark theme by default (stage use), system font stack, no external 
 
 **Global chrome.** A top bar shows the DSP status dot, the active preset name and the **lock
 button**, which has three states: free / mine (idle countdown, tap to release) / other (owner's
-name, read-only badge). A "SIMULATOR" badge is shown when the backend runs against the simulator. On a phone, a bottom tab bar offers **Mixer ·
+name, read-only badge). A "DEMO" badge is shown in demo mode. On a phone, a bottom tab bar offers **Mixer ·
 Matrix · Presets · Settings**; on desktop it becomes a side bar.
 
 **Mixer.** Channel strips for In A–D, then Out 1–8. On a phone, the strips scroll horizontally

@@ -5,7 +5,7 @@ The four launch modes of [SPEC §7.1](SPEC.md) and how each is produced.
 | Mode | Built by | Output |
 |---|---|---|
 | `uv run` from a clone | nothing to build: the UI build is committed in `src/dsp408_multiui/web/` | — |
-| Standalone executable | `packaging/exe.Dockerfile` (Linux, any arch) and `packaging/windows.Dockerfile` (Wine) | `dsp408-multiui-vX.Y.Z-linux-amd64`, `…-linux-arm64`, `…-windows-amd64.exe`, attached to the Gitea release |
+| Standalone executable | `packaging/exe.Dockerfile` (Linux, any arch) and `packaging/windows.Dockerfile` (Wine) | `dsp408-multiui-vX.Y.Z-linux-amd64`, `…-linux-arm64`, `…-windows-amd64.exe`, plus the simulator `dsp408-sim-vX.Y.Z-…` for each, attached to the Gitea release |
 | `docker run` / `docker compose` | `Dockerfile` (multi-arch with buildx) | `<gitea-host>/lord/dsp408-multiui:X.Y.Z` and `:latest` in the Gitea container registry |
 
 ## Keeping the committed UI up to date
@@ -55,14 +55,15 @@ docker buildx build --build-arg NAME=dsp408-multiui-windows-amd64 -f packaging/w
 docker build -t dsp408-multiui .
 ```
 
-Without Docker, `packaging/build_exe.sh` builds the executable for the current platform; it needs
-Python ≥ 3.12 and uv.
+Without Docker, `packaging/build_exe.sh` builds the executables (app and simulator) for the
+current platform; it needs Python ≥ 3.12 and uv.
 
 ## Status of the artefacts
 
 | Artefact | Built | Smoke-tested |
 |---|---|---|
-| Docker image (amd64) | yes, 236 MB | yes: `--simulator`, `/api/health`, Docker `HEALTHCHECK` reports healthy |
-| Linux amd64 executable | yes, 34 MB | yes: `--version`, `--simulator`, UI served |
+| Docker image (amd64) | yes, 236 MB | yes: demo mode, `/api/health`, Docker `HEALTHCHECK` reports healthy; `compose.sim.yaml` (app + `dsp408-sim`) online |
+| Linux amd64 executable | yes, 34 MB | yes: `--version`, demo mode, UI served |
+| Linux amd64 `dsp408-sim` executable | yes, 10 MB | `--version` |
 | Windows amd64 executable | yes, 14 MB | **no**: under Wine it fails to load `python312.dll` ("DLL initialization failed"). This is probably a Wine limitation with PyInstaller one-file executables; it must be checked on a real Windows machine |
 | Linux arm64 executable, arm64 image | not yet (no QEMU on the development machine) | — |

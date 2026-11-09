@@ -1,4 +1,4 @@
-# Standalone Linux executable, built for the target platform (use --platform linux/arm64 with QEMU).
+# Standalone Linux executables (web app + dsp408-sim), built for the target platform (use --platform linux/arm64 with QEMU).
 #   docker buildx build --platform linux/amd64 --build-arg NAME=dsp408-multiui-linux-amd64 \
 #     -f packaging/exe.Dockerfile -o dist .
 FROM python:3.12-bookworm AS build
@@ -7,7 +7,7 @@ WORKDIR /src
 COPY . .
 ARG NAME=dsp408-multiui
 ENV UV_PROJECT_ENVIRONMENT=/tmp/venv
-RUN packaging/build_exe.sh "$NAME" && "./dist/$NAME" --version
+RUN packaging/build_exe.sh "$NAME" && for exe in dist/*; do "./$exe" --version; done
 
 FROM scratch
 COPY --from=build /src/dist/ /
