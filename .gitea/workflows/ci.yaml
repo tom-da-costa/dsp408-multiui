@@ -34,6 +34,28 @@ jobs:
       - name: Tests
         run: uv run pytest --cov --cov-report=term-missing
 
+  e2e:
+    # dsp408-sim and dsp408-multiui started side by side as two programs; the app reaches the
+    # simulated DSP over TCP like a real one (tests/e2e/test_stack.py).
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        env:
+          UV_VERSION: "0.13.0"
+        run: |
+          curl -LsSf "https://astral.sh/uv/${UV_VERSION}/install.sh" | sh
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+
+      - name: Install dependencies
+        run: uv sync --locked
+
+      - name: Simulator + app end to end
+        env:
+          DSP408_E2E_LOG_DIR: e2e-logs
+        run: uv run pytest -m e2e -v
+
   web:
     runs-on: ubuntu-latest
     container:

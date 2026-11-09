@@ -69,6 +69,7 @@ uv run dsp408-multiui --demo              # demo: backend + in-process simulated
 uv run dsp408-sim --host 127.0.0.1        # separate simulated DSP 408 on :9761, with a console
 uv run dsp408-multiui --dsp-host 127.0.0.1  # backend connected to it like to a real DSP
 uv run pytest                             # tests
+make e2e                                  # dsp408-sim + dsp408-multiui as two programs (pytest -m e2e)
 uv run ruff check . && uv run ruff format --check . && uv run mypy
 cd web && npm ci && npm run dev           # UI dev server (proxies /api and /ws to :8080)
 make web                                  # rebuild the committed UI (Node or Docker; CI fails if stale)

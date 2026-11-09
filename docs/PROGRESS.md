@@ -170,6 +170,10 @@ Findings (details in PROTOCOL.md):
   (the simulator crashed on "Pas touché svp")
 - [x] Tests: storage, console, CLI, the backend's device session against the program, the program
   as a subprocess (SIGTERM, console on stdin); compose bench and both executables built locally
+- [x] End-to-end tests in CI (`e2e` job, `make e2e`, `tests/e2e/`): `dsp408-sim` and
+  `dsp408-multiui` start side by side; HTTP login, two WebSocket clients, writes fanned out to
+  linked channels and checked on the simulated DSP over TCP, lock, preset store persisted, DSP
+  restart → reconnect with the stored preset active
 
 ## Phase 9: Hardening and later items
 - [ ] (see PLAN)
