@@ -8,6 +8,7 @@
     posToDb,
     quantizeGain,
   } from "../lib/scale";
+  import { holdRepeat } from "../lib/repeat";
   import { throttleLatest } from "../lib/throttle";
 
   interface Props {
@@ -25,8 +26,14 @@
   let editing = $state(false);
   let draft = $state("");
 
-  // While dragging, show the local value; otherwise follow the server.
-  const shown = $derived(dragging ? local : value);
+  // While dragging, show the local value; after − / +, the value sent until the DSP has it;
+  // otherwise follow the server.
+  let pending = $state<number | null>(null);
+  let settle: ReturnType<typeof setTimeout> | undefined;
+  const shown = $derived(dragging ? local : (pending ?? value));
+  $effect(() => {
+    if (pending !== null && Math.abs(value - pending) < 0.05) pending = null;
+  });
   const sender = throttleLatest((db: number) => onchange(db), 50);
 
   function fromPointer(clientY: number): number {
@@ -58,12 +65,18 @@
     dragging = false;
   }
 
-  /** Move by `count` device steps (0.1 dB, or 0.5 dB below -20 dB). */
+  /** Move by `count` device steps (0.1 dB, or 0.5 dB below -20 dB), chaining from the last
+   * value sent so that a held button does not wait for the DSP's answer. */
   function nudge(count: number) {
     if (disabled) return;
-    let db = value;
+    const from = pending ?? value;
+    let db = from;
     for (let i = 0; i < Math.abs(count); i++) db = gainStep(db, count > 0 ? 1 : -1);
-    if (db !== value) onchange(db);
+    if (db === from) return;
+    pending = db;
+    clearTimeout(settle);
+    settle = setTimeout(() => (pending = null), 1500);
+    onchange(db);
   }
 
   function key(event: KeyboardEvent) {
@@ -108,7 +121,12 @@
       {formatDb(shown)}
     </button>
   {/if}
-  <button class="step" onclick={() => nudge(1)} {disabled} aria-label="gain up">+</button>
+  <button
+    class="step"
+    use:holdRepeat={{ step: (n) => nudge(n), disabled }}
+    {disabled}
+    aria-label="gain up (hold to repeat)">+</button
+  >
   <div class="track" bind:this={track}>
     <div class="unity" style:bottom={`${dbToPos(0) * 100}%`}></div>
     <div
@@ -129,7 +147,12 @@
       onkeydown={key}
     ></div>
   </div>
-  <button class="step" onclick={() => nudge(-1)} {disabled} aria-label="gain down">−</button>
+  <button
+    class="step"
+    use:holdRepeat={{ step: (n) => nudge(-n), disabled }}
+    {disabled}
+    aria-label="gain down (hold to repeat)">−</button
+  >
 </div>
 
 <style>

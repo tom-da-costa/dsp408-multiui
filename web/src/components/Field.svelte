@@ -1,6 +1,7 @@
 <script lang="ts">
   // One numeric parameter: label, value (tap to type), − / + steppers and a knob-drag slider.
   import type { Snippet } from "svelte";
+  import { holdRepeat } from "../lib/repeat";
   import { type Direction, parseNumber, type Scale, snap } from "../lib/scale";
   import Slider from "./Slider.svelte";
 
@@ -49,21 +50,39 @@
   let editing = $state(false);
   let draft = $state("");
 
-  const shown = $derived(preview ?? value);
-  const text = $derived(format ? format(shown) : shown.toFixed(digits));
+  /** Value sent by − / + that the device has not confirmed yet (see stepBy). */
+  let pending = $state<number | null>(null);
+  let settle: ReturnType<typeof setTimeout> | undefined;
+  const shown = $derived(preview ?? pending ?? value);
+  const display = (v: number) => (format ? format(v) : v.toFixed(digits));
+  const text = $derived(display(shown));
   const quantize = (v: number) => snap(v, min, max, resolution);
 
-  // − / + (and the slider's arrow keys): `count` device steps, one step per press.
+  // − / + (held: auto-repeat) and the slider's arrow keys: `count` device steps. Steps chain
+  // from the last value sent, not from `value`, which only follows once the DSP has answered;
+  // the field shows that pending value until the device's value catches up.
+
   function stepBy(count: number) {
     if (disabled || count === 0) return;
     const direction: Direction = count > 0 ? 1 : -1;
-    let target = value;
+    const from = pending ?? value;
+    let target = from;
     for (let i = 0; i < Math.abs(count); i++) {
       target = next ? next(target, direction) : target + direction * step;
     }
     const q = next ? Math.min(max, Math.max(min, target)) : quantize(target);
-    if (q !== value) onchange(q);
+    if (q === from) return;
+    pending = q;
+    clearTimeout(settle);
+    settle = setTimeout(() => (pending = null), 1500); // never stay stuck on a refused value
+    onchange(q);
   }
+
+  $effect(() => {
+    // The device reached the value we sent: show it again.
+    // (Compared as displayed: the server rounds, e.g. Hz to 2 decimals.)
+    if (pending !== null && display(value) === display(pending)) pending = null;
+  });
 
   function startEdit() {
     if (disabled) return;
@@ -82,8 +101,11 @@
 <div class="wrap">
 <div class="field" class:disabled class:noslider={!slider}>
   <span class="label">{label}</span>
-  <button class="step minus" onclick={() => stepBy(-1)} {disabled} aria-label={`${label} down`}
-    >−</button
+  <button
+    class="step minus"
+    use:holdRepeat={{ step: (n) => stepBy(-n), disabled }}
+    {disabled}
+    aria-label={`${label} down (hold to repeat)`}>−</button
   >
   {#if editing}
     <form onsubmit={commit} class="value">
@@ -104,7 +126,12 @@
       <span class="num">{text}</span>{#if unit}<span class="unit">{unit}</span>{/if}
     </button>
   {/if}
-  <button class="step plus" onclick={() => stepBy(1)} {disabled} aria-label={`${label} up`}>+</button>
+  <button
+    class="step plus"
+    use:holdRepeat={{ step: (n) => stepBy(n), disabled }}
+    {disabled}
+    aria-label={`${label} up (hold to repeat)`}>+</button
+  >
   {#if slider}
     <div class="slide">
       <Slider
