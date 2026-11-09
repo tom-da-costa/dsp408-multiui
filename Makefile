@@ -1,4 +1,4 @@
-.PHONY: help sync lint format typecheck test e2e cov check web web-test web-dev dev
+.PHONY: help sync lint format typecheck test e2e cov check web web-test web-dev backend dev
 
 help:  ## Show this help
 	@grep -E '^[a-z-]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  %-12s %s\n", $$1, $$2}'
@@ -53,6 +53,9 @@ web-dev:  ## Vite dev server only, hot reload on :5173 (start a backend on :8080
 # Backend of `make dev`: demo mode by default. Against the separate simulator instead:
 #   uv run dsp408-sim --host 127.0.0.1   then   make dev DEV_BACKEND="--dsp-host 127.0.0.1"
 DEV_BACKEND ?= --demo
+backend:  ## Backend only (--demo) on :8080, for `make web-dev` in another terminal
+	uv run dsp408-multiui $(DEV_BACKEND) --host 127.0.0.1 --port 8080
+
 dev:  ## UI with hot reload on http://<this-machine>:5173, backend (--demo) on :8080
 	@trap 'kill 0' INT TERM EXIT; \
 	uv run dsp408-multiui $(DEV_BACKEND) --host 127.0.0.1 --port 8080 & \
