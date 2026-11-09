@@ -93,11 +93,11 @@ def create_app(
     auth = AuthManager(config.pin)
     lock = LockManager(config.lock_idle_timeout_s)
     simulator: SimulatorServer | None = None
-    if config.simulator:
+    if config.demo:
         device = simulated_device or SimulatedDevice(profile)
         faults = Faults()
         if simulated_device is None:
-            apply_scenario(config.scenario, device, faults)
+            apply_scenario(config.demo_scenario, device, faults)
         simulator = SimulatorServer(device, host="127.0.0.1", port=0, faults=faults)
     # The simulator's port is only known once it runs, so the session resolves it lazily.
     session = DeviceSession(
@@ -179,7 +179,7 @@ def create_app(
             "status": "ok",
             "device_status": session.status.value,
             "version": __version__,
-            "simulator": config.simulator,
+            "demo": config.demo,
         }
 
     @app.websocket("/ws")

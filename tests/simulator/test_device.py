@@ -8,6 +8,7 @@ from dsp408_multiui.protocol import responses as r
 from dsp408_multiui.protocol.meters import decode_meters
 from dsp408_multiui.protocol.profile import DEFAULT_PROFILE as P
 from dsp408_multiui.simulator import Faults, SimulatedDevice, apply_scenario
+from dsp408_multiui.simulator.device import Link
 from dsp408_multiui.simulator.meters import Shape, Source
 
 
@@ -152,12 +153,14 @@ def test_linked_channels_follow_writes_like_the_408(device: SimulatedDevice) -> 
 
 
 def test_pages_and_meters_need_the_init_sequence(device: SimulatedDevice) -> None:
-    device.on_connect()
-    assert device.handle(c.PollMeters().encode(P)).response is None
-    assert device.handle(c.ReadConfigPage(0).encode(P)).response is None
-    assert isinstance(ask(device, c.SetGain(4, 200)), r.Ack)  # writes still work
-    ask(device, c.Handshake())
-    assert isinstance(ask(device, c.PollMeters()), r.MeterFrame)
+    link, other = Link(), Link()
+    assert device.handle(c.PollMeters().encode(P), link).response is None
+    assert device.handle(c.ReadConfigPage(0).encode(P), link).response is None
+    assert isinstance(device.handle(c.SetGain(4, 200).encode(P), link).response, r.Ack)
+    device.handle(c.Handshake().encode(P), link)
+    assert isinstance(device.handle(c.PollMeters().encode(P), link).response, r.MeterFrame)
+    # each connection needs its own init sequence
+    assert device.handle(c.PollMeters().encode(P), other).response is None
 
 
 def test_store_and_recall(device: SimulatedDevice) -> None:

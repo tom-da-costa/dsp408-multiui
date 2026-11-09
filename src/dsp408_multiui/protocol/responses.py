@@ -9,7 +9,11 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import ClassVar, Self
 
-from dsp408_multiui.protocol.codecs import PRESET_NAME_LENGTH, decode_name, encode_name
+from dsp408_multiui.protocol.codecs import (
+    PRESET_NAME_LENGTH,
+    decode_name,
+    encode_stored_name,
+)
 from dsp408_multiui.protocol.commands import Opcode
 
 
@@ -161,7 +165,8 @@ class PresetName(Response):
     name: str
 
     def _pack(self) -> bytes:
-        return bytes((self.index,)) + encode_name(self.name, PRESET_NAME_LENGTH, b" ")
+        # A name the device already holds (Latin-1 on the 408, e.g. "Pas touché svp").
+        return bytes((self.index,)) + encode_stored_name(self.name, PRESET_NAME_LENGTH, b" ")
 
     @classmethod
     def _unpack(cls, data: bytes) -> Self:

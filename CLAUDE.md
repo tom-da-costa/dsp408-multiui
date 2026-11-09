@@ -30,8 +30,9 @@ doing anything substantial:
   built UI in `src/dsp408_multiui/web/` is committed), standalone PyInstaller executable,
   `docker run`, `docker compose up`.
 - **Develop and test against the simulator.** It reproduces the DSP 408's recorded behaviour
-  (`tests/hardware/`). Never assume an unverified protocol detail is true: put it in the
-  `ProtocolProfile` (SPEC §4.6).
+  (`tests/hardware/`). `dsp408-sim` is a separate program that the backend reaches over TCP
+  like the real device; `serve --demo` runs the same simulated device in-process. Never assume
+  an unverified protocol detail is true: put it in the `ProtocolProfile` (SPEC §4.6).
 - **The owner's real DSP 408 is in production use.** Read-only commands (`probe info`, `probe
   meters`, `probe dump-config`, `serve` without clients writing) are fine. **Never write to it,
   recall or store a preset without the owner's explicit approval in the current session**, and
@@ -64,8 +65,11 @@ doing anything substantial:
 
 ```bash
 uv sync                                   # install
-uv run dsp408-multiui --simulator         # backend + embedded simulator on :8080
+uv run dsp408-multiui --demo              # demo: backend + in-process simulated DSP on :8080
+uv run dsp408-sim --host 127.0.0.1        # separate simulated DSP 408 on :9761, with a console
+uv run dsp408-multiui --dsp-host 127.0.0.1  # backend connected to it like to a real DSP
 uv run pytest                             # tests
+make e2e                                  # dsp408-sim + dsp408-multiui as two programs (pytest -m e2e)
 uv run ruff check . && uv run ruff format --check . && uv run mypy
 cd web && npm ci && npm run dev           # UI dev server (proxies /api and /ws to :8080)
 make web                                  # rebuild the committed UI (Node or Docker; CI fails if stale)

@@ -7,7 +7,7 @@ One backend process owns the TCP connection to the DSP. It serves a mobile-first
 every client on the local network and keeps them in sync in real time. It works fully offline.
 
 > **Status: in development, verified on a real DSP 408 (firmware V0104P).** Try it without a
-> DSP: `uv run dsp408-multiui --simulator`, then open http://localhost:8080 (code `0000`).
+> DSP: `uv run dsp408-multiui --demo`, then open http://localhost:8080 (code `0000`).
 > Progress is tracked in [docs/PROGRESS.md](docs/PROGRESS.md).
 
 ## Features
@@ -22,7 +22,8 @@ every client on the local network and keeps them in sync in real time. It works 
   active (released after 120 s of inactivity)
 - Access protected by a shared code (default `0000`, set with `--pin`)
 - No database, no internet access needed, no external assets
-- Protocol-accurate DSP simulator for development, tests and demos
+- `dsp408-sim`: a separate program that simulates a DSP 408 on the network, to test the app
+  without a device (presets kept across restarts, fault injection, live console)
 
 ## Usage
 
@@ -31,8 +32,8 @@ every client on the local network and keeps them in sync in real time. It works 
 git clone <repo-url> && cd dsp408-multiui
 uv run dsp408-multiui --dsp-host 192.168.1.50 --pin 1234
 
-# Demo without a DSP
-uv run dsp408-multiui --simulator
+# Demo without a DSP (a simulated DSP runs inside the app)
+uv run dsp408-multiui --demo
 
 # Docker
 docker run -d -p 8080:8080 -e DSP408_PIN=1234 <registry>/dsp408-multiui --dsp-host 192.168.1.50
@@ -46,6 +47,36 @@ Standalone executables (linux-amd64, linux-arm64, windows-amd64) are attached to
 release: download one and run `./dsp408-multiui-<version>-linux-amd64 --dsp-host 192.168.1.50`.
 Then open `http://<server-ip>:8080` from any device on the LAN. See
 [docs/release.md](docs/release.md) for how releases are built.
+
+## Testing without a DSP: `dsp408-sim`
+
+`dsp408-sim` is a separate program that behaves like a DSP 408 on the network (TCP port 9761).
+The app connects to it exactly as to the real device, so the whole path is tested: connection,
+init sequence, timeouts, reconnects, several clients.
+
+```bash
+# Terminal 1: the simulated DSP (listens on 0.0.0.0:9761, like a real one)
+uv run dsp408-sim --state-dir sim-state
+# Terminal 2: the app, pointed at it (or at the IP of the machine running dsp408-sim)
+uv run dsp408-multiui --dsp-host 127.0.0.1
+
+# Both in Docker; `docker attach dsp408-sim` opens the simulator console
+docker compose -f compose.sim.yaml up -d
+```
+
+- `--state-dir DIR` keeps stored presets and the active preset across restarts (one `Uxx.bin`
+  per preset, the same format as `dsp408-multiui probe dump-config`).
+- `--preset 8=u08.bin` loads a config dumped from a real DSP into U08.
+- `--scenario demo|silent|clipping|stress` sets the initial presets and input signals.
+- `--fast` answers preset recall and store at once (the real DSP takes about 3 s and 7 s).
+- `--latency-ms`, `--drop-rate`, `--corrupt-rate`, `--nan-rate` and `--second-client
+  accept|refuse|kick` inject faults.
+- Console (when run in a terminal; type `help`): `status`, `presets`, `recall N` (front-panel
+  recall), `kick` (drop the connections), `offline 10` (unreachable for 10 s), `latency 200`,
+  `drop 0.1`, `signal A steady -3`, `quit`.
+
+Every option also reads a `DSP408_SIM_<NAME>` environment variable. A `dsp408-sim` executable is
+attached to each release next to the app's.
 
 ## Documentation
 

@@ -1,7 +1,8 @@
 """Command-line entry point (``dsp408-multiui``).
 
-``serve`` (the default) runs the web application; ``simulate``, ``probe`` and ``proxy`` are
-developer tools. Every option can also come from a ``DSP408_<NAME>`` environment variable.
+``serve`` (the default) runs the web application; ``probe`` and ``proxy`` are developer tools.
+The simulated DSP is a separate program, ``dsp408-sim`` (``simulator/cli.py``). Every option can
+also come from a ``DSP408_<NAME>`` environment variable.
 """
 
 from __future__ import annotations
@@ -95,25 +96,17 @@ def build_parser() -> argparse.ArgumentParser:
         help="allow parameters not yet verified on a DSP 408",
     )
     serve.add_argument(
-        "--simulator",
+        "--demo",
         action="store_true",
-        default=_env_flag("SIMULATOR"),
-        help="run against an embedded simulated DSP",
+        default=_env_flag("DEMO"),
+        help="demo mode: no DSP, a simulated one runs inside this process "
+        "(to test against a separate fake DSP on the network, use dsp408-sim)",
     )
     serve.add_argument(
-        "--scenario", default=_env("SCENARIO", "demo"), help="simulator scenario (with --simulator)"
+        "--demo-scenario",
+        default=_env("DEMO_SCENARIO", "demo"),
+        help="presets and signals of the demo mode (demo, silent, clipping, stress)",
     )
-
-    # simulate
-    sim = sub.add_parser("simulate", parents=[common], help="run a simulated DSP 408 on TCP")
-    sim.add_argument("--host", default="127.0.0.1", help="listen address (default 127.0.0.1)")
-    sim.add_argument("--port", type=int, default=DSP_PORT)
-    sim.add_argument("--scenario", default="demo")
-    sim.add_argument("--second-client", choices=["accept", "refuse", "kick"], default="accept")
-    sim.add_argument("--latency-ms", type=float, default=0.0, help="extra latency per response")
-    sim.add_argument("--drop-rate", type=float, default=0.0)
-    sim.add_argument("--corrupt-rate", type=float, default=0.0)
-    sim.add_argument("--frame-log", type=Path, help="append every frame to this JSONL file")
 
     # probe
     probe = sub.add_parser("probe", parents=[common], help="query a DSP or the simulator directly")
@@ -166,11 +159,11 @@ async def _serve(args: argparse.Namespace, profile: ProtocolProfile) -> int:
         resync_interval_s=args.resync_interval,
         command_timeout_s=args.command_timeout,
         experimental=args.experimental,
-        simulator=args.simulator,
-        scenario=args.scenario,
+        demo=args.demo,
+        demo_scenario=args.demo_scenario,
     )
     app = create_app(config, profile)
-    target = "embedded simulator" if config.simulator else f"{config.dsp_host}:{config.dsp_port}"
+    target = "demo mode (no DSP)" if config.demo else f"{config.dsp_host}:{config.dsp_port}"
     print(
         f"dsp408-multiui {__version__}: http://{config.host}:{config.port} -> {target}", flush=True
     )
@@ -185,46 +178,6 @@ async def _serve(args: argparse.Namespace, profile: ProtocolProfile) -> int:
         )
     )
     await server.serve()
-    return 0
-
-
-async def _simulate(args: argparse.Namespace, profile: ProtocolProfile) -> int:
-    from dsp408_multiui.framelog import FrameLog
-    from dsp408_multiui.simulator import (
-        Faults,
-        SecondClient,
-        SimulatedDevice,
-        SimulatorServer,
-        apply_scenario,
-    )
-
-    device = SimulatedDevice(profile)
-    faults = Faults(
-        extra_latency_s=args.latency_ms / 1000,
-        drop_rate=args.drop_rate,
-        corrupt_rate=args.corrupt_rate,
-    )
-    apply_scenario(args.scenario, device, faults)
-    frame_log = FrameLog(args.frame_log, profile) if args.frame_log else None
-    server = SimulatorServer(
-        device,
-        host=args.host,
-        port=args.port,
-        faults=faults,
-        second_client=SecondClient(args.second_client),
-        frame_log=frame_log,
-    )
-    await server.start()
-    print(
-        f"Simulated DSP 408 ({args.scenario}) on {args.host}:{server.bound_port}",
-        flush=True,
-    )
-    try:
-        await server.serve_forever()
-    finally:
-        await server.stop()
-        if frame_log:
-            frame_log.close()
     return 0
 
 
@@ -285,7 +238,7 @@ async def _proxy(args: argparse.Namespace, profile: ProtocolProfile) -> int:
     return 0
 
 
-COMMANDS = {"serve": _serve, "simulate": _simulate, "probe": _probe, "proxy": _proxy}
+COMMANDS = {"serve": _serve, "probe": _probe, "proxy": _proxy}
 
 
 def _with_default_command(argv: Sequence[str]) -> list[str]:

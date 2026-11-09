@@ -29,7 +29,7 @@
     <strong>{app.device?.preset_name || "DSP 408"}</strong>
     <span class="muted">{status === "online" ? (app.status?.model ?? "") : status}</span>
   </div>
-  {#if app.hello?.simulator}<span class="sim">SIMULATOR</span>{/if}
+  {#if app.hello?.demo}<span class="sim" title="No DSP: a simulated one runs in the server">DEMO</span>{/if}
   {#if app.lockedByOther}
     <span class="lock other" title="Controls are read-only">🔒 {app.lock?.owner_name}</span>
   {:else}

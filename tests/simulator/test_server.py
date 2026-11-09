@@ -134,6 +134,17 @@ async def test_second_client_accepted(server: SimulatorServer) -> None:
         assert server.client_count == 2
 
 
+async def test_second_client_does_not_reset_the_first(server: SimulatorServer) -> None:
+    async with connection(server) as first:
+        await first.request(c.Handshake())
+        assert isinstance(await first.request(c.PollMeters()), r.MeterFrame)
+        async with connection(server) as second:
+            await second.request(c.GetDeviceInfo())
+            assert isinstance(await first.request(c.PollMeters()), r.MeterFrame)
+            with pytest.raises(TransportTimeoutError):  # not initialised on this connection
+                await second.request(c.PollMeters(), timeout=0.1)
+
+
 async def test_frame_log() -> None:
     buffer = io.StringIO()
     log = FrameLog(buffer, P)

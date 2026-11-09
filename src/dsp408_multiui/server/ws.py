@@ -184,7 +184,7 @@ class Hub:
             "client_id": client.id,
             "name": client.session.name,
             "server_version": __version__,
-            "simulator": self.config.simulator,
+            "demo": self.config.demo,
             "experimental": self.config.allow_unverified,
             "verified_kinds": sorted(HARDWARE_VERIFIED),
             "profile": {

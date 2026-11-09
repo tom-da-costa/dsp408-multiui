@@ -1,4 +1,5 @@
-# Release on a version tag (vX.Y.Z): standalone executables + multi-arch Docker image.
+# Release on a version tag (vX.Y.Z): standalone executables (the web app and the dsp408-sim
+# simulator) + multi-arch Docker image.
 # Prerequisites (docs/release.md): the runner gives jobs access to Docker (socket mounted) with
 # QEMU binfmt registered for arm64, and the repository has a REGISTRY_TOKEN secret (a token with
 # package write access) for the container registry.
@@ -43,7 +44,7 @@ jobs:
             --build-arg "NAME=dsp408-multiui-${TAG}-linux-${{ matrix.arch }}" \
             -f packaging/exe.Dockerfile -o dist .
       - name: Upload to the release
-        run: packaging/release_upload.sh "$TAG" dist/dsp408-multiui-*-linux-${{ matrix.arch }}
+        run: packaging/release_upload.sh "$TAG" dist/dsp408-*-linux-${{ matrix.arch }}
 
   exe-windows:
     needs: check-version
@@ -55,7 +56,7 @@ jobs:
           docker buildx build --build-arg "NAME=dsp408-multiui-${TAG}-windows-amd64" \
             -f packaging/windows.Dockerfile -o dist .
       - name: Upload to the release
-        run: packaging/release_upload.sh "$TAG" dist/dsp408-multiui-*-windows-amd64.exe
+        run: packaging/release_upload.sh "$TAG" dist/dsp408-*-windows-amd64.exe
 
   docker:
     needs: check-version

@@ -156,6 +156,25 @@ Findings (details in PROTOCOL.md):
 - The simulator reproduces all 40 recorded writes byte for byte
   (`tests/fixtures/hardware/write_diffs.json`).
 
+## Standalone simulator (`dsp408-sim`)
+
+- [x] Separate program `dsp408-sim` (entry point, `python -m dsp408_multiui.simulator`, own
+  executable in the release, `compose.sim.yaml`); `dsp408-multiui simulate` removed
+- [x] `serve --simulator` renamed `--demo` (`DSP408_DEMO`, `--demo-scenario`, hello field `demo`,
+  "DEMO" badge in the UI)
+- [x] Presets kept across restarts (`--state-dir`), config dumps loaded into slots (`--preset`),
+  `--active`, `--identity`, `--fast`, fault options, `DSP408_SIM_*` environment variables
+- [x] Interactive console: status, presets, front-panel recall, kick, offline, faults, signals
+- [x] Fixes found on the way: the init state is now per connection (a second client no longer
+  stops the first one's meters); preset names read from the device are sent back in Latin-1
+  (the simulator crashed on "Pas touché svp")
+- [x] Tests: storage, console, CLI, the backend's device session against the program, the program
+  as a subprocess (SIGTERM, console on stdin); compose bench and both executables built locally
+- [x] End-to-end tests in CI (`e2e` job, `make e2e`, `tests/e2e/`): `dsp408-sim` and
+  `dsp408-multiui` start side by side; HTTP login, two WebSocket clients, writes fanned out to
+  linked channels and checked on the simulated DSP over TCP, lock, preset store persisted, DSP
+  restart → reconnect with the stored preset active
+
 ## Phase 9: Hardening and later items
 - [ ] (see PLAN)
 
@@ -174,3 +193,4 @@ Findings (details in PROTOCOL.md):
 | 2026-11-07 | Phase 6: Docker image, compose, executables, release workflow (first release pending). |
 | 2026-11-07 | Phase 7 done: channel detail screens for every parameter; partial-write fix. |
 | 2026-11-08 | Phase 8: DSP 408 verified on hardware; protocol, simulator and UI updated. |
+| 2026-11-09 | Standalone simulator program `dsp408-sim`; `--simulator` renamed `--demo`. |

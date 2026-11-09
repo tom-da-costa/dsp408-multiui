@@ -60,7 +60,8 @@ packaging/pyinstaller.spec
 Development workflow:
 
 - `uv sync`
-- `uv run dsp408-multiui --simulator`: backend and simulator in one process
+- `uv run dsp408-multiui --demo`: backend and simulated DSP in one process
+- or `uv run dsp408-sim` and `uv run dsp408-multiui --dsp-host 127.0.0.1`: two programs over TCP
 - in `web/`: `npm run dev` (Vite dev server with `/api` and `/ws` proxied to `:8080`)
 
 ---
@@ -124,7 +125,7 @@ round-trips (encode → decode → identical).
   disconnects. Controlled through the API for tests and through CLI flags.
 - `simulator/scenarios/`: named setups (`demo`, `silent`, `clipping`, `stress`).
 - Frame log (JSONL) of everything received.
-- CLI: `dsp408-multiui simulate --port 9761 --profile … --scenario demo`.
+- CLI: a separate program, `dsp408-sim --port 9761 --profile … --scenario demo`.
 
 **1.2 Tools**
 
@@ -205,7 +206,7 @@ survives every fault scenario.
   validation → lock check → pipeline → `result`.
 - `server/settings.py`: live meter rate (1–10 Hz), broadcast on change.
 - `server/app.py` and `cli.py`: the `serve` options and environment variables (SPEC §7);
-  `--simulator` starts an embedded simulator; static files with an SPA fallback;
+  `--demo` (formerly `--simulator`) starts an embedded simulated DSP; static files with an SPA fallback;
   `/api/health`.
 - Tests: FastAPI `TestClient` with several WebSocket clients against the embedded simulator:
   last-writer-wins ordering, lock denial, idle expiry, renewal through activity, Origin check,
@@ -234,7 +235,7 @@ activity.
   - `Toggle`, `NumberField`, `ConfirmDialog`, `Toast`, `LockButton` (idle countdown),
     `StatusDot`, `SimulatorBadge`.
 - Screens: Login, Mixer, Matrix, Presets, Settings.
-- Checks on a real phone against `serve --simulator`: 360 px layout, scrolling never moves a
+- Checks on a real phone against `serve --demo` or `dsp408-sim`: 360 px layout, scrolling never moves a
   fader, nothing is hidden under the iOS safe area.
 - Optional: a Playwright smoke test (headless Chromium, phone viewport) against the simulator,
   in CI.
@@ -251,7 +252,7 @@ matrix, preset recall/store and live meters work, and the lock behaves as specif
   `git clone && uv run dsp408-multiui --dsp-host IP` work without Node.
 - **Standalone executables** (SPEC D10): PyInstaller one-file builds of the CLI (UI and default
   profile included) for linux-amd64, linux-arm64 and windows-amd64. A smoke test runs
-  `--version` and `--simulator` with a health check on each.
+  `--version` and `--demo` with a health check on each.
 - **Docker**: slim Python image, multi-arch (amd64 and arm64, built with buildx), non-root user,
   `HEALTHCHECK` on `/api/health`, pushed to the Gitea container registry.
 - **Docker Compose**: `compose.yaml` with one service, `restart: unless-stopped`, port 8080, and
@@ -322,7 +323,7 @@ Each item gets its own small iteration, prioritised with the owner:
 | Device | fake transport + fake clock; simulator | Pipeline coalescing, priorities, timeouts, session lifecycle, reconnect |
 | Server | FastAPI TestClient (WebSocket) + embedded simulator | Auth, activity lock, fan-out, validation, slow-client isolation |
 | UI | vitest + svelte-check (+ optional Playwright) | Store logic (rev gaps, drag guard, activity throttle), units, smoke test |
-| Distribution | CI smoke tests | Executable `--simulator` health check, Docker health check, `web-check` |
+| Distribution | CI smoke tests | Executable `--demo` health check, Docker health check, `web-check` |
 | Hardware | manual checklist (phase 8) | Real-device verification before releases |
 
 ## Main risks
