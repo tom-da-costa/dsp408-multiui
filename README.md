@@ -43,7 +43,8 @@ cp .env.example .env   # set DSP408_HOST, DSP408_PIN …
 docker compose up -d
 ```
 
-Standalone executables (linux-amd64, linux-arm64, windows-amd64) are attached to each Gitea
+The latest build of `main` is always available as the **main** pre-release on Gitea (fixed file
+names, rebuilt on every push). Standalone executables (linux-amd64, linux-arm64, windows-amd64) are attached to each Gitea
 release: download one and run `./dsp408-multiui-<version>-linux-amd64 --dsp-host 192.168.1.50`.
 Then open `http://<server-ip>:8080` from any device on the LAN. See
 [docs/release.md](docs/release.md) for how releases are built.

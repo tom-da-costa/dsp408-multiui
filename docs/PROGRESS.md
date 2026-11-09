@@ -175,6 +175,14 @@ Findings (details in PROTOCOL.md):
   linked channels and checked on the simulated DSP over TCP, lock, preset store persisted, DSP
   restart → reconnect with the stored preset active
 
+## Rolling "main" release
+
+- [x] `release.yaml` also runs on every push to `main`: tests, then the pre-release **main** (tag
+  `main-latest`) is recreated with the executables of the app and of `dsp408-sim`
+  (`packaging/release.sh`); image tag `:main`
+- [x] Runner checked: Docker and buildx OK; no QEMU (arm64 skipped with a warning); the Actions
+  token cannot push packages, so the image waits for a `REGISTRY_TOKEN` secret
+
 ## Phase 9: Hardening and later items
 - [ ] (see PLAN)
 
@@ -194,3 +202,4 @@ Findings (details in PROTOCOL.md):
 | 2026-11-07 | Phase 7 done: channel detail screens for every parameter; partial-write fix. |
 | 2026-11-08 | Phase 8: DSP 408 verified on hardware; protocol, simulator and UI updated. |
 | 2026-11-09 | Standalone simulator program `dsp408-sim`; `--simulator` renamed `--demo`. |
+| 2026-11-09 | Rolling "main" pre-release rebuilt on every push to `main`. |
