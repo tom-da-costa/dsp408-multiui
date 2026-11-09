@@ -71,7 +71,7 @@ uv run dsp408-multiui --dsp-host 127.0.0.1  # backend connected to it like to a 
 uv run pytest                             # tests
 make e2e                                  # dsp408-sim + dsp408-multiui as two programs (pytest -m e2e)
 uv run ruff check . && uv run ruff format --check . && uv run mypy
-cd web && npm ci && npm run dev           # UI dev server (proxies /api and /ws to :8080)
+make dev                                  # UI hot reload on :5173 + backend --demo on :8080 (Node or Docker)
 make web                                  # rebuild the committed UI (Node or Docker; CI fails if stale)
 make web-test                             # svelte-check + vitest
 ```

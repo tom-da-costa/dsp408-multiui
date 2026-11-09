@@ -1,4 +1,4 @@
-.PHONY: help sync lint format typecheck test e2e cov check web web-test web-dev
+.PHONY: help sync lint format typecheck test e2e cov check web web-test web-dev dev
 
 help:  ## Show this help
 	@grep -E '^[a-z-]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  %-12s %s\n", $$1, $$2}'
@@ -32,6 +32,11 @@ check: lint typecheck test e2e  ## Everything CI runs
 NODE_DOCKER = docker run --rm -u $$(id -u):$$(id -g) -e HOME=/tmp -e npm_config_update_notifier=false \
 	-v $(CURDIR):/app -w /app/web node:22-alpine
 NPM = $(if $(shell command -v npm 2>/dev/null),cd web && npm,$(NODE_DOCKER) npm)
+# The dev server needs the host network (to reach the backend on 127.0.0.1:8080 and to be
+# reachable from phones on the LAN), and a TTY when there is one.
+NPM_DEV = $(if $(shell command -v npm 2>/dev/null),cd web && npm,docker run --rm --init \
+	$$([ -t 0 ] && echo -it) --network host -u $$(id -u):$$(id -g) -e HOME=/tmp \
+	-e npm_config_update_notifier=false -v $(CURDIR):/app -w /app/web node:22-alpine npm)
 
 web:  ## Build the UI into src/dsp408_multiui/web (the build is committed)
 	$(NPM) ci --no-audit --no-fund
@@ -42,5 +47,13 @@ web-test:  ## Type-check and unit-test the UI
 	$(NPM) run check
 	$(NPM) test
 
-web-dev:  ## Vite dev server (run `uv run dsp408-multiui --demo` alongside)
-	cd web && npm run dev
+web-dev:  ## Vite dev server only, hot reload on :5173 (start a backend on :8080 alongside)
+	$(NPM_DEV) run dev -- --host 0.0.0.0
+
+# Backend of `make dev`: demo mode by default. Against the separate simulator instead:
+#   uv run dsp408-sim --host 127.0.0.1   then   make dev DEV_BACKEND="--dsp-host 127.0.0.1"
+DEV_BACKEND ?= --demo
+dev:  ## UI with hot reload on http://<this-machine>:5173, backend (--demo) on :8080
+	@trap 'kill 0' INT TERM EXIT; \
+	uv run dsp408-multiui $(DEV_BACKEND) --host 127.0.0.1 --port 8080 & \
+	$(NPM_DEV) run dev -- --host 0.0.0.0
