@@ -113,7 +113,7 @@ def test_proxy_bound_port_requires_running() -> None:
 # --- CLI -------------------------------------------------------------------------------------
 def test_cli_help_and_version(capsys: pytest.CaptureFixture[str]) -> None:
     assert cli.main([]) == 0
-    assert "simulate" in capsys.readouterr().out
+    assert "probe" in capsys.readouterr().out
     with pytest.raises(SystemExit):
         cli.main(["--version"])
 
@@ -167,12 +167,12 @@ async def test_cli_probe_against_simulator(
 
 
 def test_serve_is_the_default_command() -> None:
-    assert cli._with_default_command(["--simulator"]) == ["serve", "--simulator"]
+    assert cli._with_default_command(["--demo"]) == ["serve", "--demo"]
     assert cli._with_default_command(["probe", "info"]) == ["probe", "info"]
     assert cli._with_default_command(["--version"]) == ["--version"]
     assert cli._with_default_command([]) == []
-    args = cli.build_parser().parse_args(["serve", "--simulator", "--log-level", "debug"])
-    assert args.simulator
+    args = cli.build_parser().parse_args(["serve", "--demo", "--log-level", "debug"])
+    assert args.demo
     assert args.log_level == "debug"
     assert args.pin == "0000"
 

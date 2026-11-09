@@ -20,6 +20,7 @@ classifiers = [
 
 [project.scripts]
 dsp408-multiui = "dsp408_multiui.cli:main"
+dsp408-sim = "dsp408_multiui.simulator.cli:main"
 
 [dependency-groups]
 dev = [
