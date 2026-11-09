@@ -19,12 +19,12 @@ class ServerConfig:
     resync_interval_s: float = 0.0  # 0 = off
     command_timeout_s: float | None = None
     experimental: bool = False
-    simulator: bool = False
-    scenario: str = "demo"
+    demo: bool = False  # no DSP: a simulated one runs in this process
+    demo_scenario: str = "demo"
 
     def __post_init__(self) -> None:
-        if not self.simulator and not self.dsp_host:
-            raise ValueError("--dsp-host is required (or use --simulator)")
+        if not self.demo and not self.dsp_host:
+            raise ValueError("--dsp-host is required (or use --demo)")
         if not self.pin:
             raise ValueError("the access code must not be empty")
         if self.lock_idle_timeout_s <= 0:
@@ -34,5 +34,5 @@ class ServerConfig:
 
     @property
     def allow_unverified(self) -> bool:
-        """Unverified parameters are allowed against the simulator or with --experimental."""
-        return self.simulator or self.experimental
+        """Unverified parameters are allowed in demo mode or with --experimental."""
+        return self.demo or self.experimental

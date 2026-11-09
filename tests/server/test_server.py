@@ -78,12 +78,12 @@ def test_server_config_validation() -> None:
     with pytest.raises(ValueError, match="dsp-host"):
         ServerConfig()
     with pytest.raises(ValueError, match="code"):
-        ServerConfig(simulator=True, pin="")
+        ServerConfig(demo=True, pin="")
     with pytest.raises(ValueError, match="lock"):
-        ServerConfig(simulator=True, lock_idle_timeout_s=0)
+        ServerConfig(demo=True, lock_idle_timeout_s=0)
     with pytest.raises(ValueError, match="resync"):
-        ServerConfig(simulator=True, resync_interval_s=-1)
-    assert ServerConfig(simulator=True).allow_unverified
+        ServerConfig(demo=True, resync_interval_s=-1)
+    assert ServerConfig(demo=True).allow_unverified
     assert not ServerConfig(dsp_host="10.0.0.9").allow_unverified
 
 
@@ -94,7 +94,7 @@ def make_app(tmp_path: Path, **overrides: Any) -> tuple[Any, SimulatedDevice]:
     device.timing.recall_s = 0.01
     device.timing.store_s = 0.01
     apply_scenario("demo", device, Faults())
-    config = ServerConfig(simulator=True, pin="4321", meter_rate_hz=10, **overrides)
+    config = ServerConfig(demo=True, pin="4321", meter_rate_hz=10, **overrides)
     app = create_app(config, P, web_dir=tmp_path, simulated_device=device)
     return app, device
 
@@ -209,7 +209,7 @@ def test_hello_snapshot_and_write(client: TestClient) -> None:
     with client.websocket_connect("/ws") as ws:
         hello = receive_until(ws, "hello")
         assert hello["name"] == "Alice"
-        assert hello["simulator"] is True
+        assert hello["demo"] is True
         assert hello["profile"]["output_count"] == 8
         assert len(hello["profile"]["slopes"]) == 21
         assert hello["limits"]["threshold_db"] == [-90.0, 20.0]
@@ -356,7 +356,7 @@ def test_unverified_parameters_need_experimental_on_real_hardware(
     monkeypatch.setattr(registry, "HARDWARE_VERIFIED", registry.HARDWARE_VERIFIED - {"delay_ms"})
     app, _ = make_app(web_dir)
     ctx: AppContext = app.state.ctx
-    ctx.config.simulator = False  # pretend this is a real DSP without --experimental
+    ctx.config.demo = False  # pretend this is a real DSP without --experimental
     with TestClient(app) as test_client:
         deadline = time.monotonic() + 5
         while ctx.session.status.value != "online" and time.monotonic() < deadline:

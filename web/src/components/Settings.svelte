@@ -71,7 +71,7 @@
       <dt>Firmware</dt>
       <dd>{app.status?.firmware || "—"}</dd>
       <dt>Server</dt>
-      <dd>{app.hello?.server_version ?? "—"}{app.hello?.simulator ? " (simulator)" : ""}</dd>
+      <dd>{app.hello?.server_version ?? "—"}{app.hello?.demo ? " (demo mode)" : ""}</dd>
     </dl>
     <div class="actions">
       <button onclick={refresh} disabled={app.readOnly}>Refresh from device</button>

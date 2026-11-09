@@ -39,5 +39,5 @@ web-test:  ## Type-check and unit-test the UI
 	$(NPM) run check
 	$(NPM) test
 
-web-dev:  ## Vite dev server (run `uv run dsp408-multiui --simulator` alongside)
+web-dev:  ## Vite dev server (run `uv run dsp408-multiui --demo` alongside)
 	cd web && npm run dev

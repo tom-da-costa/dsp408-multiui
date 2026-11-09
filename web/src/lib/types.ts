@@ -117,7 +117,7 @@ export interface Hello {
   client_id: string;
   name: string;
   server_version: string;
-  simulator: boolean;
+  demo: boolean;
   experimental: boolean;
   verified_kinds: string[];
   profile: Profile;
