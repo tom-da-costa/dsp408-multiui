@@ -10,7 +10,7 @@ name: Release
 
 on:
   push:
-    branches: [main, release-main]  # TEMP: release-main for the first test run
+    branches: [main]
     tags: ["v*"]
   workflow_dispatch:
 

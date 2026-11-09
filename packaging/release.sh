@@ -27,7 +27,7 @@ settings() {
       echo "ROLLING=false"
       echo "IMAGE_TAGS=${GITHUB_REF_NAME#v} latest"
       ;;
-    refs/heads/main|refs/heads/release-main)  # TEMP: release-main for the first test run
+    refs/heads/main)
       echo "RELEASE_TAG=${ROLLING_TAG}"
       echo "RELEASE_TITLE=main"
       echo "ASSET_VERSION=main"
@@ -74,9 +74,9 @@ case "${1:-}" in
       # Recreate the rolling release on the new commit: drop the release and its tag first.
       call DELETE "/releases/tags/$RELEASE_TAG" >/dev/null 2>&1 || true
       call DELETE "/tags/$RELEASE_TAG" >/dev/null 2>&1 || true
-      short="$(echo "$GITHUB_SHA" | cut -c1-8)"
+      # A bare SHA: Gitea links it (GITEA_URL is the runner's internal address).
       create_release "Latest build of the \`main\` branch, updated on every push: commit \
-[$short](${GITEA_URL%/}/${GITEA_REPO}/commit/$GITHUB_SHA), $(date -u '+%Y-%m-%d %H:%M UTC').
+$GITHUB_SHA, $(date -u '+%Y-%m-%d %H:%M UTC').
 
 Not a versioned release: use it to try the current state. The files keep the same names from one \
 build to the next, so download links stay valid."
