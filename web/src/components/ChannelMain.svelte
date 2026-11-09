@@ -1,7 +1,7 @@
 <script lang="ts">
   // Gain, mute and phase of one channel, plus its name editor when `rename` is set.
   import { app } from "../lib/app.svelte";
-  import { formatDb } from "../lib/scale";
+  import { formatDb, gainStep } from "../lib/scale";
   import type { Channel } from "../lib/types";
   import Field from "./Field.svelte";
 
@@ -42,7 +42,7 @@
     min={limits.gain_db[0]}
     max={limits.gain_db[1]}
     unit="dB"
-    step={0.5}
+    next={gainStep}
     resolution={0.1}
     origin={0}
     format={(v) => formatDb(v)}

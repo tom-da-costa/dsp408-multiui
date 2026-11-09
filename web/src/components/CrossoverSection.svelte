@@ -1,6 +1,6 @@
 <script lang="ts">
   import { app } from "../lib/app.svelte";
-  import { formatHz } from "../lib/scale";
+  import { formatHz, logIndexStep } from "../lib/scale";
   import type { Channel, Filter } from "../lib/types";
   import Field from "./Field.svelte";
   import Section from "./Section.svelte";
@@ -60,8 +60,7 @@
           max={profile.freq_max_hz}
           unit="Hz"
           scale="log"
-          factor={2 ** (1 / 6)}
-          step={0.1}
+          next={(v, d) => logIndexStep(v, profile.freq_min_hz, profile.freq_max_hz, profile.freq_steps ?? 300, d)}
           format={formatHz}
           disabled={!editable}
           onchange={(v) => setFilter(which, { freq_hz: v })}

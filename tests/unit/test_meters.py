@@ -77,7 +77,7 @@ def test_float32_scale() -> None:
     data = bytearray(meter_data_length(P))
     # Reference 0.1 = 0 dB (the threshold scale): full scale 1.0 = +20 dB.
     data[0:3] = bytes.fromhex("80 3f 00")  # float32 3f800000 = 1.0 -> +20 dB
-    data[3:6] = bytes.fromhex("00 3f 00")  # 0.5 -> +13.98 dB
+    data[3:6] = bytes.fromhex("00 3e 00")  # 0.125 -> +1.94 dB
     data[6:9] = bytes.fromhex("00 41 00")  # 8.0 -> +38.06 dB (levels can exceed full scale)
     data[9:12] = bytes.fromhex("ad 05 50")  # a muted channel: ~1e-35 -> floor
     data[12:15] = bytes.fromhex("c0 7f 00")  # NaN -> no data
@@ -85,11 +85,11 @@ def test_float32_scale() -> None:
     data[37] = 0b0010_0010  # limiter active on Out 2 and Out 6
     reading = decode_meters(bytes(data), P)
     assert reading.levels_db[0] == pytest.approx(20.0)
-    assert reading.levels_db[1] == pytest.approx(13.98, abs=0.01)
+    assert reading.levels_db[1] == pytest.approx(1.94, abs=0.01)
     assert reading.levels_db[2] == pytest.approx(38.06, abs=0.01)
     assert reading.levels_db[3] == P.meter_floor_db
     assert reading.levels_db[4] is None
-    assert reading.clip[:3] == (True, False, True)  # clip from full scale (+20 dB)
+    assert reading.clip[:3] == (True, False, True)  # CLIP from +12 dBu
     assert reading.comp == (True, False, False, False, True, False, False, False)
     assert reading.limit == (False, True, False, False, False, True, False, False)
 

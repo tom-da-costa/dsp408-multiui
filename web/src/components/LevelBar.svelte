@@ -1,7 +1,7 @@
 <script lang="ts">
   // Horizontal live level of one channel, with its CLIP / LIM / COMP indicators.
   import { app } from "../lib/app.svelte";
-  import { formatDb, meterPos } from "../lib/scale";
+  import { formatDb, meterGradient, meterPos } from "../lib/scale";
 
   interface Props {
     path: string; // "inputs.0" / "outputs.3"
@@ -19,11 +19,18 @@
   const limit = $derived(isOutput ? (app.meters?.limit?.[index] ?? null) : null);
   const comp = $derived(isOutput ? (app.meters?.comp?.[index] ?? null) : null);
   const floor = $derived(app.hello?.profile.meter_floor_db ?? -90);
-  const top = $derived(app.hello?.profile.meter_clip_db ?? 20);
+  const top = 20; // full scale, +20 dBu
+  const zones = $derived(meterGradient("to right", (db) => meterPos(db, floor, top)));
+  const pos = $derived(meterPos(level, floor, top));
 </script>
 
 <div class="meter" class:compact aria-label="Level">
-  <div class="level" class:clip style:width={`${meterPos(level, floor, top) * 100}%`}></div>
+  <div
+    class="level"
+    class:clip
+    style:background={clip ? undefined : zones}
+    style:clip-path={`inset(0 ${((1 - pos) * 100).toFixed(2)}% 0 0)`}
+  ></div>
   <span class="db">{level === null ? "—" : `${formatDb(level)} dBu`}</span>
   {#if clip}<span class="led clip">CLIP</span>{/if}
   {#if limit !== null}<span class="led" class:on={limit}>LIM</span>{/if}
@@ -49,15 +56,13 @@
   }
   .level {
     position: absolute;
-    left: 0;
-    top: 0;
-    bottom: 0;
-    background: linear-gradient(90deg, #1f8f5f, var(--accent) 70%, var(--warn) 88%, var(--danger));
-    opacity: 0.6;
-    transition: width 0.12s linear;
+    inset: 0;
+    opacity: 0.65;
+    transition: clip-path 0.12s linear;
   }
   .level.clip {
     background: var(--danger);
+    opacity: 0.9;
   }
   .db {
     position: relative;

@@ -1,6 +1,6 @@
 <script lang="ts">
   import { app } from "../lib/app.svelte";
-  import { formatDb, formatHz, formatQ } from "../lib/scale";
+  import { formatDb, formatHz, formatQ, logIndexStep } from "../lib/scale";
   import type { Channel, PeqBand } from "../lib/types";
   import Field from "./Field.svelte";
   import Section from "./Section.svelte";
@@ -85,8 +85,8 @@
               max={profile.freq_max_hz}
               unit="Hz"
               scale="log"
-              factor={2 ** (1 / 6)}
-              step={0.1}
+              next={(v, d) =>
+                logIndexStep(v, profile.freq_min_hz, profile.freq_max_hz, profile.freq_steps ?? 300, d)}
               format={formatHz}
               disabled={!editable}
               onchange={(v) => setBand(n, { freq_hz: v })}
@@ -97,7 +97,7 @@
               min={limits.eq_gain_db[0]}
               max={limits.eq_gain_db[1]}
               unit="dB"
-              step={0.5}
+              step={0.1}
               resolution={0.1}
               origin={0}
               format={(v) => formatDb(v)}
@@ -110,8 +110,7 @@
               min={profile.q_min}
               max={profile.q_max}
               scale="log"
-              factor={1.12}
-              step={0.01}
+              next={(v, d) => logIndexStep(v, profile.q_min, profile.q_max, profile.q_steps ?? 100, d)}
               format={formatQ}
               disabled={!editable}
               onchange={(v) => setBand(n, { q: v })}

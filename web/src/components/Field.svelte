@@ -1,7 +1,7 @@
 <script lang="ts">
   // One numeric parameter: label, value (tap to type), − / + steppers and a knob-drag slider.
   import type { Snippet } from "svelte";
-  import { parseNumber, type Scale, snap } from "../lib/scale";
+  import { type Direction, parseNumber, type Scale, snap } from "../lib/scale";
   import Slider from "./Slider.svelte";
 
   interface Props {
@@ -10,10 +10,10 @@
     min: number;
     max: number;
     unit?: string;
-    /** Stepper increment; with `factor`, the minimum increment of a multiplicative step. */
+    /** Stepper increment: the device's resolution, unless `next` is given. */
     step?: number;
-    /** Multiplicative stepper (log-scaled values such as Hz or Q). */
-    factor?: number;
+    /** One device step from `value` (values the device does not store on a uniform grid). */
+    next?: (value: number, direction: Direction) => number;
     /** Values are rounded to a multiple of this; omit to only clamp (the server quantises). */
     resolution?: number;
     scale?: Scale;
@@ -33,7 +33,7 @@
     max,
     unit = "",
     step = 1,
-    factor,
+    next,
     resolution,
     scale = "lin",
     digits = 1,
@@ -53,15 +53,15 @@
   const text = $derived(format ? format(shown) : shown.toFixed(digits));
   const quantize = (v: number) => snap(v, min, max, resolution);
 
-  function stepBy(direction: number) {
-    if (disabled) return;
-    let next = value;
-    for (let i = 0; i < Math.abs(direction); i++) {
-      const up = direction > 0;
-      if (factor) next = up ? Math.max(next + step, next * factor) : Math.min(next - step, next / factor);
-      else next = next + (up ? step : -step);
+  // − / + (and the slider's arrow keys): `count` device steps, one step per press.
+  function stepBy(count: number) {
+    if (disabled || count === 0) return;
+    const direction: Direction = count > 0 ? 1 : -1;
+    let target = value;
+    for (let i = 0; i < Math.abs(count); i++) {
+      target = next ? next(target, direction) : target + direction * step;
     }
-    const q = quantize(next);
+    const q = next ? Math.min(max, Math.max(min, target)) : quantize(target);
     if (q !== value) onchange(q);
   }
 

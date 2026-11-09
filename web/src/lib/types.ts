@@ -89,8 +89,11 @@ export interface Profile {
   ratios: string[];
   freq_min_hz: number;
   freq_max_hz: number;
+  freq_steps: number;
   q_min: number;
   q_max: number;
+  q_steps: number;
+  delay_sample_rate_hz: number;
   delay_max_ms: number;
   meter_floor_db: number;
   meter_clip_db: number;

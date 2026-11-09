@@ -65,7 +65,7 @@
               label={`GEQ ${label(n)}`}
               disabled={!editable}
               quantize={(v) => snap(v, min, max, 0.5)}
-              onstep={(d) => setBand(n, snap(gain + d * 0.5, min, max, 0.1))}
+              onstep={(d) => setBand(n, snap(gain + d * 0.1, min, max, 0.1))}
               onpreview={() => (selected = n)}
               onchange={(v) => setBand(n, v)}
             />
@@ -80,7 +80,7 @@
       {min}
       {max}
       unit="dB"
-      step={0.5}
+      step={0.1}
       resolution={0.1}
       origin={0}
       format={(v) => formatDb(v)}

@@ -228,7 +228,8 @@ Out 4 and In A meters moved by exactly 128 units of `b1:b0` per 6.02 dB (one oct
 signature of a float's exponent; the mapping held over the whole 62 dB range.
 
 - Levels are not clamped: with +24 dB of gain, Out 4 read 8.47 (+38.6 dBu).
-  CLIP is derived from the level (≥ full scale, +20 dBu); there is no clip flag.
+  There is no clip flag: CLIP is derived from the level, from +12 dBu (the owner's choice, 8 dB
+  below full scale).
 - An unconnected but unmuted input reads about 5·10⁻⁶ (−86 dBu, the ADC noise floor); a muted
   channel reads about 10⁻³⁵ (zero).
 - An input meter is measured after the input gain and **before** the input mute.

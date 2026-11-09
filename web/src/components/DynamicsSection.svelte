@@ -112,7 +112,6 @@
           unit="ms"
           scale="log"
           step={1}
-          factor={1.15}
           resolution={1}
           digits={0}
           disabled={!editable}
