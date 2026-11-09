@@ -19,10 +19,11 @@
   const limit = $derived(isOutput ? (app.meters?.limit?.[index] ?? null) : null);
   const comp = $derived(isOutput ? (app.meters?.comp?.[index] ?? null) : null);
   const floor = $derived(app.hello?.profile.meter_floor_db ?? -90);
+  const top = $derived(app.hello?.profile.meter_clip_db ?? 20);
 </script>
 
 <div class="meter" class:compact aria-label="Level">
-  <div class="level" class:clip style:width={`${meterPos(level, floor) * 100}%`}></div>
+  <div class="level" class:clip style:width={`${meterPos(level, floor, top) * 100}%`}></div>
   <span class="db">{level === null ? "—" : `${formatDb(level)} dB`}</span>
   {#if clip}<span class="led clip">CLIP</span>{/if}
   {#if limit !== null}<span class="led" class:on={limit}>LIM</span>{/if}

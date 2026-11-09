@@ -36,7 +36,8 @@ describe("scale", () => {
     expect(formatDb(-60)).toBe("-∞");
     expect(formatDb(null)).toBe("—");
     expect(meterPos(null, -90)).toBe(0);
-    expect(meterPos(12, -90)).toBe(1);
+    expect(meterPos(20, -90)).toBe(1); // full scale = +20 dB
+    expect(meterPos(12, -90, 12)).toBe(1);
   });
 });
 

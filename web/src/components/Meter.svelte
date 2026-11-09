@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { dbToPos } from "../lib/scale";
+  import { meterDbToPos as dbToPos } from "../lib/scale";
 
   interface Props {
     level: number | null; // dB; null = no data
@@ -43,7 +43,8 @@
   <div class="bar">
     <div class="fill" style:transform={`scaleY(${pos})`}></div>
     {#if peakPos > 0}<div class="peak" style:bottom={`${peakPos * 100}%`}></div>{/if}
-    <div class="tick" style:bottom={`${dbToPos(0) * 100}%`}></div>
+    <!-- 0 dB of the threshold scale (compressor / limiter thresholds are on the same scale) -->
+    <div class="tick" style:bottom={`${dbToPos(0) * 100}%`} title="0 dB"></div>
   </div>
 </div>
 

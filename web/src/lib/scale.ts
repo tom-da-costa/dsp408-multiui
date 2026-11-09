@@ -49,10 +49,32 @@ export function formatHz(hz: number): string {
   return hz >= 1000 ? `${(hz / 1000).toFixed(hz >= 10000 ? 1 : 2)}k` : `${Math.round(hz)}`;
 }
 
-/** Meter position for a level relative to the meter range. */
-export function meterPos(db: number | null, floor: number, top = 12): number {
+/** Meter position for a level relative to the meter range (linear in dB, for level bars). */
+export function meterPos(db: number | null, floor: number, top = 20): number {
   if (db === null || db <= floor) return 0;
   return Math.min(1, (db - floor) / (top - floor));
+}
+
+// Vertical meters: levels are on the device's threshold scale, full scale (CLIP) = +20 dB.
+const METER_POINTS: [number, number][] = [
+  [0, -60],
+  [0.2, -40],
+  [0.45, -20],
+  [0.7, 0],
+  [1, 20],
+];
+
+/** Position of a level on a vertical meter (0 = bottom, 1 = full scale). */
+export function meterDbToPos(db: number): number {
+  const [first, last] = [METER_POINTS[0]!, METER_POINTS[METER_POINTS.length - 1]!];
+  if (db <= first[1]) return 0;
+  if (db >= last[1]) return 1;
+  for (let i = 1; i < METER_POINTS.length; i++) {
+    const [p1, d1] = METER_POINTS[i]!;
+    const [p0, d0] = METER_POINTS[i - 1]!;
+    if (db <= d1) return p0 + ((db - d0) / (d1 - d0)) * (p1 - p0);
+  }
+  return 1;
 }
 
 // --- generic control scales (sliders) ------------------------------------------------------------

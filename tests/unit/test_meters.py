@@ -23,6 +23,7 @@ FLOAT16 = P.with_overrides(
             "tail_limit_byte": 0,
             "tail_comp_byte": None,
             "tail_clip_byte": 1,
+            "reference": 1.0,
             "clip_db": 6.0,
         }
     }
@@ -60,11 +61,11 @@ def test_float32_hardware_frames() -> None:
         reading = decode_meters(data, profile)
         levels = [lv if lv is not None else math.nan for lv in reading.levels_db]
         in_a, in_b, in_c, in_d = levels[:4]
-        assert -50 < in_a < -20  # music
-        assert -50 < in_b < -20
-        assert in_c == pytest.approx(-105.7, abs=0.5)  # ADC noise floor
-        assert in_d == pytest.approx(-105.7, abs=0.5)
-        assert all(-70 < lv < 0 for lv in levels[4:])
+        assert -30 < in_a < 0  # music
+        assert -30 < in_b < 0
+        assert in_c == pytest.approx(-85.7, abs=0.5)  # ADC noise floor
+        assert in_d == pytest.approx(-85.7, abs=0.5)
+        assert all(-50 < lv < 20 for lv in levels[4:])
         assert reading.comp == (False,) * 8
         assert reading.limit == (False,) * 8
         assert reading.input_clip_flag is None
@@ -74,20 +75,21 @@ def test_float32_hardware_frames() -> None:
 def test_float32_scale() -> None:
     # On hardware, a 6 dB gain step moved the top 16 bits by 127.5 (128 per octave): a float.
     data = bytearray(meter_data_length(P))
-    data[0:3] = bytes.fromhex("80 3f 00")  # float32 3f800000 = 1.0 -> 0 dBFS
-    data[3:6] = bytes.fromhex("00 3f 00")  # 0.5 -> -6.02 dB
-    data[6:9] = bytes.fromhex("00 41 00")  # 8.0 -> +18.06 dB (levels can exceed 0 dBFS)
+    # Reference 0.1 = 0 dB (the threshold scale): full scale 1.0 = +20 dB.
+    data[0:3] = bytes.fromhex("80 3f 00")  # float32 3f800000 = 1.0 -> +20 dB
+    data[3:6] = bytes.fromhex("00 3f 00")  # 0.5 -> +13.98 dB
+    data[6:9] = bytes.fromhex("00 41 00")  # 8.0 -> +38.06 dB (levels can exceed full scale)
     data[9:12] = bytes.fromhex("ad 05 50")  # a muted channel: ~1e-35 -> floor
     data[12:15] = bytes.fromhex("c0 7f 00")  # NaN -> no data
     data[36] = 0b0001_0001  # compressor active on Out 1 and Out 5
     data[37] = 0b0010_0010  # limiter active on Out 2 and Out 6
     reading = decode_meters(bytes(data), P)
-    assert reading.levels_db[0] == pytest.approx(0.0)
-    assert reading.levels_db[1] == pytest.approx(-6.02, abs=0.01)
-    assert reading.levels_db[2] == pytest.approx(18.06, abs=0.01)
+    assert reading.levels_db[0] == pytest.approx(20.0)
+    assert reading.levels_db[1] == pytest.approx(13.98, abs=0.01)
+    assert reading.levels_db[2] == pytest.approx(38.06, abs=0.01)
     assert reading.levels_db[3] == P.meter_floor_db
     assert reading.levels_db[4] is None
-    assert reading.clip[:3] == (True, False, True)  # clip from 0 dBFS
+    assert reading.clip[:3] == (True, False, True)  # clip from full scale (+20 dB)
     assert reading.comp == (True, False, False, False, True, False, False, False)
     assert reading.limit == (False, True, False, False, False, True, False, False)
 

@@ -41,13 +41,14 @@ slopes = ["Off", "BW-6", "BL-6", "BW-12", "BL-12", "LR-12", "BW-18", "BL-18", "B
 
 [meters]
 format = "float32"         # 408: each triplet is the top 3 bytes of a little-endian float32
-                           # (linear, 1.0 = 0 dBFS); "float16" (dsp-408-ui) is wrong on a 408
+                           # (linear); "float16" (dsp-408-ui) is wrong on a 408
 tail_length = 2            # 408 (LEN = 0x27)
 tail_comp_byte = 0         # 408: per-output "compressor active" bitmask
 tail_limit_byte = 1        # 408: per-output "limiter active" bitmask
 # tail_clip_byte is unset: the 408 has no clip flag; CLIP is derived from the level
-reference = 1.0            # 408: linear 1.0 = 0 dBFS
-clip_db = 0.0              # levels can exceed 0 dBFS (float); CLIP lights at 0 dBFS
+reference = 0.1            # 408: linear 0.1 = 0 dB on the scale of the dynamics thresholds,
+                           # so levels and thresholds compare directly (HW, observed ±1 dB)
+clip_db = 20.0             # CLIP at linear 1.0 (full scale = +20 dB); levels can go above
 floor_db = -90.0
 
 [timing]

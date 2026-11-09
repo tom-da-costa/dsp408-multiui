@@ -1,5 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { formatGeqFreq, fromPos, GEQ_FREQS, parseNumber, snap, toPos } from "./scale";
+import {
+  formatGeqFreq,
+  fromPos,
+  GEQ_FREQS,
+  meterDbToPos,
+  parseNumber,
+  snap,
+  toPos,
+} from "./scale";
 
 describe("slider scales", () => {
   it.each(["lin", "log", "sqrt"] as const)("%s round-trips", (scale) => {
@@ -53,5 +61,20 @@ describe("GEQ", () => {
     expect(GEQ_FREQS).toHaveLength(31);
     expect(formatGeqFreq(1250)).toBe("1.25k");
     expect(formatGeqFreq(31.5)).toBe("31.5");
+  });
+});
+
+describe("meterDbToPos", () => {
+  it("spans -60 dB to full scale (+20 dB) and is monotonic", () => {
+    expect(meterDbToPos(-90)).toBe(0);
+    expect(meterDbToPos(0)).toBeCloseTo(0.7);
+    expect(meterDbToPos(20)).toBe(1);
+    expect(meterDbToPos(30)).toBe(1);
+    let last = -1;
+    for (let db = -60; db <= 20; db += 0.5) {
+      const pos = meterDbToPos(db);
+      expect(pos).toBeGreaterThan(last);
+      last = pos;
+    }
   });
 });
