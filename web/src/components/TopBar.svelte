@@ -26,7 +26,13 @@
 <header>
   <span class="dot {status}" title={app.status?.error ?? status}></span>
   <div class="title">
-    <strong>{app.device?.preset_name || "DSP 408"}</strong>
+    <strong
+      >{app.device?.preset_name || "DSP 408"}{#if app.device?.modified}<span
+          class="unsaved"
+          title="Changed since the last recall or store: store it (Presets) to keep it"
+          >● unsaved</span
+        >{/if}</strong
+    >
     <span class="muted">{status === "online" ? (app.status?.model ?? "") : status}</span>
   </div>
   {#if app.hello?.demo}<span class="sim" title="No DSP: a simulated one runs in the server">DEMO</span>{/if}
@@ -40,6 +46,13 @@
 </header>
 
 <style>
+  .unsaved {
+    margin-left: 6px;
+    color: var(--warn);
+    font-size: 0.75em;
+    font-weight: 600;
+    white-space: nowrap;
+  }
   header {
     display: flex;
     align-items: center;

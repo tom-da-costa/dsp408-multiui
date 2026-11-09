@@ -76,6 +76,8 @@ export interface DeviceState {
   presets: Preset[];
   active_slot: number;
   preset_name: string;
+  /** Changed since the last recall or store (unsaved); null = unknown. */
+  modified: boolean | null;
   inputs: InputChannel[];
   outputs: OutputChannel[];
 }

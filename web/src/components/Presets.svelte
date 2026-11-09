@@ -21,7 +21,14 @@
   }
 
   async function recall(slot: number, presetName: string) {
-    if (!confirm(`Recall ${label(slot)} "${presetName}"? Every current setting is replaced.`)) return;
+    const lost =
+      device?.modified === true
+        ? "\n\nThe current setup has UNSAVED CHANGES: they will be lost."
+        : device?.modified === null
+          ? "\n\nChanges made before this app connected, if any, will be lost."
+          : "";
+    if (!confirm(`Recall ${label(slot)} "${presetName}"? Every current setting is replaced.${lost}`))
+      return;
     busy = true;
     if (await app.run({ type: "preset.recall", slot })) app.toast(`${label(slot)} recalled`);
     busy = false;
@@ -47,7 +54,20 @@
 {#if device}
   <div class="card">
     <h2>Presets</h2>
-    <p class="muted">Live: {label(device.active_slot)} — {device.preset_name}</p>
+    <p class="live">
+      <span class="muted">Live: {label(device.active_slot)} — {device.preset_name}</span>
+      {#if device.modified}
+        <span class="unsaved">● unsaved changes</span>
+        {#if device.active_slot > 0}
+          <button
+            class="primary"
+            disabled={app.readOnly || busy}
+            onclick={() => startStore(device.active_slot, device.preset_name)}
+            >Save to {label(device.active_slot)}</button
+          >
+        {/if}
+      {/if}
+    </p>
     <ul>
       <li class:active={device.active_slot === 0}>
         <span class="slot">F00</span><span class="name">Factory default</span>
@@ -147,5 +167,15 @@
   .error {
     color: var(--danger);
     margin: 0;
+  }
+  .live {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px 12px;
+  }
+  .unsaved {
+    color: var(--warn);
+    font-weight: 600;
   }
 </style>

@@ -183,7 +183,7 @@ class DeviceSession:
                 await asyncio.sleep(delay)
                 delay = min(delay * 2, self.reconnect_max_s)
                 continue
-            self.store.replace(state)
+            self.store.replace(self._after_reconnect(state))
             delay = self.reconnect_min_s
             pipeline = CommandPipeline(
                 conn, meter_interval=1.0 / self._meter_rate_hz, on_meters=self._publish_meters
@@ -217,6 +217,24 @@ class DeviceSession:
             previous=previous,
         )
 
+    # --- "modified" (unsaved changes) -------------------------------------------------------
+    @staticmethod
+    def _same_config(a: DeviceState, b: DeviceState) -> bool:
+        return a.model_dump(exclude={"modified"}) == b.model_dump(exclude={"modified"})
+
+    def _after_reconnect(self, state: DeviceState) -> DeviceState:
+        """After a (re)connection: keep what we knew if the DSP is where we left it."""
+        previous = self.store.state if self.store.rev else None
+        if previous is None or previous.active_slot != state.active_slot:
+            return state  # first connection, or another preset: unknown
+        same = self._same_config(previous, state)
+        return state.model_copy(update={"modified": previous.modified if same else True})
+
+    def _with_modified(self, changes: tuple[tuple[str, Any], ...]) -> list[tuple[str, Any]]:
+        """A write's changes, plus ``modified`` when it becomes true."""
+        extra = [] if self.store.state.modified is True else [("modified", True)]
+        return [*changes, *extra]
+
     def _require_pipeline(self) -> CommandPipeline:
         if self.status is not DeviceStatus.ONLINE or self._pipeline is None:
             raise DeviceUnavailableError(f"device is {self.status.value}")
@@ -238,7 +256,8 @@ class DeviceSession:
         self._inflight.update(mine)
         try:
             await pipeline.submit(
-                write.request, on_ack=lambda: self.store.apply(write.changes, origin)
+                write.request,
+                on_ack=lambda: self.store.apply(self._with_modified(write.changes), origin),
             )
         finally:
             for p, v in mine.items():
@@ -257,7 +276,7 @@ class DeviceSession:
         except (TransportError, TransportTimeoutError) as exc:
             raise DeviceUnavailableError(str(exc)) from exc
         log.info("preset %d recalled by %s", slot, origin)
-        self.store.replace(state)
+        self.store.replace(state.model_copy(update={"modified": False}))
 
     async def store_preset(self, slot: int, name: str, origin: str) -> None:
         if not 1 <= slot <= self.profile.preset_count:
@@ -276,7 +295,12 @@ class DeviceSession:
             raise DeviceUnavailableError(str(exc)) from exc
         log.info("preset %d stored as %r by %s", slot, name, origin)
         self.store.apply(
-            [(f"presets.{slot - 1}.name", name), ("active_slot", slot), ("preset_name", name)],
+            [
+                (f"presets.{slot - 1}.name", name),
+                ("active_slot", slot),
+                ("preset_name", name),
+                ("modified", False),
+            ],
             origin,
         )
 
@@ -309,7 +333,7 @@ class DeviceSession:
         except (TransportError, TransportTimeoutError) as exc:
             raise DeviceUnavailableError(str(exc)) from exc
         log.info("%s links set to %s by %s", side, normalise(groups, count), origin)
-        self.store.replace(state)
+        self.store.replace(state.model_copy(update={"modified": True}))
 
     async def resync(self) -> None:
         """Re-read the whole configuration (front-panel changes)."""
@@ -319,7 +343,14 @@ class DeviceSession:
                 state = await self._read_state(conn, previous=self.store.state)
         except (TransportError, TransportTimeoutError) as exc:
             raise DeviceUnavailableError(str(exc)) from exc
-        self.store.replace(state)
+        previous = self.store.state
+        if previous.active_slot != state.active_slot:
+            modified = None  # recalled from the front panel or another client
+        elif self._same_config(previous, state):
+            modified = previous.modified
+        else:
+            modified = True  # changed from the front panel or another client
+        self.store.replace(state.model_copy(update={"modified": modified}))
 
 
 __all__ = [

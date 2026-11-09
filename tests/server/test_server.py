@@ -221,7 +221,10 @@ def test_hello_snapshot_and_write(client: TestClient) -> None:
         reply = request(ws, {"type": "set", "req": 1, "path": "outputs.0.gain_db", "value": -6.04})
         assert reply == {"type": "result", "req": 1, "ok": True}
         patch = receive_until(ws, "patch")
-        assert patch["changes"] == [{"path": "outputs.0.gain_db", "value": -6.0}]
+        assert patch["changes"] == [
+            {"path": "outputs.0.gain_db", "value": -6.0},
+            {"path": "modified", "value": True},  # the first change since the connection
+        ]
         assert patch["origin"] == hello["client_id"]
         assert patch["rev"] > snapshot["rev"]
 
@@ -367,6 +370,24 @@ def test_unverified_parameters_need_experimental_on_real_hardware(
             assert reply["error"] == "experimental"
             ok = request(ws, {"type": "set", "req": 2, "path": "outputs.0.gain_db", "value": -1})
             assert ok["ok"]
+
+
+def test_modified_tracks_unsaved_changes(client: TestClient) -> None:
+    login(client)
+    with client.websocket_connect("/ws") as ws:
+        assert receive_until(ws, "snapshot")["state"]["modified"] is None  # unknown at start
+        assert request(ws, {"type": "preset.recall", "req": 1, "slot": 1})["ok"]
+        assert receive_until(ws, "snapshot")["state"]["modified"] is False
+        assert request(ws, {"type": "set", "req": 2, "path": "inputs.0.mute", "value": True})["ok"]
+        changes = receive_until(ws, "patch")["changes"]
+        assert {"path": "modified", "value": True} in changes
+        assert request(ws, {"type": "set", "req": 3, "path": "inputs.0.mute", "value": False})["ok"]
+        assert receive_until(ws, "patch")["changes"] == [{"path": "inputs.0.mute", "value": False}]
+        assert request(ws, {"type": "resync", "req": 4})["ok"]
+        assert receive_until(ws, "snapshot")["state"]["modified"] is True  # still unsaved
+        assert request(ws, {"type": "preset.store", "req": 5, "slot": 1, "name": "Saved"})["ok"]
+        store = receive_until(ws, "patch")["changes"]
+        assert {"path": "modified", "value": False} in store
 
 
 def test_links(client: TestClient) -> None:
