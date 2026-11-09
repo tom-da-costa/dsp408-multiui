@@ -1,13 +1,49 @@
-// Navigation: the selected tab and the open channel detail, mirrored in the URL hash so the
-// browser's back button (or a phone's back gesture) closes the detail.
+// Navigation: main tab plus the sub-tab of "Params" (a setting) and "Channels" (a channel),
+// mirrored in the URL hash (#params/gain, #channels/outputs.3, #aio …) so that reloads and the
+// browser's back button (or a phone's back gesture) work.
 
 export const TABS = [
-  ["mixer", "Mixer", "🎚"],
-  ["matrix", "Matrix", "▦"],
+  ["params", "Params", "🎚"],
+  ["channels", "Channels", "🔈"],
+  ["aio", "All-in-one", "▥"],
   ["presets", "Presets", "☰"],
   ["settings", "Settings", "⚙"],
 ] as const;
 export type Tab = (typeof TABS)[number][0];
+
+/** The settings, as sub-tabs of "Params" and as the blocks of the all-in-one view. */
+export const PARAMS = [
+  ["gain", "Gain"],
+  ["delay", "Delay"],
+  ["eq", "EQ"],
+  ["filters", "Filters"],
+  ["comp", "Comp"],
+  ["limit", "Limit"],
+  ["gate", "Gate"],
+  ["geq", "GEQ"],
+  ["matrix", "Matrix"],
+] as const;
+export type Param = (typeof PARAMS)[number][0];
+
+export type Side = "all" | "inputs" | "outputs";
+export const SIDES: [Side, string][] = [
+  ["all", "All"],
+  ["inputs", "Inputs"],
+  ["outputs", "Outputs"],
+];
+
+/** Which channels a setting exists on. */
+export const PARAM_SCOPE: Record<Param, "all" | "inputs" | "outputs"> = {
+  gain: "all",
+  delay: "all",
+  eq: "all",
+  filters: "all",
+  comp: "outputs",
+  limit: "outputs",
+  gate: "inputs",
+  geq: "inputs",
+  matrix: "outputs",
+};
 
 const CHANNEL = /^(inputs|outputs)\.(\d+)$/;
 
@@ -23,50 +59,77 @@ export function slotLabel(path: string): string {
   return match[1] === "inputs" ? `In ${String.fromCharCode(65 + n)}` : `Out ${n + 1}`;
 }
 
+function isParam(text: string): text is Param {
+  return PARAMS.some(([key]) => key === text);
+}
+
+function isTab(text: string): text is Tab {
+  return TABS.some(([key]) => key === text);
+}
+
 class Nav {
-  tab = $state<Tab>("mixer");
-  /** Path of the channel whose detail is open ("outputs.3"), or null. */
-  detail = $state<string | null>(null);
-  /** Open/closed state of the detail sections, kept while switching channels. */
+  tab = $state<Tab>("params");
+  param = $state<Param>("gain");
+  channel = $state("inputs.0");
+  /** Channels shown by the multi-channel views. */
+  side = $state<Side>("all");
+  /** Open/closed state of collapsible sections, by section id. */
   sections = $state<Record<string, boolean>>({});
 
   constructor() {
     this.fromHash();
   }
 
+  get hash(): string {
+    if (this.tab === "params") return `params/${this.param}`;
+    if (this.tab === "channels") return `channels/${this.channel}`;
+    return this.tab;
+  }
+
   fromHash(): void {
-    const hash = location.hash.slice(1);
-    if (isChannelPath(hash)) {
-      this.tab = "mixer";
-      this.detail = hash;
-    } else {
-      this.detail = null;
-      this.tab = (TABS.find(([key]) => key === hash)?.[0] ?? this.tab) as Tab;
+    const [head = "", sub = ""] = location.hash.slice(1).split("/");
+    if (isTab(head)) {
+      this.tab = head;
+      if (head === "params" && isParam(sub)) this.param = sub;
+      if (head === "channels" && isChannelPath(sub)) this.channel = sub;
+    } else if (isChannelPath(head)) {
+      this.tab = "channels"; // links of the previous UI (#outputs.3)
+      this.channel = head;
+    } else if (head === "mixer" || head === "matrix") {
+      this.tab = "params";
+      this.param = head === "mixer" ? "gain" : "matrix";
     }
+  }
+
+  private go(push: boolean): void {
+    const url = `#${this.hash}`;
+    if (url === location.hash) return;
+    if (push) history.pushState({ nav: true }, "", url);
+    else history.replaceState(history.state, "", url);
   }
 
   select(tab: Tab): void {
     this.tab = tab;
-    this.detail = null;
-    history.replaceState(null, "", `#${tab}`);
+    this.go(false);
   }
 
+  selectParam(param: Param): void {
+    this.tab = "params";
+    this.param = param;
+    this.go(false);
+  }
+
+  selectChannel(path: string): void {
+    this.tab = "channels";
+    this.channel = path;
+    this.go(false);
+  }
+
+  /** Jump to a channel from another view; "back" returns to that view. */
   open(path: string): void {
-    // Push a history entry for the first detail, so "back" returns to the mixer.
-    if (this.detail === null) history.pushState({ detail: true }, "", `#${path}`);
-    else history.replaceState(history.state, "", `#${path}`);
-    this.detail = path;
-  }
-
-  close(): void {
-    if (this.detail === null) return;
-    if ((history.state as { detail?: boolean } | null)?.detail) {
-      history.back(); // the popstate listener calls fromHash()
-    } else {
-      // Opened from a link or a reload: there is no entry of ours to go back to.
-      this.detail = null;
-      history.replaceState(null, "", `#${this.tab}`);
-    }
+    this.tab = "channels";
+    this.channel = path;
+    this.go(true);
   }
 
   isOpen(id: string, fallback = true): boolean {

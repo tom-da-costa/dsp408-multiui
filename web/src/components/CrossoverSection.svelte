@@ -8,9 +8,11 @@
   interface Props {
     channel: Channel;
     path: string;
+    id?: string;
+    title?: string;
   }
 
-  let { channel, path }: Props = $props();
+  let { channel, path, id = "crossover", title = "High-pass / low-pass" }: Props = $props();
 
   const profile = $derived(app.hello?.profile);
   const editable = $derived(app.editable("crossover"));
@@ -24,7 +26,7 @@
   }
 </script>
 
-<Section id="crossover" title="High-pass / low-pass" kind="crossover">
+<Section {id} {title} kind="crossover">
   {#if profile}
     {#each FILTERS as [which, title] (which)}
       {@const filter = channel.crossover[which]}

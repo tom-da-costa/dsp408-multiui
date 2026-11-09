@@ -8,9 +8,11 @@
   interface Props {
     channel: Channel;
     path: string;
+    id?: string;
+    title?: string;
   }
 
-  let { channel, path }: Props = $props();
+  let { channel, path, id = "peq", title }: Props = $props();
 
   let expanded = $state<number | null>(null);
 
@@ -29,7 +31,7 @@
   }
 </script>
 
-<Section id="peq" title={`Parametric EQ · ${channel.peq.length} bands`} kind="peq">
+<Section {id} title={title ?? `Parametric EQ · ${channel.peq.length} bands`} kind="peq">
   {#snippet actions()}
     <button
       class="switch danger"

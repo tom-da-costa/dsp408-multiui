@@ -9,9 +9,11 @@
   interface Props {
     channel: InputChannel;
     path: string;
+    id?: string;
+    title?: string;
   }
 
-  let { channel, path }: Props = $props();
+  let { channel, path, id = "geq", title = "Graphic EQ · 31 bands" }: Props = $props();
 
   let selected = $state(17); // 1 kHz
   let confirmFlat = $state(false);
@@ -34,7 +36,7 @@
   }
 </script>
 
-<Section id="geq" title="Graphic EQ · 31 bands" kind="geq">
+<Section {id} {title} kind="geq">
   {#snippet actions()}
     {#if confirmFlat}
       <button class="small danger" onclick={resetFlat}>Reset all?</button>

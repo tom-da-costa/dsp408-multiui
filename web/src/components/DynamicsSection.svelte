@@ -14,9 +14,11 @@
     /** Current values (Compressor, Limiter or Gate). */
     values: Record<string, number>;
     reduction?: boolean | null; // LIM / COMP activity from the meters, when known
+    id?: string;
+    title?: string;
   }
 
-  let { kind, path, values, reduction = null }: Props = $props();
+  let { kind, path, values, reduction = null, id, title }: Props = $props();
 
   const TITLES: Record<Kind, string> = {
     compressor: "Compressor",
@@ -53,7 +55,7 @@
   }
 </script>
 
-<Section id={kind} title={TITLES[kind]} {kind}>
+<Section id={id ?? kind} title={title ?? TITLES[kind]} {kind}>
   {#snippet actions()}
     {#if reduction !== null}
       <span class="led" class:on={reduction} title="Active (from the meters)"
