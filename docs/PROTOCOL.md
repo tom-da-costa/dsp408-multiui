@@ -193,7 +193,8 @@ the name (`3d`) and the matrix (`3a`).
 | `3f` | `3f ch atk(2) rel(2) ?(2) thr(2)`: limiter | outputs | HW |
 | `3e` | `3e ch atk(2) rel(2) hold(2) thr(2)`: noise gate | inputs | HW |
 | `3d` | `3d ch` + 8 ASCII bytes (zero-padded): channel name | all | HW |
-| `3b` / `2a` | Channel link: `2a master slave` per pair, then `3b ch flags` per channel, then `12`, then a full config re-read | all | SIB (not tested) |
+| `2a` | `2a master slave`: **copies every setting of the master onto the slave** (gain, delay, phase, mute, crossover, PEQ and its bypass, dynamics), **except the name and the routing**. Sent once per slave before linking. | all (same kind) | HW |
+| `3b` | `3b ch mask` (1 byte): writes the channel's link mask as is (+138 inputs / +102 outputs). Master = bits of every member (bit n = input or output n), other members 0, unlinked = own bit. | all | HW |
 | `39` | `39 mode freq_idx`: test generator (0 off, 1 pink, 2 white, 3 sine). **Out of scope: speaker safety** | global | SIB |
 | `15` | `15 unit`: delay display unit (cosmetic) | global | SIB |
 
@@ -323,6 +324,11 @@ a user renames a channel. We use the fixed offsets above.
   ACKed, and polls only when the fader is idle. The backend must coalesce bursts (see [SPEC](SPEC.md), "Command pipeline").
 - **Preset recall** takes ~3.2 s and **store** ~7.4 s before the ACK (HW). After a recall or a
   link change, re-read the whole config.
+- **Linking (HW, 2026-11-10, on U04):** the editor's sequence works on the 408: `2a master slave`
+  for each new member, then `3b ch mask` for each channel whose mask changes, then `12`. `2a`
+  alone already copies the settings; `3b` alone only changes the mask; `12` changes nothing in
+  the config. Unlinking is `3b ch own-bit` for each member, then `12`; the members keep their
+  (copied) settings. Recorded in `tests/fixtures/hardware/link_diffs.json` (32 steps).
 - **Linked channels:** a write to any member of a link group changes every member (HW), except
   names and matrix. The backend copies the change into its state for every member.
 - After `12`, give the DSP a short grace period before polling again (4x4 Mini: back-to-back
@@ -345,7 +351,7 @@ with the ▶ choice as default. Phase 8 (2026-11-08, firmware V0104P) answered m
 | Q3 | Delay unit and maximum | **Answered (HW)**: samples at 96 kHz (426 = 4.44 ms in the editor). Maximum (680 ms) not tested |
 | Q4 | Compressor `0x30` and limiter `0x3f` layouts | **Answered (HW)**: 206 layout |
 | Q5 | Slope table on the 408 and bypass | **Partly**: slope 0 = bypass and raw slopes are stored as sent (HW); the names of the 21 entries are still to compare with the editor |
-| Q6 | Gate, phase, names, link on the 408 | **Answered (HW)** for gate, phase and names; link opcodes `3b`/`2a` not tested (link is read-only here) |
+| Q6 | Gate, phase, names, link on the 408 | **Answered (HW)**, link included (2026-11-10): see `2a` / `3b` in §5.3 |
 | Q7 | Matrix crosspoint gain opcode | Open |
 | Q8 | `0x2c` and `0x10` responses; DSP PIN lock | **Answered (HW)** for the responses (§5.1); PIN lock not tested |
 | Q9 | Write ACK format; unsolicited frames | **Answered (HW)**: ACK = `01` (the `26` ACK echoes the name); no unsolicited frames seen |

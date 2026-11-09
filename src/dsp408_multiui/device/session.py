@@ -20,6 +20,7 @@ from dsp408_multiui.protocol import commands as cmd
 from dsp408_multiui.protocol import config_map as cm
 from dsp408_multiui.protocol import responses as rsp
 from dsp408_multiui.protocol.codecs import PRESET_NAME_LENGTH, validate_name
+from dsp408_multiui.protocol.links import LinkError, link_requests, masks_for, normalise
 from dsp408_multiui.protocol.meters import MeterError, MeterReading, decode_meters
 from dsp408_multiui.protocol.profile import ProtocolProfile
 from dsp408_multiui.state.convert import build_state
@@ -278,6 +279,37 @@ class DeviceSession:
             [(f"presets.{slot - 1}.name", name), ("active_slot", slot), ("preset_name", name)],
             origin,
         )
+
+    async def set_links(self, side: str, groups: list[list[int]], origin: str) -> None:
+        """Link channels of one side ("inputs" or "outputs") into ``groups`` of indices.
+
+        Channels in no group are unlinked. A channel joining a group takes the settings of the
+        group's first channel (the DSP copies them); the config is re-read afterwards.
+        """
+        if side not in ("inputs", "outputs"):
+            raise ParamError(f"side must be inputs or outputs, not {side!r}")
+        channels = self.store.state.inputs if side == "inputs" else self.store.state.outputs
+        count = len(channels)
+        first = 0 if side == "inputs" else self.profile.input_count
+        now = sorted(
+            {tuple(sorted([ch.index - first, *ch.linked])) for ch in channels if ch.linked}
+        )
+        try:
+            requests = link_requests(masks_for(normalise(now, count), count), groups, first)
+        except LinkError as exc:
+            raise ParamError(str(exc)) from exc
+        if not requests:
+            return
+        pipeline = self._require_pipeline()
+        try:
+            async with pipeline.exclusive() as conn:
+                for request in requests:
+                    reader.expect(await conn.request(request), rsp.Ack)
+                state = await self._read_state(conn, previous=self.store.state)
+        except (TransportError, TransportTimeoutError) as exc:
+            raise DeviceUnavailableError(str(exc)) from exc
+        log.info("%s links set to %s by %s", side, normalise(groups, count), origin)
+        self.store.replace(state)
 
     async def resync(self) -> None:
         """Re-read the whole configuration (front-panel changes)."""

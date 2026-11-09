@@ -48,3 +48,22 @@ def test_marker_is_already_modified() -> None:
     base = cm.decode_config((FIXTURES / DOC["base"]).read_bytes())
     assert base.marker == cm.MARKER_MODIFIED
     assert replace(base, marker=cm.MARKER_MODIFIED) == base
+
+
+LINKS = json.loads((FIXTURES / "link_diffs.json").read_text())
+
+
+def test_simulator_matches_the_recorded_link_writes() -> None:
+    """2a copies the master's settings except name and routing; 3b writes the link mask."""
+    device = SimulatedDevice(P)
+    device.live = cm.decode_config((FIXTURES / LINKS["base"]).read_bytes())
+    before = device.config_blob
+    assert len(LINKS["steps"]) == 32
+    for step in LINKS["steps"]:
+        reply = device.handle(bytes.fromhex(step["request"]))
+        assert reply.response is not None
+        assert reply.response.encode().hex(" ") == step["reply"], step["label"]
+        after = device.config_blob
+        got = [[o, f"{a:02x}", f"{b:02x}"] for o, a, b, _ in cm.diff_blobs(before, after)]
+        assert got == [change[:3] for change in step["changes"]], step["label"]
+        before = after

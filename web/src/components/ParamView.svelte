@@ -3,6 +3,7 @@
   import { app } from "../lib/app.svelte";
   import { nav, PARAM_SCOPE, PARAMS, SIDES, slotLabel } from "../lib/nav.svelte";
   import ChipBar from "./ChipBar.svelte";
+  import LinkEditor from "./LinkEditor.svelte";
   import Matrix from "./Matrix.svelte";
   import Mixer from "./Mixer.svelte";
   import ParamBlock from "./ParamBlock.svelte";
@@ -37,6 +38,8 @@
   <Mixer />
 {:else if nav.param === "matrix"}
   <Matrix />
+{:else if nav.param === "link"}
+  <LinkEditor />
 {:else}
   {#if scope === "all"}
     <ChipBar

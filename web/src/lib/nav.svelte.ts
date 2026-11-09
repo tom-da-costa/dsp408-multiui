@@ -22,6 +22,7 @@ export const PARAMS = [
   ["gate", "Gate"],
   ["geq", "GEQ"],
   ["matrix", "Matrix"],
+  ["link", "Link"],
 ] as const;
 export type Param = (typeof PARAMS)[number][0];
 
@@ -43,6 +44,7 @@ export const PARAM_SCOPE: Record<Param, "all" | "inputs" | "outputs"> = {
   gate: "inputs",
   geq: "inputs",
   matrix: "outputs",
+  link: "all",
 };
 
 const CHANNEL = /^(inputs|outputs)\.(\d+)$/;

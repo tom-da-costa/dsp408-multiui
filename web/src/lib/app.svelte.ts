@@ -27,7 +27,7 @@ interface Pending {
 const REQUEST_TIMEOUT_MS = 10_000;
 // Preset recall (~3 s) and store (~7.5 s) on a DSP 408, plus re-reading the configuration.
 const SLOW_REQUEST_TIMEOUT_MS = 30_000;
-const SLOW_REQUESTS = new Set(["preset.recall", "preset.store", "resync"]);
+const SLOW_REQUESTS = new Set(["preset.recall", "preset.store", "resync", "link.set"]);
 const ACTIVITY_INTERVAL_MS = 10_000;
 
 class App {

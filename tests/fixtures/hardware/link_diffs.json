@@ -1,0 +1,494 @@
+{
+ "description": "Link writes on a DSP 408 (firmware V0104P), preset U04 (live only), 2026-11-10. Each step: request payload, reply, and the config bytes it changed (offset, before, after, field). link2: unlink/link In C+D and Out 4+8 (with a gain change in between); link3: what 2a copies (Out 3 -> Out 7).",
+ "base": "dsp408_u04_base.bin",
+ "steps": [
+  {
+   "label": "unlink In C (own bit)",
+   "request": "3b 02 04",
+   "reply": "01",
+   "changes": [
+    [
+     434,
+     "0c",
+     "04",
+     "in2.link"
+    ]
+   ]
+  },
+  {
+   "label": "unlink In D (own bit)",
+   "request": "3b 03 08",
+   "reply": "01",
+   "changes": [
+    [
+     574,
+     "00",
+     "08",
+     "in3.link"
+    ]
+   ]
+  },
+  {
+   "label": "activate",
+   "request": "12",
+   "reply": "01",
+   "changes": []
+  },
+  {
+   "label": "In D gain alone -> raw 200",
+   "request": "34 03 c8 00",
+   "reply": "01",
+   "changes": [
+    [
+     568,
+     "00",
+     "c8",
+     "in3.gain"
+    ]
+   ]
+  },
+  {
+   "label": "prepare link In C <- In D",
+   "request": "2a 02 03",
+   "reply": "01",
+   "changes": [
+    [
+     568,
+     "c8",
+     "00",
+     "in3.gain"
+    ]
+   ]
+  },
+  {
+   "label": "In C master mask 0c",
+   "request": "3b 02 0c",
+   "reply": "01",
+   "changes": [
+    [
+     434,
+     "04",
+     "0c",
+     "in2.link"
+    ]
+   ]
+  },
+  {
+   "label": "In D slave 00",
+   "request": "3b 03 00",
+   "reply": "01",
+   "changes": [
+    [
+     574,
+     "08",
+     "00",
+     "in3.link"
+    ]
+   ]
+  },
+  {
+   "label": "activate",
+   "request": "12",
+   "reply": "01",
+   "changes": []
+  },
+  {
+   "label": "unlink Out 4 (own bit 08)",
+   "request": "3b 07 08",
+   "reply": "01",
+   "changes": [
+    [
+     990,
+     "88",
+     "08",
+     "out3.link"
+    ]
+   ]
+  },
+  {
+   "label": "unlink Out 8 (own bit 80)",
+   "request": "3b 0b 80",
+   "reply": "01",
+   "changes": [
+    [
+     1406,
+     "00",
+     "80",
+     "out7.link"
+    ]
+   ]
+  },
+  {
+   "label": "activate",
+   "request": "12",
+   "reply": "01",
+   "changes": []
+  },
+  {
+   "label": "Out 8 gain alone -> raw 300",
+   "request": "34 0b 2c 01",
+   "reply": "01",
+   "changes": [
+    [
+     1400,
+     "f0",
+     "2c",
+     "out7.gain"
+    ],
+    [
+     1401,
+     "00",
+     "01",
+     "out7.gain"
+    ]
+   ]
+  },
+  {
+   "label": "prepare link Out 4 <- Out 8",
+   "request": "2a 07 0b",
+   "reply": "01",
+   "changes": [
+    [
+     1400,
+     "2c",
+     "f0",
+     "out7.gain"
+    ],
+    [
+     1401,
+     "01",
+     "00",
+     "out7.gain"
+    ]
+   ]
+  },
+  {
+   "label": "Out 4 master mask 88",
+   "request": "3b 07 88",
+   "reply": "01",
+   "changes": [
+    [
+     990,
+     "08",
+     "88",
+     "out3.link"
+    ]
+   ]
+  },
+  {
+   "label": "Out 8 slave 00",
+   "request": "3b 0b 00",
+   "reply": "01",
+   "changes": [
+    [
+     1406,
+     "80",
+     "00",
+     "out7.link"
+    ]
+   ]
+  },
+  {
+   "label": "activate",
+   "request": "12",
+   "reply": "01",
+   "changes": []
+  },
+  {
+   "label": "unlink Out 3",
+   "request": "3b 06 04",
+   "reply": "01",
+   "changes": [
+    [
+     886,
+     "44",
+     "04",
+     "out2.link"
+    ]
+   ]
+  },
+  {
+   "label": "unlink Out 7",
+   "request": "3b 0a 40",
+   "reply": "01",
+   "changes": [
+    [
+     1302,
+     "00",
+     "40",
+     "out6.link"
+    ]
+   ]
+  },
+  {
+   "label": "activate",
+   "request": "12",
+   "reply": "01",
+   "changes": []
+  },
+  {
+   "label": "Out 7 name",
+   "request": "3d 0a 50 72 6f 62 65 37 00 00",
+   "reply": "01",
+   "changes": [
+    [
+     1200,
+     "4d",
+     "50",
+     "out6.name"
+    ],
+    [
+     1201,
+     "65",
+     "72",
+     "out6.name"
+    ],
+    [
+     1202,
+     "64",
+     "6f",
+     "out6.name"
+    ],
+    [
+     1203,
+     "00",
+     "62",
+     "out6.name"
+    ],
+    [
+     1204,
+     "00",
+     "65",
+     "out6.name"
+    ],
+    [
+     1205,
+     "00",
+     "37",
+     "out6.name"
+    ]
+   ]
+  },
+  {
+   "label": "Out 7 matrix",
+   "request": "3a 0a 0f",
+   "reply": "01",
+   "changes": [
+    [
+     1208,
+     "03",
+     "0f",
+     "out6.matrix"
+    ]
+   ]
+  },
+  {
+   "label": "Out 7 delay",
+   "request": "38 0a c0 03",
+   "reply": "01",
+   "changes": [
+    [
+     1300,
+     "f5",
+     "c0",
+     "out6.delay"
+    ],
+    [
+     1301,
+     "01",
+     "03",
+     "out6.delay"
+    ]
+   ]
+  },
+  {
+   "label": "Out 7 phase",
+   "request": "36 0a 01",
+   "reply": "01",
+   "changes": [
+    [
+     1298,
+     "00",
+     "01",
+     "out6.phase"
+    ]
+   ]
+  },
+  {
+   "label": "Out 7 mute",
+   "request": "35 0a 01",
+   "reply": "01",
+   "changes": [
+    [
+     1410,
+     "00",
+     "40",
+     "outputs.mute_mask"
+    ]
+   ]
+  },
+  {
+   "label": "Out 7 PEQ band 1",
+   "request": "33 0a 00 d2 00 a0 00 0a 02 00",
+   "reply": "01",
+   "changes": [
+    [
+     1224,
+     "b4",
+     "d2",
+     "out6.peq[0].gain"
+    ]
+   ]
+  },
+  {
+   "label": "Out 7 compressor",
+   "request": "30 0a 0f 00 cc 00 e7 03 00 00 9c 00",
+   "reply": "01",
+   "changes": [
+    [
+     1280,
+     "c7",
+     "cc",
+     "out6.compressor.attack"
+    ],
+    [
+     1286,
+     "a6",
+     "9c",
+     "out6.compressor.threshold"
+    ]
+   ]
+  },
+  {
+   "label": "Out 7 HPF",
+   "request": "32 0a 74 00 02",
+   "reply": "01",
+   "changes": [
+    [
+     1218,
+     "60",
+     "74",
+     "out6.crossover.hpf_freq"
+    ],
+    [
+     1222,
+     "0a",
+     "02",
+     "out6.crossover.hpf_slope"
+    ]
+   ]
+  },
+  {
+   "label": "Out 7 PEQ bypass",
+   "request": "3c 0a 01",
+   "reply": "01",
+   "changes": [
+    [
+     1444,
+     "00",
+     "40",
+     "outputs.peq_bypass_mask"
+    ]
+   ]
+  },
+  {
+   "label": "2a 06 0a",
+   "request": "2a 06 0a",
+   "reply": "01",
+   "changes": [
+    [
+     1218,
+     "74",
+     "60",
+     "out6.crossover.hpf_freq"
+    ],
+    [
+     1222,
+     "02",
+     "0a",
+     "out6.crossover.hpf_slope"
+    ],
+    [
+     1224,
+     "d2",
+     "b4",
+     "out6.peq[0].gain"
+    ],
+    [
+     1280,
+     "cc",
+     "c7",
+     "out6.compressor.attack"
+    ],
+    [
+     1286,
+     "9c",
+     "a6",
+     "out6.compressor.threshold"
+    ],
+    [
+     1298,
+     "01",
+     "00",
+     "out6.phase"
+    ],
+    [
+     1300,
+     "c0",
+     "f5",
+     "out6.delay"
+    ],
+    [
+     1301,
+     "03",
+     "01",
+     "out6.delay"
+    ],
+    [
+     1410,
+     "40",
+     "00",
+     "outputs.mute_mask"
+    ],
+    [
+     1444,
+     "40",
+     "00",
+     "outputs.peq_bypass_mask"
+    ]
+   ]
+  },
+  {
+   "label": "Out 3 master 44",
+   "request": "3b 06 44",
+   "reply": "01",
+   "changes": [
+    [
+     886,
+     "04",
+     "44",
+     "out2.link"
+    ]
+   ]
+  },
+  {
+   "label": "Out 7 slave 00",
+   "request": "3b 0a 00",
+   "reply": "01",
+   "changes": [
+    [
+     1302,
+     "40",
+     "00",
+     "out6.link"
+    ]
+   ]
+  },
+  {
+   "label": "activate",
+   "request": "12",
+   "reply": "01",
+   "changes": []
+  }
+ ]
+}

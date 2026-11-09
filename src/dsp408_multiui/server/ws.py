@@ -12,7 +12,7 @@ import contextlib
 import json
 import logging
 from dataclasses import dataclass, field
-from typing import Any
+from typing import Any, TypeGuard
 
 from fastapi import WebSocket, WebSocketDisconnect
 
@@ -24,7 +24,7 @@ from dsp408_multiui.protocol.meters import MeterReading
 from dsp408_multiui.server.auth import AuthManager, ClientSession
 from dsp408_multiui.server.lock import LockManager, LockState
 from dsp408_multiui.server.settings import ServerConfig
-from dsp408_multiui.state.registry import HARDWARE_VERIFIED, ParamError
+from dsp408_multiui.state.registry import HARDWARE_VERIFIED, ParamError, is_verified
 from dsp408_multiui.state.store import Patch, Snapshot, StateStore, StoreEvent
 
 log = logging.getLogger(__name__)
@@ -315,6 +315,14 @@ class Hub:
                 if not isinstance(name, str):
                     raise RequestError("invalid", "name must be a string")
                 await self.session.store_preset(_int(message, "slot"), name, client.id)
+            case "link.set":
+                self._require_lock(client)
+                if not is_verified("link") and not self.config.allow_unverified:
+                    raise RequestError("experimental", "links are not verified on a DSP 408")
+                side, groups = message.get("side"), message.get("groups")
+                if not isinstance(side, str) or not _int_groups(groups):
+                    raise RequestError("invalid", "side must be a string, groups lists of ints")
+                await self.session.set_links(side, groups, client.id)
             case "lock.acquire":
                 if not self.lock.acquire(client.id, client.session.name):
                     raise RequestError("locked", "the lock is held by another client")
@@ -361,3 +369,10 @@ def _result(req: Any, error: str | None = None, message: str | None = None) -> d
         result["error"] = error
         result["message"] = message or error
     return result
+
+
+def _int_groups(groups: object) -> TypeGuard[list[list[int]]]:
+    return isinstance(groups, list) and all(
+        isinstance(g, list) and all(isinstance(i, int) and not isinstance(i, bool) for i in g)
+        for g in groups
+    )

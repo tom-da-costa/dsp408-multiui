@@ -48,7 +48,7 @@
 </script>
 
 <ChipBar
-  items={PARAMS.map(([key, label]) => ({ key, label }))}
+  items={PARAMS.filter(([key]) => key !== "link").map(([key, label]) => ({ key, label }))}
   selected={shown}
   onselect={toggle}
   label="Settings shown"

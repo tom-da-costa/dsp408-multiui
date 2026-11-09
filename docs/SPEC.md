@@ -66,7 +66,7 @@ feature whose encoding is not yet verified on hardware (PROTOCOL §9) stays hidd
 | F-P-11 | 31-band graphic EQ | inputs | S |
 | F-P-12 | Channel names (8 ASCII characters) | all | S |
 | F-P-13 | Matrix crosspoint gain | outputs | L |
-| F-P-14 | Channel link | all | L |
+| F-P-14 | Channel link (Params › Link; linking copies the master's settings, except name and routing) | all | done |
 | — | **No frequency-response curves** (explicit non-goal) | | — |
 | — | **No test-tone generator** (speaker safety) and **no device-PIN setting** (`0x2f` can brick access) | | — |
 
@@ -258,6 +258,7 @@ WebSocket `/ws` (cookie auth plus an `Origin` check). JSON messages `{type, ...}
 | C→S | `settings.set` | `req`, `meter_rate_hz` (clamped to 1–10) |
 | C→S | `rename` | `req`, `name` (display name) |
 | C→S | `resync` | `req` |
+| C→S | `link.set` | `req`, `side` (`inputs` / `outputs`), `groups` (lists of channel indices; channels in no group are unlinked). Re-reads the config, then a `snapshot`. |
 | C→S | `ping` | (keepalive; the server answers `pong`) |
 
 At 5 Hz with 12 channels, meter messages are ~300 bytes, so JSON is fine. A binary frame is a

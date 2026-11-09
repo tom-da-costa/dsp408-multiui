@@ -369,6 +369,60 @@ def test_unverified_parameters_need_experimental_on_real_hardware(
             assert ok["ok"]
 
 
+def test_links(client: TestClient) -> None:
+    login(client)
+    with client.websocket_connect("/ws") as ws:
+        state = receive_until(ws, "snapshot")["state"]
+        out1, out2 = state["outputs"][0], state["outputs"][1]
+        assert out1["linked"] == []
+        assert out2["linked"] == []
+        link = {"type": "link.set", "req": 1, "side": "outputs", "groups": [[0, 1]]}
+        assert request(ws, link)["ok"]
+        state = receive_until(ws, "snapshot")["state"]
+        assert state["outputs"][0]["linked"] == [1]
+        assert state["outputs"][1]["linked"] == [0]
+        # Out 2 took Out 1's settings, but kept its name and routing
+        assert state["outputs"][1]["crossover"] == out1["crossover"]
+        assert state["outputs"][1]["name"] == out2["name"]
+        assert state["outputs"][1]["matrix"] == out2["matrix"]
+        # a write to one member now changes both
+        assert request(ws, {"type": "set", "req": 2, "path": "outputs.1.gain_db", "value": -3})[
+            "ok"
+        ]
+        receive_until(ws, "patch")
+        unlink = {"type": "link.set", "req": 3, "side": "outputs", "groups": []}
+        reply = request(ws, unlink)
+        assert reply["ok"], reply
+        state = receive_until(ws, "snapshot")["state"]
+        assert state["outputs"][0]["linked"] == []
+        assert state["outputs"][0]["gain_db"] == state["outputs"][1]["gain_db"] == -3
+        for bad in (
+            {"side": "both", "groups": []},
+            {"side": "inputs", "groups": [[0, 9]]},
+            {"side": "inputs", "groups": "A+B"},
+            {"side": "inputs", "groups": [[0, 1], [1, 2]]},
+        ):
+            reply = request(ws, {"type": "link.set", "req": 9, **bad})
+            assert reply["error"] == "invalid", bad
+
+
+def test_links_need_experimental_when_unverified(
+    web_dir: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(registry, "HARDWARE_VERIFIED", registry.HARDWARE_VERIFIED - {"link"})
+    app, _ = make_app(web_dir)
+    ctx: AppContext = app.state.ctx
+    ctx.config.demo = False
+    with TestClient(app) as test_client:
+        deadline = time.monotonic() + 5
+        while ctx.session.status.value != "online" and time.monotonic() < deadline:
+            time.sleep(0.02)
+        login(test_client)
+        with test_client.websocket_connect("/ws") as ws:
+            link = {"type": "link.set", "req": 1, "side": "inputs", "groups": [[0, 1]]}
+            assert request(ws, link)["error"] == "experimental"
+
+
 def test_logout_closes_websockets_and_releases_lock(client: TestClient) -> None:
     login(client)
     with client.websocket_connect("/ws") as ws:
