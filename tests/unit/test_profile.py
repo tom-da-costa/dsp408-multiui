@@ -27,7 +27,8 @@ def test_default_profile_values() -> None:
     assert p.slopes[0] == "Off"
     assert p.slopes[10] == "LR-24"
     assert (p.meter_tail_comp_byte, p.meter_tail_limit_byte, p.meter_tail_clip_byte) == (0, 1, None)
-    assert p.meter_clip_db == 0.0
+    assert p.meter_clip_db == 12.0
+    assert p.meter_reference == 0.1
     assert p.slow_command_timeout_s == 10.0
 
 

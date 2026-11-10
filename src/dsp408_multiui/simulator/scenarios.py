@@ -55,7 +55,7 @@ def silent(device: SimulatedDevice, faults: Faults) -> None:
 def clipping(device: SimulatedDevice, faults: Faults) -> None:
     """Hot signal on In A: input clip, limiter active on the outputs it feeds."""
     demo(device, faults)
-    device.meters.sources[0] = Source(Shape.STEADY, 8.0)
+    device.meters.sources[0] = Source(Shape.STEADY, 24.0)  # above full scale (+20 dB)
 
 
 def stress(device: SimulatedDevice, faults: Faults) -> None:

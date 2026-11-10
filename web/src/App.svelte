@@ -1,21 +1,74 @@
 <script lang="ts">
   import { onMount } from "svelte";
+  import AllInOne from "./components/AllInOne.svelte";
+  import ChannelsView from "./components/ChannelsView.svelte";
+  import LimiterCalc from "./components/LimiterCalc.svelte";
+  import LiveView from "./components/LiveView.svelte";
   import Login from "./components/Login.svelte";
-  import Matrix from "./components/Matrix.svelte";
-  import Mixer from "./components/Mixer.svelte";
+  import ParamView from "./components/ParamView.svelte";
   import Presets from "./components/Presets.svelte";
   import Settings from "./components/Settings.svelte";
   import Toasts from "./components/Toasts.svelte";
-  import TopBar from "./components/TopBar.svelte";
-  import ChannelDetail from "./components/ChannelDetail.svelte";
+  import RailLock from "./components/RailLock.svelte";
+  import RailStatus from "./components/RailStatus.svelte";
   import { app } from "./lib/app.svelte";
-  import { nav, TABS } from "./lib/nav.svelte";
+  import { nav, TABS, type Tab } from "./lib/nav.svelte";
+
+  // The tab rail is always on the left; expanded it shows the labels (remembered per browser).
+  const RAIL_KEY = "dsp408.rail.expanded";
+  let expanded = $state(readExpanded());
+
+  function readExpanded(): boolean {
+    try {
+      return localStorage.getItem(RAIL_KEY) === "1";
+    } catch {
+      return false;
+    }
+  }
+
+  function toggleRail() {
+    expanded = !expanded;
+    try {
+      localStorage.setItem(RAIL_KEY, expanded ? "1" : "0");
+    } catch {
+      // not persisted: fine
+    }
+  }
+
+  // Full screen (Android, desktop): hidden where unsupported (iPhone: install it instead, from
+  // Safari's Share › Add to Home Screen) and when already running as an installed app.
+  let fullscreen = $state(false);
+  const canFullscreen =
+    typeof document !== "undefined" &&
+    document.fullscreenEnabled &&
+    !window.matchMedia("(display-mode: fullscreen), (display-mode: standalone)").matches;
+
+  async function toggleFullscreen() {
+    try {
+      if (document.fullscreenElement) await document.exitFullscreen();
+      else await document.documentElement.requestFullscreen({ navigationUI: "hide" });
+    } catch {
+      app.toast("Full screen is not available here", "error");
+    }
+  }
+
+  // On a phone the expanded rail covers the page: fold it once something is picked.
+  function foldOnPhone() {
+    if (expanded && window.matchMedia("(max-width: 699px)").matches) toggleRail();
+  }
+
+  function select(tab: Tab) {
+    nav.select(tab);
+    foldOnPhone();
+  }
 
   onMount(() => {
     void app.start();
     // Any interaction counts as activity for the lock (throttled in app.activity).
     const onActivity = () => app.activity();
     const onPop = () => nav.fromHash();
+    const onFullscreen = () => (fullscreen = document.fullscreenElement !== null);
+    document.addEventListener("fullscreenchange", onFullscreen);
     window.addEventListener("popstate", onPop);
     window.addEventListener("pointerdown", onActivity, { passive: true });
     window.addEventListener("keydown", onActivity);
@@ -23,6 +76,7 @@
       window.removeEventListener("pointerdown", onActivity);
       window.removeEventListener("keydown", onActivity);
       window.removeEventListener("popstate", onPop);
+      document.removeEventListener("fullscreenchange", onFullscreen);
     };
   });
 </script>
@@ -30,105 +84,181 @@
 {#if app.view === "login"}
   <Login />
 {:else if app.view === "app"}
-  <div class="layout">
-    <TopBar />
-    <nav>
+  <div class="layout" class:expanded>
+    <nav aria-label="Views">
+      <button
+        class="fold"
+        onclick={toggleRail}
+        aria-expanded={expanded}
+        aria-label={expanded ? "Collapse the tab bar" : "Expand the tab bar"}
+        title={expanded ? "Collapse" : "Expand"}
+      >
+        <span class="icon" aria-hidden="true">{expanded ? "«" : "»"}</span>
+      </button>
+      <RailStatus {expanded} onpick={foldOnPhone} />
       {#each TABS as [key, text, icon] (key)}
         <button
           class:selected={nav.tab === key}
-          onclick={() => nav.select(key)}
+          onclick={() => select(key)}
           aria-current={nav.tab === key}
+          title={text}
         >
-          <span aria-hidden="true">{icon}</span>{text}
+          <span class="icon" aria-hidden="true">{icon}</span>
+          <span class="text">{text}</span>
         </button>
       {/each}
-    </nav>
-    <main>
-      {#if !app.device}
-        <p class="muted center">
-          {app.connected ? "Waiting for the DSP…" : "Connecting to the server…"}
-        </p>
-      {:else if nav.detail}
-        <ChannelDetail path={nav.detail} />
-      {:else if nav.tab === "mixer"}
-        <Mixer />
-      {:else if nav.tab === "matrix"}
-        <Matrix />
-      {:else if nav.tab === "presets"}
-        <Presets />
-      {:else}
-        <Settings />
+      <RailLock {expanded} onpick={foldOnPhone} />
+      {#if canFullscreen}
+        <button
+          class="bottom"
+          onclick={toggleFullscreen}
+          aria-pressed={fullscreen}
+          title={fullscreen ? "Exit full screen" : "Full screen"}
+        >
+          <span class="icon" aria-hidden="true">{fullscreen ? "🗗" : "⛶"}</span>
+          <span class="text">{fullscreen ? "Exit full screen" : "Full screen"}</span>
+        </button>
       {/if}
-    </main>
+    </nav>
+    {#if expanded}
+      <button class="scrim" aria-label="Collapse the tab bar" onclick={toggleRail}></button>
+    {/if}
+    <div class="page">
+      <main>
+        {#if !app.device}
+          <p class="muted center">
+            {app.connected ? "Waiting for the DSP…" : "Connecting to the server…"}
+          </p>
+        {:else if nav.tab === "live"}
+          <LiveView />
+        {:else if nav.tab === "params"}
+          <ParamView />
+        {:else if nav.tab === "channels"}
+          <ChannelsView />
+        {:else if nav.tab === "aio"}
+          <AllInOne />
+        {:else if nav.tab === "limiter"}
+          <LimiterCalc />
+        {:else if nav.tab === "presets"}
+          <Presets />
+        {:else}
+          <Settings />
+        {/if}
+      </main>
+    </div>
   </div>
   <Toasts />
 {/if}
 
 <style>
   .layout {
+    --rail: 56px;
+    --rail-open: 210px;
+    position: relative;
     height: 100%;
     display: grid;
-    grid-template-rows: auto 1fr auto;
-    grid-template-areas: "top" "main" "nav";
-  }
-  .layout > :global(header) {
-    grid-area: top;
-  }
-  main {
-    grid-area: main;
-    overflow: auto;
-    padding: 12px;
-    min-height: 0;
+    grid-template-columns: var(--rail) 1fr;
+    /* Installed app with a translucent status bar, notches in landscape */
+    padding-top: env(safe-area-inset-top);
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+    box-sizing: border-box;
   }
   nav {
-    grid-area: nav;
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    border-top: 1px solid var(--line);
+    position: relative;
+    z-index: 5;
+    width: var(--rail);
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: 6px 0 env(safe-area-inset-bottom);
     background: var(--panel);
-    padding-bottom: env(safe-area-inset-bottom);
+    border-right: 1px solid var(--line);
+    overflow: hidden auto;
+    transition: width 0.15s ease;
   }
   nav button {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-height: 52px;
+    margin: 0 6px;
+    padding: 0 10px;
     border: none;
-    border-radius: 0;
+    border-radius: 8px;
     background: none;
-    display: grid;
-    justify-items: center;
-    gap: 2px;
-    min-height: 56px;
-    font-size: 0.75rem;
     color: var(--muted);
+    white-space: nowrap;
+    text-align: left;
   }
-  nav button span {
-    font-size: 1.2rem;
+  nav .icon {
+    flex: 0 0 24px;
+    font-size: 1.25rem;
+    text-align: center;
+  }
+  nav .text {
+    font-size: 0.95rem;
+    opacity: 0;
+    transition: opacity 0.1s;
   }
   nav button.selected {
     color: var(--accent);
+    background: var(--panel-2);
+  }
+  nav .fold {
+    min-height: 44px;
+    margin-bottom: 6px;
+  }
+
+  .expanded nav {
+    width: var(--rail-open);
+  }
+  .expanded nav .text {
+    opacity: 1;
+  }
+  .scrim {
+    display: none;
+  }
+  .page {
+    grid-column: 2; /* stays put when the expanded rail floats (phone) */
+    min-width: 0;
+    display: grid;
+    grid-template-rows: 1fr;
+    min-height: 0;
+  }
+  main {
+    overflow: auto;
+    padding: 12px;
+    min-height: 0;
   }
   .center {
     text-align: center;
     margin-top: 20vh;
   }
-  @media (min-width: 900px) {
-    .layout {
-      grid-template-columns: 180px 1fr;
-      grid-template-rows: auto 1fr;
-      grid-template-areas: "top top" "nav main";
+  /* Phone: the expanded rail floats over the page instead of squeezing it. */
+  @media (max-width: 699px) {
+    .expanded nav {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      left: 0;
+      box-shadow: 4px 0 16px #0008;
     }
-    nav {
-      grid-template-columns: none;
-      grid-auto-rows: 56px;
-      align-content: start;
-      border-top: none;
-      border-right: 1px solid var(--line);
+    .expanded .scrim {
+      display: block;
+      position: absolute;
+      inset: 0;
+      z-index: 4;
+      min-height: 0;
+      border: none;
+      border-radius: 0;
+      background: #0006;
     }
-    nav button {
-      grid-auto-flow: column;
-      justify-content: start;
-      align-items: center;
-      gap: 10px;
-      padding: 0 18px;
-      font-size: 0.95rem;
+  }
+  /* Wider screens: the expanded rail pushes the page. */
+  @media (min-width: 700px) {
+    .expanded {
+      grid-template-columns: var(--rail-open) 1fr;
     }
   }
 </style>

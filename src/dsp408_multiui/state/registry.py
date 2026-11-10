@@ -46,8 +46,15 @@ HARDWARE_VERIFIED = frozenset(
         "compressor",
         "limiter",
         "name",
+        "link",  # channel link groups (2a / 3b), verified on 2026-11-10
     }
 )
+
+
+def is_verified(kind: str) -> bool:
+    """True when ``kind`` (a parameter or "link") has been verified on a real DSP 408."""
+    return kind in HARDWARE_VERIFIED
+
 
 # The DSP copies writes to the other members of a link group, except these.
 NOT_LINKED = frozenset({"name", "matrix"})

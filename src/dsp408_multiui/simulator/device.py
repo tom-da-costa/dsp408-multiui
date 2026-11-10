@@ -205,6 +205,10 @@ class SimulatedDevice:
                 )
             case cmd.SetPeqBypass(channel=ch, on=on):
                 self._update(ch, lambda c: {"peq_bypass": on})
+            case cmd.PrepareLink(master=master, slave=slave):
+                self._copy_settings(master, slave)
+            case cmd.SetLink(channel=ch, mask=mask):
+                self._update(ch, lambda c: {"link": mask}, linked=False)
             case cmd.SetGeqBand(channel=ch, band=n, raw=raw):
                 self._update(ch, lambda c: {"geq": (*c.geq[:n], raw, *c.geq[n + 1 :])})  # type: ignore[union-attr]
             case cmd.SetCompressor() as k:
@@ -218,6 +222,18 @@ class SimulatedDevice:
                 self._update(g.channel, lambda c: {"gate": gate})
             case _:  # pragma: no cover - every request type is handled above
                 raise AssertionError(f"unhandled request {r!r}")
+
+    # Settings that 2a (PrepareLink) does not copy: identity and routing (HW, 408).
+    _NOT_COPIED = ("name", "link", "matrix", "crosspoints")
+
+    def _copy_settings(self, master: int, slave: int) -> None:
+        """2a: the slave takes every setting of the master except its name and routing."""
+        is_input = self.profile.is_input(master)
+        group = self.live.inputs if is_input else self.live.outputs
+        base = 0 if is_input else self.profile.input_count
+        source, target = group[master - base], group[slave - base]
+        keep = {k: getattr(target, k) for k in self._NOT_COPIED if hasattr(target, k)}
+        self._update(slave, lambda c: {**_fields(source), **keep}, linked=False)
 
     def _update(
         self,
@@ -236,3 +252,7 @@ class SimulatedDevice:
             group[m] = replace(group[m], **changes(group[m]))  # type: ignore[arg-type,assignment]
         live = replace(self.live, inputs=tuple(inputs), outputs=tuple(outputs))
         self.live = replace(live, marker=cm.MARKER_MODIFIED)
+
+
+def _fields(channel: cm.RawInput | cm.RawOutput) -> dict[str, object]:
+    return {name: getattr(channel, name) for name in channel.__slots__}

@@ -1,5 +1,14 @@
 <script lang="ts">
-  import { dbToPos, formatDb, GAIN_MAX, GAIN_MIN, posToDb, quantizeGain } from "../lib/scale";
+  import {
+    dbToPos,
+    formatDb,
+    GAIN_MAX,
+    GAIN_MIN,
+    gainStep,
+    posToDb,
+    quantizeGain,
+  } from "../lib/scale";
+  import { holdRepeat } from "../lib/repeat";
   import { throttleLatest } from "../lib/throttle";
 
   interface Props {
@@ -17,8 +26,14 @@
   let editing = $state(false);
   let draft = $state("");
 
-  // While dragging, show the local value; otherwise follow the server.
-  const shown = $derived(dragging ? local : value);
+  // While dragging, show the local value; after − / +, the value sent until the DSP has it;
+  // otherwise follow the server.
+  let pending = $state<number | null>(null);
+  let settle: ReturnType<typeof setTimeout> | undefined;
+  const shown = $derived(dragging ? local : (pending ?? value));
+  $effect(() => {
+    if (pending !== null && Math.abs(value - pending) < 0.05) pending = null;
+  });
   const sender = throttleLatest((db: number) => onchange(db), 50);
 
   function fromPointer(clientY: number): number {
@@ -50,15 +65,25 @@
     dragging = false;
   }
 
-  function nudge(delta: number) {
+  /** Move by `count` device steps (0.1 dB, or 0.5 dB below -20 dB), chaining from the last
+   * value sent so that a held button does not wait for the DSP's answer. */
+  function nudge(count: number) {
     if (disabled) return;
-    // Below -20 dB the device works in 0.5 dB steps: smaller steps would round back.
-    const step = value + delta < -20 && Math.abs(delta) < 0.5 ? Math.sign(delta) * 0.5 : delta;
-    onchange(quantizeGain(value + step));
+    const from = pending ?? value;
+    let db = from;
+    for (let i = 0; i < Math.abs(count); i++) db = gainStep(db, count > 0 ? 1 : -1);
+    if (db === from) return;
+    pending = db;
+    clearTimeout(settle);
+    settle = setTimeout(() => (pending = null), 2000);
+    stepSender.push(db);
   }
 
+  // A held − / + shows every step at once but sends at most every 500 ms (the latest value).
+  const stepSender = throttleLatest((db: number) => onchange(db), 500);
+
   function key(event: KeyboardEvent) {
-    const steps: Record<string, number> = { ArrowUp: 0.1, ArrowDown: -0.1, PageUp: 1, PageDown: -1 };
+    const steps: Record<string, number> = { ArrowUp: 1, ArrowDown: -1, PageUp: 10, PageDown: -10 };
     const step = steps[event.key];
     if (step !== undefined) {
       event.preventDefault();
@@ -99,7 +124,12 @@
       {formatDb(shown)}
     </button>
   {/if}
-  <button class="step" onclick={() => nudge(0.5)} {disabled} aria-label="gain up">+</button>
+  <button
+    class="step"
+    use:holdRepeat={{ step: () => nudge(1), end: () => stepSender.flush(), disabled }}
+    {disabled}
+    aria-label="gain up (hold to repeat)">+</button
+  >
   <div class="track" bind:this={track}>
     <div class="unity" style:bottom={`${dbToPos(0) * 100}%`}></div>
     <div
@@ -120,7 +150,12 @@
       onkeydown={key}
     ></div>
   </div>
-  <button class="step" onclick={() => nudge(-0.5)} {disabled} aria-label="gain down">−</button>
+  <button
+    class="step"
+    use:holdRepeat={{ step: () => nudge(-1), end: () => stepSender.flush(), disabled }}
+    {disabled}
+    aria-label="gain down (hold to repeat)">−</button
+  >
 </div>
 
 <style>

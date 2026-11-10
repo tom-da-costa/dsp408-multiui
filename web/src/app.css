@@ -47,6 +47,10 @@ button {
   background: var(--panel-2);
   cursor: pointer;
   touch-action: manipulation;
+  /* Holding − / + must not select text or open the long-press menu. */
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
 }
 
 button:disabled {

@@ -66,7 +66,7 @@ feature whose encoding is not yet verified on hardware (PROTOCOL §9) stays hidd
 | F-P-11 | 31-band graphic EQ | inputs | S |
 | F-P-12 | Channel names (8 ASCII characters) | all | S |
 | F-P-13 | Matrix crosspoint gain | outputs | L |
-| F-P-14 | Channel link | all | L |
+| F-P-14 | Channel link (Params › Link; linking copies the master's settings, except name and routing) | all | done |
 | — | **No frequency-response curves** (explicit non-goal) | | — |
 | — | **No test-tone generator** (speaker safety) and **no device-PIN setting** (`0x2f` can brick access) | | — |
 
@@ -240,7 +240,7 @@ WebSocket `/ws` (cookie auth plus an `Origin` check). JSON messages `{type, ...}
 | Direction | Type | Payload |
 |---|---|---|
 | S→C | `hello` | `client_id`, `name`, `server_version`, `demo`, `experimental`, `verified_kinds`, `profile` (channel counts, PEQ types, slopes, ratios, frequency/Q/delay ranges), `limits` (control ranges), `settings` |
-| S→C | `snapshot` | `rev`, full `state` (device info, presets, channels) |
+| S→C | `snapshot` | `rev`, full `state` (device info, presets, channels, `modified`: the live setup changed since the last recall or store, `null` when unknown) |
 | S→C | `patch` | `rev`, `changes: [{path, value}]`, `origin` (client_id or `device`) |
 | S→C | `meters` | `seq`, `levels` (12 values in dB or `null`; the whole field is `null` when the poll failed), `clip` (12 bools), `limit` (8 bools or `null`), `comp` (8 bools or `null`), `input_clip` |
 | S→C | `device` | `status`, `error?`, `model`, `firmware` |
@@ -258,6 +258,7 @@ WebSocket `/ws` (cookie auth plus an `Origin` check). JSON messages `{type, ...}
 | C→S | `settings.set` | `req`, `meter_rate_hz` (clamped to 1–10) |
 | C→S | `rename` | `req`, `name` (display name) |
 | C→S | `resync` | `req` |
+| C→S | `link.set` | `req`, `side` (`inputs` / `outputs`), `groups` (lists of channel indices; channels in no group are unlinked). Re-reads the config, then a `snapshot`. |
 | C→S | `ping` | (keepalive; the server answers `pong`) |
 
 At 5 Hz with 12 channels, meter messages are ~300 bytes, so JSON is fine. A binary frame is a
@@ -313,10 +314,12 @@ with live changes kept in memory. There is **no database** and no data volume.
 
 Mobile-first, dark theme by default (stage use), system font stack, no external assets.
 
-**Global chrome.** A top bar shows the DSP status dot, the active preset name and the **lock
-button**, which has three states: free / mine (idle countdown, tap to release) / other (owner's
-name, read-only badge). A "DEMO" badge is shown in demo mode. On a phone, a bottom tab bar offers **Mixer ·
-Matrix · Presets · Settings**; on desktop it becomes a side bar.
+**Global chrome.** No top bar: a tab rail is always on the left, folded to icons or expanded
+with labels (it floats over the page on a phone; the choice is remembered). Its top shows the
+DSP status dot, the active preset (slot when folded, name when expanded; an orange dot or
+"unsaved" for unsaved changes; "DEMO" in demo mode; tap: Presets) and the **lock button**, which
+has three states: free / mine (idle countdown, tap to release) / other (owner's name, read-only); it sits at the bottom of the rail under this client's name (tap: Settings, to rename).
+Tabs: **Live · Params · Channels · All-in-one · Presets · Settings**, then a full-screen toggle.
 
 **Mixer.** Channel strips for In A–D, then Out 1–8. On a phone, the strips scroll horizontally
 with "In / Out / All" filter chips; on desktop, all 12 strips fit on screen. Each strip shows:

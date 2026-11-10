@@ -100,5 +100,8 @@ class DeviceState(_Model):
     presets: list[Preset] = Field(default_factory=list)
     active_slot: int = 0  # 0 = F00
     preset_name: str = ""
+    # The live config differs from the stored preset: changed since the last recall or store.
+    # None = unknown (the server connected to a DSP that may already hold unsaved changes).
+    modified: bool | None = None
     inputs: list[InputChannel] = Field(default_factory=list)
     outputs: list[OutputChannel] = Field(default_factory=list)

@@ -221,7 +221,10 @@ def test_hello_snapshot_and_write(client: TestClient) -> None:
         reply = request(ws, {"type": "set", "req": 1, "path": "outputs.0.gain_db", "value": -6.04})
         assert reply == {"type": "result", "req": 1, "ok": True}
         patch = receive_until(ws, "patch")
-        assert patch["changes"] == [{"path": "outputs.0.gain_db", "value": -6.0}]
+        assert patch["changes"] == [
+            {"path": "outputs.0.gain_db", "value": -6.0},
+            {"path": "modified", "value": True},  # the first change since the connection
+        ]
         assert patch["origin"] == hello["client_id"]
         assert patch["rev"] > snapshot["rev"]
 
@@ -367,6 +370,78 @@ def test_unverified_parameters_need_experimental_on_real_hardware(
             assert reply["error"] == "experimental"
             ok = request(ws, {"type": "set", "req": 2, "path": "outputs.0.gain_db", "value": -1})
             assert ok["ok"]
+
+
+def test_modified_tracks_unsaved_changes(client: TestClient) -> None:
+    login(client)
+    with client.websocket_connect("/ws") as ws:
+        assert receive_until(ws, "snapshot")["state"]["modified"] is None  # unknown at start
+        assert request(ws, {"type": "preset.recall", "req": 1, "slot": 1})["ok"]
+        assert receive_until(ws, "snapshot")["state"]["modified"] is False
+        assert request(ws, {"type": "set", "req": 2, "path": "inputs.0.mute", "value": True})["ok"]
+        changes = receive_until(ws, "patch")["changes"]
+        assert {"path": "modified", "value": True} in changes
+        assert request(ws, {"type": "set", "req": 3, "path": "inputs.0.mute", "value": False})["ok"]
+        assert receive_until(ws, "patch")["changes"] == [{"path": "inputs.0.mute", "value": False}]
+        assert request(ws, {"type": "resync", "req": 4})["ok"]
+        assert receive_until(ws, "snapshot")["state"]["modified"] is True  # still unsaved
+        assert request(ws, {"type": "preset.store", "req": 5, "slot": 1, "name": "Saved"})["ok"]
+        store = receive_until(ws, "patch")["changes"]
+        assert {"path": "modified", "value": False} in store
+
+
+def test_links(client: TestClient) -> None:
+    login(client)
+    with client.websocket_connect("/ws") as ws:
+        state = receive_until(ws, "snapshot")["state"]
+        out1, out2 = state["outputs"][0], state["outputs"][1]
+        assert out1["linked"] == []
+        assert out2["linked"] == []
+        link = {"type": "link.set", "req": 1, "side": "outputs", "groups": [[0, 1]]}
+        assert request(ws, link)["ok"]
+        state = receive_until(ws, "snapshot")["state"]
+        assert state["outputs"][0]["linked"] == [1]
+        assert state["outputs"][1]["linked"] == [0]
+        # Out 2 took Out 1's settings, but kept its name and routing
+        assert state["outputs"][1]["crossover"] == out1["crossover"]
+        assert state["outputs"][1]["name"] == out2["name"]
+        assert state["outputs"][1]["matrix"] == out2["matrix"]
+        # a write to one member now changes both
+        assert request(ws, {"type": "set", "req": 2, "path": "outputs.1.gain_db", "value": -3})[
+            "ok"
+        ]
+        receive_until(ws, "patch")
+        unlink = {"type": "link.set", "req": 3, "side": "outputs", "groups": []}
+        reply = request(ws, unlink)
+        assert reply["ok"], reply
+        state = receive_until(ws, "snapshot")["state"]
+        assert state["outputs"][0]["linked"] == []
+        assert state["outputs"][0]["gain_db"] == state["outputs"][1]["gain_db"] == -3
+        for bad in (
+            {"side": "both", "groups": []},
+            {"side": "inputs", "groups": [[0, 9]]},
+            {"side": "inputs", "groups": "A+B"},
+            {"side": "inputs", "groups": [[0, 1], [1, 2]]},
+        ):
+            reply = request(ws, {"type": "link.set", "req": 9, **bad})
+            assert reply["error"] == "invalid", bad
+
+
+def test_links_need_experimental_when_unverified(
+    web_dir: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(registry, "HARDWARE_VERIFIED", registry.HARDWARE_VERIFIED - {"link"})
+    app, _ = make_app(web_dir)
+    ctx: AppContext = app.state.ctx
+    ctx.config.demo = False
+    with TestClient(app) as test_client:
+        deadline = time.monotonic() + 5
+        while ctx.session.status.value != "online" and time.monotonic() < deadline:
+            time.sleep(0.02)
+        login(test_client)
+        with test_client.websocket_connect("/ws") as ws:
+            link = {"type": "link.set", "req": 1, "side": "inputs", "groups": [[0, 1]]}
+            assert request(ws, link)["error"] == "experimental"
 
 
 def test_logout_closes_websockets_and_releases_lock(client: TestClient) -> None:

@@ -100,8 +100,8 @@ class ProtocolProfile:
     meter_tail_limit_byte: int | None = 1
     meter_tail_comp_byte: int | None = 0
     meter_tail_clip_byte: int | None = None
-    meter_reference: float = 1.0
-    meter_clip_db: float = 0.0
+    meter_reference: float = 0.1  # 0 dBu: full scale (1.0) = +20 dBu (PROTOCOL §6)
+    meter_clip_db: float = 12.0  # CLIP indicator, 8 dB below full scale
     meter_floor_db: float = -90.0
     # timing
     command_timeout_s: float = 0.5

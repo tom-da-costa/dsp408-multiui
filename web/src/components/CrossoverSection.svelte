@@ -1,6 +1,6 @@
 <script lang="ts">
   import { app } from "../lib/app.svelte";
-  import { formatHz } from "../lib/scale";
+  import { formatHz, logIndexStep } from "../lib/scale";
   import type { Channel, Filter } from "../lib/types";
   import Field from "./Field.svelte";
   import Section from "./Section.svelte";
@@ -8,9 +8,11 @@
   interface Props {
     channel: Channel;
     path: string;
+    id?: string;
+    title?: string;
   }
 
-  let { channel, path }: Props = $props();
+  let { channel, path, id = "crossover", title = "High-pass / low-pass" }: Props = $props();
 
   const profile = $derived(app.hello?.profile);
   const editable = $derived(app.editable("crossover"));
@@ -24,7 +26,7 @@
   }
 </script>
 
-<Section id="crossover" title="High-pass / low-pass" kind="crossover">
+<Section {id} {title} kind="crossover">
   {#if profile}
     {#each FILTERS as [which, title] (which)}
       {@const filter = channel.crossover[which]}
@@ -58,8 +60,7 @@
           max={profile.freq_max_hz}
           unit="Hz"
           scale="log"
-          factor={2 ** (1 / 6)}
-          step={0.1}
+          next={(v, d) => logIndexStep(v, profile.freq_min_hz, profile.freq_max_hz, profile.freq_steps ?? 300, d)}
           format={formatHz}
           disabled={!editable}
           onchange={(v) => setFilter(which, { freq_hz: v })}

@@ -1,5 +1,18 @@
 import { describe, expect, it } from "vitest";
-import { formatGeqFreq, fromPos, GEQ_FREQS, parseNumber, snap, toPos } from "./scale";
+import {
+  formatGeqFreq,
+  formatHz,
+  fromPos,
+  gainStep,
+  GEQ_FREQS,
+  logIndexStep,
+  meterDbToPos,
+  meterGradient,
+  sampleStep,
+  parseNumber,
+  snap,
+  toPos,
+} from "./scale";
 
 describe("slider scales", () => {
   it.each(["lin", "log", "sqrt"] as const)("%s round-trips", (scale) => {
@@ -53,5 +66,61 @@ describe("GEQ", () => {
     expect(GEQ_FREQS).toHaveLength(31);
     expect(formatGeqFreq(1250)).toBe("1.25k");
     expect(formatGeqFreq(31.5)).toBe("31.5");
+  });
+});
+
+describe("meterDbToPos", () => {
+  it("spans -60 dB to full scale (+20 dB) and is monotonic", () => {
+    expect(meterDbToPos(-90)).toBe(0);
+    expect(meterDbToPos(0)).toBeCloseTo(0.7);
+    expect(meterDbToPos(20)).toBe(1);
+    expect(meterDbToPos(30)).toBe(1);
+    let last = -1;
+    for (let db = -60; db <= 20; db += 0.5) {
+      const pos = meterDbToPos(db);
+      expect(pos).toBeGreaterThan(last);
+      last = pos;
+    }
+  });
+});
+
+describe("device steps", () => {
+  it("gain: 0.5 dB below -20 dB, 0.1 dB above", () => {
+    expect(gainStep(0, 1)).toBe(0.1);
+    expect(gainStep(-19.9, -1)).toBe(-20);
+    expect(gainStep(-20, -1)).toBe(-20.5);
+    expect(gainStep(-20.5, 1)).toBe(-20);
+    expect(gainStep(12, 1)).toBe(12);
+    expect(gainStep(-60, -1)).toBe(-60);
+  });
+
+  it("log index: one raw step, clamped", () => {
+    const up = logIndexStep(1000, 19.7, 20160, 300, 1);
+    expect(up / 1000).toBeCloseTo((20160 / 19.7) ** (1 / 300), 2);
+    expect(logIndexStep(up, 19.7, 20160, 300, -1)).toBeCloseTo(1000, -1);
+    expect(logIndexStep(20160, 19.7, 20160, 300, 1)).toBeCloseTo(20160);
+    expect(logIndexStep(0.4, 0.4, 128, 100, -1)).toBeCloseTo(0.4);
+  });
+
+  it("delay: one sample at 96 kHz", () => {
+    expect(sampleStep(0, 96000, 1)).toBeCloseTo(1 / 96, 6);
+    expect(sampleStep(4.438, 96000, 1)).toBeCloseTo(427 / 96, 6);
+    expect(sampleStep(0, 96000, -1)).toBe(0);
+  });
+
+  it("formats low frequencies with a decimal", () => {
+    expect(formatHz(20.16)).toBe("20.2");
+    expect(formatHz(440)).toBe("440");
+    expect(formatHz(1234)).toBe("1.23k");
+  });
+});
+
+describe("meter zones", () => {
+  it("green to 0 dBu, yellow to +6, orange to +12, red above", () => {
+    const css = meterGradient("to top", meterDbToPos);
+    expect(css).toBe(
+      "linear-gradient(to top, #2bbf7f 0 70.00%, #ffd23f 70.00% 79.00%, " +
+        "#ff8c1a 79.00% 88.00%, #ff4d5e 88.00% 100%)",
+    );
   });
 });

@@ -36,6 +36,7 @@ class Opcode(IntEnum):
     SET_PRESET_NAME = 0x26
     READ_CONFIG_PAGE = 0x27
     PRESET_NAME = 0x29
+    PREPARE_LINK = 0x2A
     STATUS = 0x2C
     SUBMIT_PIN = 0x2D
     COMPRESSOR = 0x30
@@ -47,6 +48,7 @@ class Opcode(IntEnum):
     PHASE = 0x36
     DELAY = 0x38
     MATRIX = 0x3A
+    LINK = 0x3B
     PEQ_BYPASS = 0x3C
     CHANNEL_NAME = 0x3D
     GATE = 0x3E
@@ -323,6 +325,41 @@ class SetPhase(_ChannelFlag):
 @dataclass(frozen=True)
 class SetPeqBypass(_ChannelFlag):
     OPCODE = Opcode.PEQ_BYPASS
+
+
+@dataclass(frozen=True)
+class PrepareLink(Request):
+    """Copy every setting of ``master`` except the name and the routing onto ``slave``
+    (408, HW). The editor sends it once per slave before linking them with ``SetLink``."""
+
+    OPCODE = Opcode.PREPARE_LINK
+    FORMAT = "BB"
+    master: int
+    slave: int
+
+    def validate(self, profile: ProtocolProfile) -> None:
+        _check_channel(profile, self.master)
+        _check_channel(profile, self.slave)
+        if self.master == self.slave:
+            raise CommandError("a channel cannot be linked to itself")
+        if profile.is_input(self.master) != profile.is_input(self.slave):
+            raise CommandError("an input and an output cannot be linked")
+
+
+@dataclass(frozen=True)
+class SetLink(Request):
+    """Link mask of one channel (408, HW): the group master holds the bits of every member
+    (bit n = input or output n), the other members 0, an unlinked channel its own bit."""
+
+    OPCODE = Opcode.LINK
+    FORMAT = "BB"
+    channel: int
+    mask: int
+
+    def validate(self, profile: ProtocolProfile) -> None:
+        _check_channel(profile, self.channel)
+        count = profile.input_count if profile.is_input(self.channel) else profile.output_count
+        _check_range("mask", self.mask, 0, (1 << count) - 1)
 
 
 @dataclass(frozen=True)

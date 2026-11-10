@@ -1,5 +1,8 @@
 <script lang="ts">
-  import { dbToPos } from "../lib/scale";
+  import { meterDbToPos as dbToPos, meterGradient } from "../lib/scale";
+
+  // Fixed colour zones; the fill reveals them up to the level, and turns all red on clip.
+  const ZONES = meterGradient("to top", dbToPos);
 
   interface Props {
     level: number | null; // dB; null = no data
@@ -41,9 +44,15 @@
     {#if comp !== null}<span class="led comp" class:on={comp} title="Compressor">CMP</span>{/if}
   </div>
   <div class="bar">
-    <div class="fill" style:transform={`scaleY(${pos})`}></div>
+    <div
+      class="fill"
+      class:clipping={clip}
+      style:background={clip ? undefined : ZONES}
+      style:clip-path={`inset(${((1 - pos) * 100).toFixed(2)}% 0 0 0)`}
+    ></div>
     {#if peakPos > 0}<div class="peak" style:bottom={`${peakPos * 100}%`}></div>{/if}
-    <div class="tick" style:bottom={`${dbToPos(0) * 100}%`}></div>
+    <!-- 0 dBu (compressor / limiter / gate thresholds are on the same scale) -->
+    <div class="tick" style:bottom={`${dbToPos(0) * 100}%`} title="0 dBu"></div>
   </div>
 </div>
 
@@ -94,9 +103,10 @@
   .fill {
     position: absolute;
     inset: 0;
-    transform-origin: bottom;
-    background: linear-gradient(to top, #2bbf7f 0%, #3ddc97 60%, #ffd23f 80%, #ff4d5e 100%);
-    transition: transform 120ms linear;
+    transition: clip-path 120ms linear;
+  }
+  .fill.clipping {
+    background: var(--danger);
   }
   .peak {
     position: absolute;

@@ -9,9 +9,11 @@
   interface Props {
     channel: InputChannel;
     path: string;
+    id?: string;
+    title?: string;
   }
 
-  let { channel, path }: Props = $props();
+  let { channel, path, id = "geq", title = "Graphic EQ · 31 bands" }: Props = $props();
 
   let selected = $state(17); // 1 kHz
   let confirmFlat = $state(false);
@@ -34,7 +36,7 @@
   }
 </script>
 
-<Section id="geq" title="Graphic EQ · 31 bands" kind="geq">
+<Section {id} {title} kind="geq">
   {#snippet actions()}
     {#if confirmFlat}
       <button class="small danger" onclick={resetFlat}>Reset all?</button>
@@ -63,7 +65,7 @@
               label={`GEQ ${label(n)}`}
               disabled={!editable}
               quantize={(v) => snap(v, min, max, 0.5)}
-              onstep={(d) => setBand(n, snap(gain + d * 0.5, min, max, 0.1))}
+              onstep={(d) => setBand(n, snap(gain + d * 0.1, min, max, 0.1))}
               onpreview={() => (selected = n)}
               onchange={(v) => setBand(n, v)}
             />
@@ -78,7 +80,7 @@
       {min}
       {max}
       unit="dB"
-      step={0.5}
+      step={0.1}
       resolution={0.1}
       origin={0}
       format={(v) => formatDb(v)}

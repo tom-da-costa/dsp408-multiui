@@ -203,3 +203,9 @@ Findings (details in PROTOCOL.md):
 | 2026-11-08 | Phase 8: DSP 408 verified on hardware; protocol, simulator and UI updated. |
 | 2026-11-09 | Standalone simulator program `dsp408-sim`; `--simulator` renamed `--demo`. |
 | 2026-11-09 | Rolling "main" pre-release rebuilt on every push to `main`. |
+| 2026-11-10 | Frequency response graph on each channel page (HPF/LPF, PEQ, GEQ), computed in the browser from the settings. |
+| 2026-11-10 | Limiter calc tab (Hornplans method): thresholds from amp gain, speaker power, impedance, load; hard = Hornplans, soft = +2 dB (matches the owner's other calculator); applied as compressor (Limit, 1/1000 ms, knee 0) + limiter 6 dB above. |
+| 2026-11-10 | Live view (meters with thresholds, fader, mute, big CLIP/CMP/LIM); web app manifest, icons, full-screen button. |
+| 2026-11-10 | "Unsaved changes" indicator: top bar badge, Presets › Save to Uxx, warning before a recall. |
+| 2026-11-10 | Channel links verified on the DSP (2a copies, 3b sets the mask) and editable (Params › Link). Exact device steps on − / +, held buttons repeat. |
+| 2026-11-09 | UI: Params / Channels / All-in-one views, left tab rail. Meters and thresholds shown in dBu (full scale = +20 dBu), from a read-only observation on the DSP. |
