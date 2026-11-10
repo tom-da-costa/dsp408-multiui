@@ -35,6 +35,7 @@ export interface LimiterResult {
   limitedBy: "speaker" | "amp";
   hornplansDbu: number; // the calculator's own result (lower of the two, rounded down to 0.1)
   marginDb: number;
+  afterMarginDbu: number; // Hornplans' result minus the margin, before the DSP's 0.5 dB step
   compThresholdDbu: number; // what is applied (0.5 dB steps, clamped to the DSP range)
   limitThresholdDbu: number;
   clamped: boolean; // the result was outside the DSP's threshold range
@@ -82,6 +83,7 @@ export function computeLimiter(input: LimiterInput): LimiterResult {
     limitedBy: ampDbu !== null && ampDbu < speakerDbu ? "amp" : "speaker",
     hornplansDbu,
     marginDb,
+    afterMarginDbu: Number((hornplansDbu - marginDb).toFixed(1)),
     compThresholdDbu,
     limitThresholdDbu,
     clamped: compThresholdDbu !== wanted,

@@ -28,6 +28,7 @@ describe("limiter calculator", () => {
     expect(open.speakerDbu - closed.speakerDbu).toBeCloseTo(10 * Math.log10(1.5), 3);
     expect(closed.hornplansDbu).toBe(4.5); // 4.578 rounded down
     const hard = computeLimiter({ ...HORNPLANS_EXAMPLE, ampPowerW: null, load: "closed", mode: "hard" });
+    expect(hard.afterMarginDbu).toBe(2.5);
     expect(hard.compThresholdDbu).toBe(2.5);
     expect(hard.limitThresholdDbu).toBe(8.5);
     expect(hard.limitedBy).toBe("speaker");
@@ -41,6 +42,23 @@ describe("limiter calculator", () => {
     expect(hot.compThresholdDbu).toBe(20);
     expect(hot.limitThresholdDbu).toBe(20);
     expect(hot.clamped).toBe(true);
+  });
+
+  it("matches the owner's Hornplans check: 1700 W AES, 8 ohm, 4000 W amp, 40.5 dB", () => {
+    const input: LimiterInput = {
+      speakerAesW: 1700,
+      impedanceOhm: 8,
+      ampGainDb: 40.5,
+      ampPowerW: 4000,
+      load: "open",
+      mode: "hard",
+    };
+    const r = computeLimiter(input);
+    expect(r.hornplansDbu).toBe(1.1); // Hornplans shows 1.1 dBu
+    expect(r.limitedBy).toBe("speaker");
+    expect(r.afterMarginDbu).toBe(-0.9);
+    expect(r.compThresholdDbu).toBe(-1); // DSP step, rounded down
+    expect(computeLimiter({ ...input, mode: "soft" }).compThresholdDbu).toBe(1);
   });
 
   it("validates", () => {

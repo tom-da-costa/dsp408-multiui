@@ -177,7 +177,9 @@
         <dt>Threshold (Hornplans)</dt>
         <dd>{dbu(result.hornplansDbu)}</dd>
         <dt>Margin ({form.mode})</dt>
-        <dd>−{result.marginDb} dB</dd>
+        <dd>−{result.marginDb} dB → {dbu(result.afterMarginDbu)}</dd>
+        <dt>DSP step (0.5 dB, rounded down)</dt>
+        <dd>{dbu(result.compThresholdDbu)}</dd>
       </dl>
       <div class="big">
         <div>
