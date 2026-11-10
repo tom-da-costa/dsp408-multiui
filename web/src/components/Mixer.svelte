@@ -1,32 +1,44 @@
 <script lang="ts">
+  // Params › Gain: one strip per channel picked in the row above (meter, fader, mute, phase).
   import { app } from "../lib/app.svelte";
-  import { nav, SIDES } from "../lib/nav.svelte";
-  import ChipBar from "./ChipBar.svelte";
+  import type { ChannelSelection } from "../lib/selection.svelte";
+  import ChannelPicker from "./ChannelPicker.svelte";
   import Strip from "./Strip.svelte";
+
+  interface Props {
+    /** The Params tab's channel choice. */
+    selection: ChannelSelection;
+    /** Channels to show, in order. */
+    paths: string[];
+  }
+
+  let { selection, paths }: Props = $props();
 
   const device = $derived(app.device);
   const inputCount = $derived(app.hello?.profile.input_count ?? 4);
 </script>
 
 {#if device}
-  <ChipBar
-    items={SIDES.map(([key, label]) => ({ key, label }))}
-    selected={nav.side}
-    onselect={(k) => (nav.side = k as typeof nav.side)}
-    label="Channels shown"
-  />
+  <ChannelPicker {selection} />
   <div class="strips">
-    {#if nav.side !== "outputs"}
-      {#each device.inputs as channel, i (channel.index)}
-        <Strip {channel} path={`inputs.${i}`} meterIndex={i} outputIndex={null} />
-      {/each}
-    {/if}
-    {#if nav.side === "all"}<div class="divider"></div>{/if}
-    {#if nav.side !== "inputs"}
-      {#each device.outputs as channel, i (channel.index)}
-        <Strip {channel} path={`outputs.${i}`} meterIndex={inputCount + i} outputIndex={i} />
-      {/each}
-    {/if}
+    {#each paths as path, i (path)}
+      {@const [side, n] = path.split(".")}
+      {@const index = Number(n)}
+      {@const channel = side === "inputs" ? device.inputs[index] : device.outputs[index]}
+      {#if channel}
+        {#if i > 0 && side === "outputs" && paths[i - 1]?.startsWith("inputs.")}
+          <div class="divider"></div>
+        {/if}
+        <Strip
+          {channel}
+          {path}
+          meterIndex={side === "inputs" ? index : inputCount + index}
+          outputIndex={side === "inputs" ? null : index}
+        />
+      {/if}
+    {:else}
+      <p class="muted">No channel selected: pick some above.</p>
+    {/each}
   </div>
 {/if}
 

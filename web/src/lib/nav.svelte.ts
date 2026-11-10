@@ -30,13 +30,6 @@ export const PARAMS = [
 ] as const;
 export type Param = (typeof PARAMS)[number][0];
 
-export type Side = "all" | "inputs" | "outputs";
-export const SIDES: [Side, string][] = [
-  ["all", "All"],
-  ["inputs", "Inputs"],
-  ["outputs", "Outputs"],
-];
-
 /** Which channels a setting exists on. */
 export const PARAM_SCOPE: Record<Param, "all" | "inputs" | "outputs"> = {
   gain: "all",
@@ -77,8 +70,6 @@ class Nav {
   tab = $state<Tab>("live");
   param = $state<Param>("gain");
   channel = $state("inputs.0");
-  /** Channels shown by the multi-channel views. */
-  side = $state<Side>("all");
   /** Open/closed state of collapsible sections, by section id. */
   sections = $state<Record<string, boolean>>({});
 

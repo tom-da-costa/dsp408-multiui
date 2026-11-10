@@ -1,35 +1,42 @@
 <script lang="ts">
-  // The row that picks the channels a multi-channel view shows (Live, All-in-one): shortcuts
-  // all / inputs / outputs, then one toggle per channel.
+  // The row that picks the channels a multi-channel view shows (Live, All-in-one, Params):
+  // shortcuts all / inputs / outputs, then one toggle per channel. With `side`, only that side's
+  // channels are listed (a setting that exists on inputs or outputs only).
   import { app } from "../lib/app.svelte";
   import { slotLabel } from "../lib/nav.svelte";
   import type { ChannelSelection } from "../lib/selection.svelte";
 
   interface Props {
     selection: ChannelSelection;
+    side?: "inputs" | "outputs";
   }
 
-  let { selection }: Props = $props();
+  let { selection, side }: Props = $props();
 
-  const all = $derived(selection.all);
-  const allShown = $derived(selection.hidden.length === 0);
+  const prefix = $derived(side ? (`${side}.` as const) : "");
+  const all = $derived(selection.all.filter((c) => c.path.startsWith(prefix)));
+  const allShown = $derived(all.every((c) => selection.isShown(c.path)));
   const locked = $derived(app.screenLocked); // the locked screen keeps the channels shown
 </script>
 
 <div class="picker" role="group" aria-label="Channels shown">
-  <button class="quick" class:on={allShown} disabled={locked} onclick={() => selection.only("")}>All</button>
-  <button
-    class="quick"
-    class:on={!allShown && selection.isOnly("inputs.")}
-    disabled={locked}
-    onclick={() => selection.only("inputs.")}>In</button
+  <button class="quick" class:on={allShown} disabled={locked} onclick={() => selection.showAll(prefix)}
+    >All</button
   >
-  <button
-    class="quick"
-    class:on={!allShown && selection.isOnly("outputs.")}
-    disabled={locked}
-    onclick={() => selection.only("outputs.")}>Out</button
-  >
+  {#if !side}
+    <button
+      class="quick"
+      class:on={!allShown && selection.isOnly("inputs.")}
+      disabled={locked}
+      onclick={() => selection.only("inputs.")}>In</button
+    >
+    <button
+      class="quick"
+      class:on={!allShown && selection.isOnly("outputs.")}
+      disabled={locked}
+      onclick={() => selection.only("outputs.")}>Out</button
+    >
+  {/if}
   <span class="sep"></span>
   {#each all as c (c.path)}
     <button

@@ -132,15 +132,14 @@ button.switch.danger.on {
    `.two-rows`, on two rows filled column by column (threshold above knee, attack above
    release). */
 .vfields-grid {
-  flex: 1; /* in a strip: the sliders take the height left */
-  min-height: 0;
+  flex: 1; /* in a strip: the sliders take the height left (never less than their minimum) */
   display: grid;
   grid-auto-flow: column;
   grid-auto-columns: 74px;
-  grid-template-rows: minmax(0, 1fr);
+  grid-template-rows: minmax(min-content, 1fr);
   justify-content: center;
   gap: 10px 8px;
 }
 .vfields-grid.two-rows {
-  grid-template-rows: repeat(2, minmax(0, 1fr));
+  grid-template-rows: repeat(2, minmax(min-content, 1fr));
 }
