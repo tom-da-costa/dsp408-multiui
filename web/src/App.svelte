@@ -8,6 +8,7 @@
   import Presets from "./components/Presets.svelte";
   import Settings from "./components/Settings.svelte";
   import Toasts from "./components/Toasts.svelte";
+  import RailLock from "./components/RailLock.svelte";
   import RailStatus from "./components/RailStatus.svelte";
   import { app } from "./lib/app.svelte";
   import { nav, TABS, type Tab } from "./lib/nav.svelte";
@@ -105,6 +106,7 @@
           <span class="text">{text}</span>
         </button>
       {/each}
+      <RailLock {expanded} onpick={foldOnPhone} />
       {#if canFullscreen}
         <button
           class="bottom"
@@ -204,9 +206,7 @@
     min-height: 44px;
     margin-bottom: 6px;
   }
-  nav .bottom {
-    margin-top: auto;
-  }
+
   .expanded nav {
     width: var(--rail-open);
   }

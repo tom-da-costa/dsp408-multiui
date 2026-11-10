@@ -111,14 +111,12 @@
 {/if}
 
 <style>
-  /* Buttons stay next to the name (no wide gap on a desktop) and rows are separated, so it is
-     clear which preset a Recall / Store button belongs to. */
+  /* Rows are separated, so it is clear which preset a Recall / Store button belongs to. */
   ul {
     list-style: none;
     margin: 0;
     padding: 0;
     display: grid;
-    max-width: 560px;
   }
   li {
     display: grid;

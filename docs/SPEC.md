@@ -318,7 +318,7 @@ Mobile-first, dark theme by default (stage use), system font stack, no external 
 with labels (it floats over the page on a phone; the choice is remembered). Its top shows the
 DSP status dot, the active preset (slot when folded, name when expanded; an orange dot or
 "unsaved" for unsaved changes; "DEMO" in demo mode; tap: Presets) and the **lock button**, which
-has three states: free / mine (idle countdown, tap to release) / other (owner's name, read-only).
+has three states: free / mine (idle countdown, tap to release) / other (owner's name, read-only); it sits at the bottom of the rail under this client's name (tap: Settings, to rename).
 Tabs: **Live · Params · Channels · All-in-one · Presets · Settings**, then a full-screen toggle.
 
 **Mixer.** Channel strips for In A–D, then Out 1–8. On a phone, the strips scroll horizontally

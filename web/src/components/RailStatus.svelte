@@ -1,6 +1,6 @@
 <script lang="ts">
-  // Top of the tab rail: DSP status, active preset (unsaved changes, demo mode) and the lock.
-  // Folded, it shows the status dot, the preset slot and the lock icon; expanded, the full text.
+  // Top of the tab rail: DSP status and active preset (unsaved changes, demo mode).
+  // Folded, it shows the status dot and the preset slot; expanded, the full text.
   import { app } from "../lib/app.svelte";
   import { nav } from "../lib/nav.svelte";
 
@@ -11,15 +11,6 @@
 
   let { expanded, onpick }: Props = $props();
 
-  let now = $state(performance.now());
-  $effect(() => {
-    const timer = setInterval(() => (now = performance.now()), 1000);
-    return () => clearInterval(timer);
-  });
-
-  const remaining = $derived(
-    app.lockDeadline === null ? null : Math.max(0, Math.round((app.lockDeadline - now) / 1000)),
-  );
   const status = $derived(app.connected ? (app.status?.status ?? "connecting") : "disconnected");
   const device = $derived(app.device);
   const slot = $derived(
@@ -35,15 +26,6 @@
       .filter(Boolean)
       .join(" · "),
   );
-
-  function mmss(seconds: number): string {
-    return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`;
-  }
-
-  async function toggleLock() {
-    if (app.iOwnLock) await app.run({ type: "lock.release" });
-    else await app.run({ type: "lock.acquire" });
-  }
 
   function openPresets() {
     nav.select("presets");
@@ -68,28 +50,6 @@
     </span>
   </button>
 
-  {#if app.lockedByOther}
-    <div class="lock other" title={`Read-only: locked by ${app.lock?.owner_name ?? "someone"}`}>
-      <span class="icon">🔒</span>
-      <span class="text">{app.lock?.owner_name}</span>
-    </div>
-  {:else}
-    <button
-      class="lock"
-      class:mine={app.iOwnLock}
-      onclick={toggleLock}
-      disabled={!app.connected}
-      title={app.iOwnLock ? "Release the lock" : "Lock the controls for me"}
-    >
-      <span class="icon">
-        {app.iOwnLock ? "🔓" : "🔒"}
-        {#if app.iOwnLock && remaining !== null && !expanded}<small>{mmss(remaining)}</small>{/if}
-      </span>
-      <span class="text"
-        >{#if app.iOwnLock}Unlock {remaining !== null ? mmss(remaining) : ""}{:else}Lock{/if}</span
-      >
-    </button>
-  {/if}
 </div>
 
 <style>
@@ -100,8 +60,7 @@
     margin-bottom: 4px;
     border-bottom: 1px solid var(--line);
   }
-  button,
-  .other {
+  button {
     display: flex;
     align-items: center;
     gap: 12px;
@@ -123,10 +82,6 @@
     gap: 2px;
     font-size: 1.15rem;
     line-height: 1;
-  }
-  .icon small {
-    font-size: 0.6rem;
-    font-variant-numeric: tabular-nums;
   }
   .text {
     min-width: 0;
@@ -191,12 +146,5 @@
     background: var(--info);
     color: #000;
     font-weight: 700;
-  }
-  .lock.mine {
-    background: var(--warn);
-    color: #000;
-  }
-  .other {
-    color: var(--warn);
   }
 </style>
