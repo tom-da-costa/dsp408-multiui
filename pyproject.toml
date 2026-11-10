@@ -1,6 +1,6 @@
 [project]
 name = "tracks-dsp-controller"
-version = "0.1.0.dev0"
+version = "0.1.0"
 description = "Multi-client web controller for the t.racks DSP 408"
 readme = "README.md"
 license = "AGPL-3.0-or-later"
