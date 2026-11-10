@@ -1,4 +1,4 @@
-"""Shared-code login, in-memory sessions and a login rate limit (docs/SPEC.md §6)."""
+"""Shared-code login, in-memory sessions and a login rate limit (docs/ARCHITECTURE.md §8)."""
 
 from __future__ import annotations
 

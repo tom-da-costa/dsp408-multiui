@@ -1,4 +1,4 @@
-// Mirrors src/dsp408_multiui/state/models.py and the WebSocket messages of docs/SPEC.md §5.
+// Mirrors src/dsp408_multiui/state/models.py and the WebSocket messages of docs/ARCHITECTURE.md §7.
 
 export interface PeqBand {
   gain_db: number;

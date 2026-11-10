@@ -1,8 +1,8 @@
 # t.racks DSP 408 — Network Protocol Synthesis
 
 This document cross-references the reverse-engineering work of the projects listed in
-[`SOURCES.md`](SOURCES.md) and condenses it into a single, actionable reference for
-this project. Every item carries a confidence tag. Phase 8 of the [plan](PLAN.md) verified most
+the [README](../README.md#sources-and-credits) and condenses it into a single, actionable reference for
+this project. Every item carries a confidence tag. A hardware verification session verified most
 of it on a real DSP 408 (firmware V0104P, 2026-11-08): items tagged **HW** below. What is still
 open is listed in §9.
 
@@ -16,7 +16,7 @@ open is listed in §9.
 
 All three are **GPL-3.0**. This project is **AGPL-3.0**; GPLv3 §13 / AGPLv3 §13 explicitly
 allow combining the two, so code may be reused **with attribution** (keep copyright
-headers, list the origin in `docs/SOURCES.md`).
+headers, list the origin in the README's attribution table).
 
 Confidence tags used below:
 
@@ -321,7 +321,7 @@ a user renames a channel. We use the fixed offsets above.
 ## 8. Behaviour notes
 
 - **Fader bursts:** the editor sends roughly one gain frame per 150 ms of fader movement, each
-  ACKed, and polls only when the fader is idle. The backend must coalesce bursts (see [SPEC](SPEC.md), "Command pipeline").
+  ACKed, and polls only when the fader is idle. The backend must coalesce bursts (see [ARCHITECTURE.md §4](ARCHITECTURE.md), "Command pipeline").
 - **Preset recall** takes ~3.2 s and **store** ~7.4 s before the ACK (HW). After a recall or a
   link change, re-read the whole config.
 - **Linking (HW, 2026-11-10, on U04):** the editor's sequence works on the 408: `2a master slave`
@@ -335,14 +335,14 @@ a user renames a channel. We use the fixed offsets above.
   polls can time out).
 - The front panel of the DSP can change values without notifying the client. Only a periodic
   config re-read detects that.
-- No unsolicited frame was seen during the phase 8 session (HW).
+- No unsolicited frame was seen during the hardware session (HW).
 
 ---
 
 ## 9. Open questions
 
-Until they are answered, every uncertain value is a field of the `ProtocolProfile` (SPEC §4.6),
-with the ▶ choice as default. Phase 8 (2026-11-08, firmware V0104P) answered most of them.
+Until they are answered, every uncertain value is a field of the `ProtocolProfile` ([ARCHITECTURE.md §6](ARCHITECTURE.md)),
+with the ▶ choice as default. The hardware session of 2026-11-08 (firmware V0104P) answered most of them.
 
 | # | Question | Status |
 |---|---|---|
@@ -362,4 +362,4 @@ with the ▶ choice as default. Phase 8 (2026-11-08, firmware V0104P) answered m
 
 Capture method: Wireshark on the PC that runs the official editor (`tcp.port == 9761`), the
 built-in `proxy` sub-command, or a write + `probe dump-config` + `probe diff-config` cycle on a
-test preset (what phase 8 did).
+test preset (what the hardware session did).

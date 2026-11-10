@@ -1,4 +1,4 @@
-"""Activity-based exclusive write lock (docs/SPEC.md F-MC-3..5).
+"""Activity-based exclusive write lock (docs/ARCHITECTURE.md §4, multi-client rules).
 
 The owner keeps the lock as long as it is active. Every owner activity (a write, a preset or
 lock action, a UI interaction reported with an ``activity`` message) restarts the idle timer.

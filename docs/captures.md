@@ -8,15 +8,15 @@ simulator), and how to turn the recordings into test fixtures. This is how the o
 
 | Tool | Command | Use |
 |---|---|---|
-| Simulator | `uv run dsp408-sim --frame-log editor.jsonl` (or the `dsp408-sim` Windows executable) | Fake DSP; logs every request it receives (Phase 2) |
-| Proxy | `uv run dsp408-multiui proxy --dsp-host <DSP-IP> --log session.jsonl` | Sits between the editor and a real DSP; logs both directions (Phase 8) |
+| Simulator | `uv run dsp408-sim --frame-log editor.jsonl` (or the `dsp408-sim` Windows executable) | Fake DSP; logs every request it receives |
+| Proxy | `uv run dsp408-multiui proxy --dsp-host <DSP-IP> --log session.jsonl` | Sits between the editor and a real DSP; logs both directions |
 | Probe | `uv run dsp408-multiui probe --dsp-host <IP> {info,meters,dump-config,diff-config,raw}` | Query the device directly |
 | Wireshark | filter `tcp.port == 9761` | Fallback when the editor cannot be pointed at an arbitrary IP |
 
 Each line of a JSONL frame log is `{"ts", "dir", "hex", "decoded"}`. `dir` is `host->dsp` or
 `dsp->host`.
 
-## Phase 2: editor against the simulator (no DSP needed)
+## Editor against the simulator (no DSP needed)
 
 Goal: learn how the editor **encodes requests**. This answers Q2–Q7 and Q12.
 
@@ -24,8 +24,8 @@ Goal: learn how the editor **encodes requests**. This answers Q2–Q7 and Q12.
    `uv run dsp408-sim --scenario demo --frame-log editor.jsonl` (it listens on all interfaces).
    Open TCP port 9761 in the firewall if needed.
 2. On the Windows PC, start the editor and connect to the Linux machine's IP. If the editor only
-   offers device discovery, try entering the IP manually. If that is impossible, Phase 2 cannot
-   be done: note it in `PROGRESS.md` and skip to Phase 8.
+   offers device discovery, try entering the IP manually. If that is impossible, use the proxy
+   method below with a real DSP.
 3. If the editor connects and shows the demo presets ("Demo 3-way", "Mono Sub"), the simulator's
    init responses were accepted. If it hangs, keep the log: it shows the last request the editor
    waited on.
@@ -45,7 +45,7 @@ Goal: learn how the editor **encodes requests**. This answers Q2–Q7 and Q12.
 5. Save each log as `tests/fixtures/editor/<question>_<action>.jsonl`, with a sidecar
    `<same name>.meta.toml` (format below).
 
-## Phase 8: editor against the real DSP (proxy)
+## Editor against the real DSP (proxy)
 
 Goal: learn how the **device answers**. This answers Q1 and Q8–Q11.
 
@@ -76,9 +76,8 @@ notes = ""
 
 ## After a capture session
 
-Update these together (CLAUDE.md rule):
+Update these together:
 
 1. the confidence tags in `PROTOCOL.md`;
 2. the defaults in `protocol/profiles/default.toml`;
-3. the fixtures and the tests that replay them;
-4. `PROGRESS.md`.
+3. the fixtures and the tests that replay them.

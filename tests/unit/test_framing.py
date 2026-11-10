@@ -1,7 +1,7 @@
 """Frame encoding/decoding.
 
 Reference frames come from Aeternitaas/dsp-408-ui (GPL-3.0, captured on a DSP 408) and
-IMBArator/miniDSP-Linux (GPL-3.0). See docs/SOURCES.md.
+IMBArator/miniDSP-Linux (GPL-3.0). See the attribution table in README.md.
 """
 
 import pytest

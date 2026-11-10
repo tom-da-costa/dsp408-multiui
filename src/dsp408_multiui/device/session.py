@@ -1,6 +1,6 @@
 """Device session: owns the DSP connection, mirrors its state, polls meters, reconnects.
 
-Lifecycle: ``connecting → initialising → online ↔ offline`` (docs/SPEC.md F-DEV-1..4). This is
+Lifecycle: ``connecting → initialising → online ↔ offline`` (docs/ARCHITECTURE.md §4). This is
 the only module that talks to the transport.
 """
 

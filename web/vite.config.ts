@@ -6,7 +6,7 @@ const backend = process.env.DSP408_BACKEND ?? "http://127.0.0.1:8080";
 export default defineConfig({
   plugins: [svelte()],
   build: {
-    // The built UI is committed inside the Python package (SPEC D9).
+    // The built UI is committed inside the Python package (docs/ARCHITECTURE.md §2).
     outDir: "../src/dsp408_multiui/web",
     emptyOutDir: true,
     target: "es2022",

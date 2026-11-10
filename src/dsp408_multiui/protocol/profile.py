@@ -1,4 +1,4 @@
-"""Protocol profile: every uncertain protocol detail in one place (docs/SPEC.md §4.6)."""
+"""Protocol profile: every uncertain protocol detail in one place (docs/ARCHITECTURE.md §6)."""
 
 from __future__ import annotations
 

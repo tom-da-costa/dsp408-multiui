@@ -58,8 +58,7 @@ push: commit $GITHUB_SHA, $(date -u '+%Y-%m-%d %H:%M UTC').
 Not a versioned release: use it to try the current state. The files keep the same names from one \
 build to the next, so download links stay valid."
     elif ! gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
-      gh release create "$RELEASE_TAG" --verify-tag --title "$RELEASE_TITLE" \
-        --notes "See docs/PROGRESS.md for what changed." \
+      gh release create "$RELEASE_TAG" --verify-tag --title "$RELEASE_TITLE" --generate-notes \
         || gh release view "$RELEASE_TAG" >/dev/null  # another job may have created it meanwhile
     fi
     echo "release $RELEASE_TAG ready for $GITHUB_SHA"

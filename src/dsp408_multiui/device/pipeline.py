@@ -1,4 +1,4 @@
-"""Single command queue to the DSP (docs/SPEC.md §4.3).
+"""Single command queue to the DSP (docs/ARCHITECTURE.md §4).
 
 * One request in flight (the device is strictly request/response).
 * Coalescing: a write whose ``coalesce_key`` matches a queued write replaces it in place, so a
