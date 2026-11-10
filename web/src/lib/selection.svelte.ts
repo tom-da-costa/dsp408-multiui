@@ -42,6 +42,11 @@ export class ChannelSelection {
     this.save(this.hidden.includes(path) ? this.hidden.filter((p) => p !== path) : [...this.hidden, path]);
   }
 
+  /** Show every channel starting with `prefix` ("" = all), leaving the others as they are. */
+  showAll(prefix: Prefix): void {
+    this.save(this.hidden.filter((p) => !p.startsWith(prefix)));
+  }
+
   /** Show only the channels starting with `prefix` ("" = all of them). */
   only(prefix: Prefix): void {
     this.save(this.all.filter((c) => !c.path.startsWith(prefix)).map((c) => c.path));

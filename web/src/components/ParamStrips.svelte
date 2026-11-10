@@ -3,19 +3,22 @@
   // mixer: the fields stand up as vertical sliders (lib/layout.ts).
   import { app } from "../lib/app.svelte";
   import { setStripLayout } from "../lib/layout";
-  import { nav, SIDES, slotLabel, type Param } from "../lib/nav.svelte";
-  import ChipBar from "./ChipBar.svelte";
+  import { nav, slotLabel, type Param } from "../lib/nav.svelte";
+  import type { ChannelSelection } from "../lib/selection.svelte";
+  import ChannelPicker from "./ChannelPicker.svelte";
   import ParamBlock from "./ParamBlock.svelte";
 
   interface Props {
     param: Param;
     /** Channels to show, in order. */
     paths: string[];
-    /** Show the all / inputs / outputs row (settings that exist on both sides). */
-    sides?: boolean;
+    /** The Params tab's channel choice, picked in the row above the strips. */
+    selection: ChannelSelection;
+    /** The setting exists on that side only. */
+    side?: "inputs" | "outputs";
   }
 
-  let { param, paths, sides = false }: Props = $props();
+  let { param, paths, selection, side }: Props = $props();
 
   setStripLayout();
 
@@ -26,14 +29,7 @@
 </script>
 
 <div class="view">
-{#if sides}
-  <ChipBar
-    items={SIDES.map(([key, label]) => ({ key, label }))}
-    selected={nav.side}
-    onselect={(k) => (nav.side = k as typeof nav.side)}
-    label="Channels shown"
-  />
-{/if}
+<ChannelPicker {selection} {side} />
 
 <div class="strips">
   {#each paths as path, i (path)}
@@ -51,7 +47,7 @@
       </section>
     {/if}
   {:else}
-    <p class="muted">No channel to show.</p>
+    <p class="muted">No channel selected: pick some above.</p>
   {/each}
 </div>
 </div>
@@ -68,7 +64,7 @@
     flex: 1;
     min-height: 0;
     display: flex;
-    align-items: stretch;
+    align-items: flex-start;
     gap: 6px;
     overflow-x: auto;
     overscroll-behavior-x: contain;
@@ -76,12 +72,14 @@
   }
   .divider {
     flex: 0 0 2px;
+    align-self: stretch;
     background: var(--line);
     border-radius: 1px;
   }
   .strip {
     flex: 0 0 auto;
     min-width: 150px;
+    min-height: 100%; /* all the height, more when the page is too short (it then scrolls) */
     display: flex;
     flex-direction: column;
     gap: 8px;

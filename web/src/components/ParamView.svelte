@@ -1,7 +1,11 @@
 <script lang="ts">
-  // "Params" tab: one sub-tab per setting, each showing that setting on every channel.
+  // "Params" tab: one sub-tab per setting, each showing that setting on the channels picked in
+  // the row below (as in Live and All-in-one; one choice for every setting, remembered in
+  // this browser).
   import { app } from "../lib/app.svelte";
-  import { nav, PARAM_SCOPE, PARAMS, SIDES, slotLabel } from "../lib/nav.svelte";
+  import { nav, PARAM_SCOPE, PARAMS, slotLabel } from "../lib/nav.svelte";
+  import { ChannelSelection } from "../lib/selection.svelte";
+  import ChannelPicker from "./ChannelPicker.svelte";
   import ChipBar from "./ChipBar.svelte";
   import LinkEditor from "./LinkEditor.svelte";
   import Matrix from "./Matrix.svelte";
@@ -12,22 +16,17 @@
   // Settings shown as one strip per channel, like the mixer; the others (EQ, GEQ) as cards.
   const STRIPS = new Set(["delay", "filters", "comp", "limit", "gate"]);
 
+  const selection = new ChannelSelection("dsp408.params.hidden");
   const device = $derived(app.device);
   const scope = $derived(PARAM_SCOPE[nav.param]);
-  const paths = $derived(
-    [
-      ...(device?.inputs ?? []).map((c, i) => [`inputs.${i}`, c.name] as const),
-      ...(device?.outputs ?? []).map((c, i) => [`outputs.${i}`, c.name] as const),
-    ].filter(([path]) => {
-      const kind = path.startsWith("inputs.") ? "inputs" : "outputs";
-      return (scope === "all" || scope === kind) && (nav.side === "all" || nav.side === kind);
-    }),
-  );
+  /** The setting exists on one side only (compressor on outputs, gate on inputs…). */
+  const side = $derived(scope === "all" ? undefined : scope);
+  const paths = $derived(selection.shown.filter((p) => !side || p.startsWith(`${side}.`)));
 
-  function title(path: string, name: string): string {
+  function title(path: string): string {
     const index = Number(path.split(".")[1]);
     const channel = path.startsWith("inputs.") ? device?.inputs[index] : device?.outputs[index];
-    return `${slotLabel(path)} · ${name || "—"}${channel?.linked.length ? " 🔗" : ""}`;
+    return `${slotLabel(path)} · ${channel?.name || "—"}${channel?.linked.length ? " 🔗" : ""}`;
   }
 </script>
 
@@ -39,28 +38,23 @@
 />
 
 {#if nav.param === "gain"}
-  <Mixer />
+  <Mixer {selection} {paths} />
 {:else if nav.param === "matrix"}
   <Matrix />
 {:else if nav.param === "link"}
   <LinkEditor />
 {:else}
   {#if STRIPS.has(nav.param)}
-    <ParamStrips param={nav.param} paths={paths.map(([path]) => path)} sides={scope === "all"} />
+    <ParamStrips param={nav.param} {paths} {selection} {side} />
   {:else}
-    {#if scope === "all"}
-      <ChipBar
-        items={SIDES.map(([key, label]) => ({ key, label }))}
-        selected={nav.side}
-        onselect={(k) => (nav.side = k as typeof nav.side)}
-        label="Channels shown"
-      />
-    {/if}
+    <ChannelPicker {selection} {side} />
     <div class="cards">
-      {#each paths as [path, name] (path)}
+      {#each paths as path (path)}
         <div class="block" style:--ch={app.color(path)}>
-          <ParamBlock param={nav.param} {path} title={title(path, name)} />
+          <ParamBlock param={nav.param} {path} title={title(path)} />
         </div>
+      {:else}
+        <p class="muted">No channel selected: pick some above.</p>
       {/each}
     </div>
   {/if}
