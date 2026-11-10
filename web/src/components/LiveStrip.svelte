@@ -117,8 +117,12 @@
     font-size: 0.7rem;
     color: inherit;
   }
-  .strip.muted strong {
-    color: var(--danger);
+  .strip.muted {
+    /* Muted: a thick red frame and a reddened background (the name keeps its channel colour,
+       which can itself be red). An inset shadow, so the strip keeps its size. */
+    border-color: var(--danger);
+    box-shadow: inset 0 0 0 2px var(--danger);
+    background: color-mix(in srgb, var(--danger) 14%, var(--panel));
   }
   .leds {
     display: grid;
