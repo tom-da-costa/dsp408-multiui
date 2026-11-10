@@ -1,6 +1,8 @@
 <script lang="ts">
   // One numeric parameter: label, value (tap to type), − / + steppers and a knob-drag slider.
+  // A row with a horizontal slider, or a column with a vertical one (lib/layout.ts).
   import type { Snippet } from "svelte";
+  import { inStrip } from "../lib/layout";
   import { holdRepeat } from "../lib/repeat";
   import { throttleLatest } from "../lib/throttle";
   import { type Direction, parseNumber, type Scale, snap } from "../lib/scale";
@@ -46,6 +48,8 @@
     after,
     onchange,
   }: Props = $props();
+
+  const vertical = inStrip();
 
   let preview = $state<number | null>(null);
   let editing = $state(false);
@@ -102,15 +106,25 @@
   }
 </script>
 
-<div class="wrap">
-<div class="field" class:disabled class:noslider={!slider}>
-  <span class="label">{label}</span>
+{#snippet minus()}
   <button
     class="step minus"
     use:holdRepeat={{ step: () => stepBy(-1), end: () => sender.flush(), disabled }}
     {disabled}
     aria-label={`${label} down (hold to repeat)`}>−</button
   >
+{/snippet}
+
+{#snippet plus()}
+  <button
+    class="step plus"
+    use:holdRepeat={{ step: () => stepBy(1), end: () => sender.flush(), disabled }}
+    {disabled}
+    aria-label={`${label} up (hold to repeat)`}>+</button
+  >
+{/snippet}
+
+{#snippet valueBox()}
   {#if editing}
     <form onsubmit={commit} class="value">
       <!-- svelte-ignore a11y_autofocus -->
@@ -130,32 +144,48 @@
       <span class="num">{text}</span>{#if unit}<span class="unit">{unit}</span>{/if}
     </button>
   {/if}
-  <button
-    class="step plus"
-    use:holdRepeat={{ step: () => stepBy(1), end: () => sender.flush(), disabled }}
-    {disabled}
-    aria-label={`${label} up (hold to repeat)`}>+</button
-  >
-  {#if slider}
-    <div class="slide">
-      <Slider
-        {value}
-        {min}
-        {max}
-        {scale}
-        {origin}
-        {disabled}
-        {quantize}
-        {label}
-        onstep={stepBy}
-        onpreview={(v) => (preview = v)}
-        {onchange}
-      />
+{/snippet}
+
+{#snippet slide()}
+  <div class="slide">
+    <Slider
+      {value}
+      {min}
+      {max}
+      {scale}
+      {origin}
+      {vertical}
+      {disabled}
+      {quantize}
+      {label}
+      onstep={stepBy}
+      onpreview={(v) => (preview = v)}
+      {onchange}
+    />
+  </div>
+{/snippet}
+
+{#if vertical}
+  <div class="vfield" class:disabled>
+    <span class="label">{label}</span>
+    {@render valueBox()}
+    {@render plus()}
+    {#if slider}{@render slide()}{/if}
+    {@render minus()}
+    {#if after}<div class="after">{@render after()}</div>{/if}
+  </div>
+{:else}
+  <div class="wrap">
+    <div class="field" class:disabled class:noslider={!slider}>
+      <span class="label">{label}</span>
+      {@render minus()}
+      {@render valueBox()}
+      {@render plus()}
+      {#if slider}{@render slide()}{/if}
+      {#if after}<div class="after">{@render after()}</div>{/if}
     </div>
-  {/if}
-  {#if after}<div class="after">{@render after()}</div>{/if}
-</div>
-</div>
+  </div>
+{/if}
 
 <style>
   .wrap {
@@ -218,6 +248,41 @@
   }
   .disabled .label {
     opacity: 0.6;
+  }
+  /* vertical: label, value, +, slider, − in a column (Params tab) */
+  .vfield {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 4px;
+    min-width: 0;
+  }
+  .vfield .label {
+    text-align: center;
+    font-size: 0.8rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .vfield .value {
+    flex-wrap: wrap;
+    column-gap: 2px;
+    padding: 0 2px;
+    font-size: 0.9rem;
+  }
+  .vfield .unit {
+    font-size: 0.7rem;
+  }
+  .vfield form input {
+    width: 100%;
+  }
+  .vfield .slide {
+    flex: 1 1 0; /* the slider takes the height left */
+    min-height: 90px;
+    margin: 0;
+    display: flex;
+    justify-content: center;
   }
   /* wide containers: slider on the same row */
   @container (min-width: 460px) {

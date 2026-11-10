@@ -94,6 +94,8 @@ environment variable.
 
 - **Live** view (first tab): per channel, CLIP / CMP / LIM indicators, a meter graduated every
   10 dB with the compressor (C) and limiter (L) thresholds, the gain fader with − / + and MUTE.
+- **Params** view: one setting on every channel. Gain, delay, filters, compressor, limiter and
+  gate are shown as one strip per channel, with vertical faders.
 - **All-in-one** view: one column per channel with the settings you pick. In both views, the
   top row picks the channels shown (all, inputs, outputs or any set); each view remembers its
   choice in the browser.

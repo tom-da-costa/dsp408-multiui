@@ -1,5 +1,6 @@
 <script lang="ts">
   import { app } from "../lib/app.svelte";
+  import { inStrip } from "../lib/layout";
   import { formatHz, logIndexStep } from "../lib/scale";
   import type { Channel, Filter } from "../lib/types";
   import Field from "./Field.svelte";
@@ -14,6 +15,7 @@
 
   let { channel, path, id = "crossover", title = "High-pass / low-pass" }: Props = $props();
 
+  const vertical = inStrip();
   const profile = $derived(app.hello?.profile);
   const editable = $derived(app.editable("crossover"));
   const FILTERS = [
@@ -28,6 +30,7 @@
 
 <Section {id} {title} kind="crossover">
   {#if profile}
+    <div class:cols={vertical}>
     {#each FILTERS as [which, title] (which)}
       {@const filter = channel.crossover[which]}
       <div class="filter" class:off={!filter.enabled}>
@@ -67,7 +70,10 @@
         />
       </div>
     {/each}
-    <p class="hint muted">Off bypasses the filter; the slope is kept for when it is turned back on.</p>
+    </div>
+    {#if !vertical}
+      <p class="hint muted">Off bypasses the filter; the slope is kept for when it is turned back on.</p>
+    {/if}
   {/if}
 </Section>
 
@@ -85,6 +91,41 @@
   }
   .head select {
     min-height: 36px;
+  }
+  /* in a strip: high-pass and low-pass side by side */
+  .cols {
+    flex: 1;
+    min-height: 0;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(118px, 1fr));
+    gap: 10px;
+  }
+  .cols .filter {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+  }
+  .cols :global(.vfield) {
+    flex: 1;
+    height: auto;
+    min-height: 0;
+    width: 74px;
+    margin: 0 auto;
+  }
+  .cols .filter + .filter {
+    margin-top: 0;
+    padding: 0 0 0 10px;
+    border-top: none;
+    border-left: 1px solid var(--line);
+  }
+  .cols .head {
+    grid-template-columns: 1fr auto;
+    margin-bottom: 6px;
+  }
+  .cols .head select {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    min-width: 0;
   }
   .filter.off :global(.num) {
     color: var(--muted);

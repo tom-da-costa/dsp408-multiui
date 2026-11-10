@@ -1,6 +1,7 @@
 <script lang="ts">
   // Delay of one channel, in milliseconds and as a distance.
   import { app } from "../lib/app.svelte";
+  import { inStrip } from "../lib/layout";
   import { sampleStep } from "../lib/scale";
   import type { Channel } from "../lib/types";
   import Field from "./Field.svelte";
@@ -15,6 +16,7 @@
 
   let { channel, path, id = "delay", title = "Delay" }: Props = $props();
 
+  const vertical = inStrip();
   const limits = $derived(app.hello?.limits);
   const maxMs = $derived(app.hello?.profile.delay_max_ms ?? 680);
   const editable = $derived(app.editable("delay_ms"));
@@ -25,6 +27,7 @@
 <Section {id} {title} kind="delay_ms">
   {#if limits}
     {@const c = limits.speed_of_sound_m_s}
+    <div class:vfields-grid={vertical}>
     <Field
       label="Delay"
       value={channel.delay_ms}
@@ -49,5 +52,6 @@
       disabled={!editable}
       onchange={(m) => app.set(`${path}.delay_ms`, (m * 1000) / c)}
     />
+    </div>
   {/if}
 </Section>

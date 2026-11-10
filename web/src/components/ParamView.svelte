@@ -7,6 +7,10 @@
   import Matrix from "./Matrix.svelte";
   import Mixer from "./Mixer.svelte";
   import ParamBlock from "./ParamBlock.svelte";
+  import ParamStrips from "./ParamStrips.svelte";
+
+  // Settings shown as one strip per channel, like the mixer; the others (EQ, GEQ) as cards.
+  const STRIPS = new Set(["delay", "filters", "comp", "limit", "gate"]);
 
   const device = $derived(app.device);
   const scope = $derived(PARAM_SCOPE[nav.param]);
@@ -41,21 +45,25 @@
 {:else if nav.param === "link"}
   <LinkEditor />
 {:else}
-  {#if scope === "all"}
-    <ChipBar
-      items={SIDES.map(([key, label]) => ({ key, label }))}
-      selected={nav.side}
-      onselect={(k) => (nav.side = k as typeof nav.side)}
-      label="Channels shown"
-    />
+  {#if STRIPS.has(nav.param)}
+    <ParamStrips param={nav.param} paths={paths.map(([path]) => path)} sides={scope === "all"} />
+  {:else}
+    {#if scope === "all"}
+      <ChipBar
+        items={SIDES.map(([key, label]) => ({ key, label }))}
+        selected={nav.side}
+        onselect={(k) => (nav.side = k as typeof nav.side)}
+        label="Channels shown"
+      />
+    {/if}
+    <div class="cards">
+      {#each paths as [path, name] (path)}
+        <div class="block" style:--ch={app.color(path)}>
+          <ParamBlock param={nav.param} {path} title={title(path, name)} />
+        </div>
+      {/each}
+    </div>
   {/if}
-  <div class="cards">
-    {#each paths as [path, name] (path)}
-      <div class="block" style:--ch={app.color(path)}>
-        <ParamBlock param={nav.param} {path} title={title(path, name)} />
-      </div>
-    {/each}
-  </div>
 {/if}
 
 <style>
