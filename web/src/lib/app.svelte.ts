@@ -187,9 +187,6 @@ class App {
       case "settings":
         this.settings = msg as unknown as Settings;
         break;
-      case "self":
-        if (this.me) this.me = { ...this.me, name: msg.name as string };
-        break;
       case "result": {
         const result = msg as unknown as ResultMessage;
         const pending = result.req === null ? undefined : this.pending.get(result.req);

@@ -106,6 +106,7 @@ with exponential backoff (1 s → 30 s) and re-reads the full state after reconn
 
 ### Multi-client rules
 
+- Each client has a display name, chosen at login; it cannot be changed during the session.
 - Any number of clients see the same state. By default the **last writer wins**: writes are
   applied in arrival order and the result goes to every client, the sender included.
 - A client can take an **exclusive lock**; every other client is then read-only (meters keep
@@ -164,7 +165,6 @@ WebSocket `/ws` (cookie auth plus an `Origin` check). JSON messages `{type, ...}
 | S→C | `device` | `status`, `error?`, `model`, `firmware` |
 | S→C | `lock` | `owner_id?`, `owner_name?`, `idle_remaining_s?`, `idle_timeout_s` |
 | S→C | `settings` | `meter_rate_hz`, `lock_idle_timeout_s` (sent on change) |
-| S→C | `self` | `name` (after a `rename`) |
 | S→C | `clients` | list of `{id, name}` |
 | S→C | `result` | `req`, `ok`, `error?` (`locked`, `invalid`, `experimental`, `device_offline`, `device_timeout`), `message?` |
 | S→C | `pong` | `req` |
@@ -174,7 +174,6 @@ WebSocket `/ws` (cookie auth plus an `Origin` check). JSON messages `{type, ...}
 | C→S | `lock.acquire` / `lock.release` | `req` |
 | C→S | `activity` | no payload; user interaction, throttled to one every 10 s |
 | C→S | `settings.set` | `req`, `meter_rate_hz` (clamped to 1–10) |
-| C→S | `rename` | `req`, `name` (display name) |
 | C→S | `resync` | `req` |
 | C→S | `link.set` | `req`, `side` (`inputs` / `outputs`), `groups` (lists of channel indices; channels in no group are unlinked) |
 | C→S | `ping` | keepalive |

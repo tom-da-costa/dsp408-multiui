@@ -37,8 +37,6 @@ def test_auth_login_logout_and_rate_limit() -> None:
     assert auth.login("1234", None, "10.0.0.4").name.startswith("Client")  # other IP is fine
     now[0] = 31.0
     assert auth.login("1234", None, "10.0.0.3")
-    assert auth.rename(session.token, "Stage") is session
-    assert session.name == "Stage"
     assert auth.logout(session.token) is session
     assert auth.get(session.token) is None
     assert clean_name("", "fallback") == "fallback"
@@ -66,10 +64,9 @@ def test_lock_activity_and_idle_expiry() -> None:
     assert lock.can_write("b")
     assert lock.acquire("b", "Bob")
     assert not lock.release("a")
-    lock.rename("b", "Bobby")
-    assert lock.state().owner_name == "Bobby"
+    assert lock.state().owner_name == "Bob"
     assert lock.release("b")
-    assert changes == ["a", None, "b", "b", None]
+    assert changes == ["a", None, "b", None]
     with pytest.raises(ValueError, match="idle_timeout"):
         LockManager(0)
 
@@ -274,7 +271,7 @@ def test_invalid_requests(client: TestClient) -> None:
             ({"type": "settings.set", "req": 8, "meter_rate_hz": "fast"}, "invalid"),
             ({"type": "lock.release", "req": 9}, "invalid"),
             ({"type": "bogus", "req": 10}, "invalid"),
-            ({"type": "rename", "req": 11, "name": 3}, "invalid"),
+            ({"type": "rename", "req": 11, "name": "x"}, "invalid"),  # names are set at login
         ]
         for message, error in cases:
             reply = request(ws, message)
@@ -335,7 +332,7 @@ def test_two_clients_and_the_lock(client: TestClient) -> None:
             assert device.live.outputs[1].mute
 
 
-def test_presets_settings_rename_resync(client: TestClient) -> None:
+def test_presets_settings_resync(client: TestClient) -> None:
     login(client, "Op")
     with client.websocket_connect("/ws") as ws:
         receive_until(ws, "snapshot")
@@ -346,8 +343,6 @@ def test_presets_settings_rename_resync(client: TestClient) -> None:
         assert receive_until(ws, "snapshot")["state"]["preset_name"] == "Mono Sub"
         assert request(ws, {"type": "settings.set", "req": 3, "meter_rate_hz": 50})["ok"]
         assert receive_until(ws, "settings")["meter_rate_hz"] == 10
-        assert request(ws, {"type": "rename", "req": 4, "name": "Monitor desk"})["ok"]
-        assert receive_until(ws, "self")["name"] == "Monitor desk"
         assert request(ws, {"type": "resync", "req": 5})["ok"]
         assert receive_until(ws, "snapshot")
 
