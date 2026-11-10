@@ -26,8 +26,9 @@
   let editing = $state(false);
   let draft = $state("");
 
-  // While dragging, show the local value; after − / +, the value sent until the DSP has it;
-  // otherwise follow the server.
+  // While dragging, show the local value; after a drag or − / +, the value sent until the DSP
+  // has it (following the server's answers to the drag would replay the movement); otherwise
+  // follow the server.
   let pending = $state<number | null>(null);
   let settle: ReturnType<typeof setTimeout> | undefined;
   const shown = $derived(dragging ? local : (pending ?? value));
@@ -46,8 +47,10 @@
     if (disabled) return;
     event.preventDefault();
     (event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
+    clearTimeout(settle);
+    local = pending ?? value;
+    pending = null;
     dragging = true;
-    local = value;
   }
 
   function move(event: PointerEvent) {
@@ -63,6 +66,10 @@
     if (!dragging) return;
     sender.flush();
     dragging = false;
+    if (Math.abs(value - local) < 0.05) return;
+    pending = local;
+    clearTimeout(settle);
+    settle = setTimeout(() => (pending = null), 2000);
   }
 
   /** Move by `count` device steps (0.1 dB, or 0.5 dB below -20 dB), chaining from the last
