@@ -64,8 +64,10 @@
     white-space: nowrap;
   }
   button:not(.on) {
-    background: color-mix(in srgb, var(--ch) 16%, var(--panel-2));
     border-color: color-mix(in srgb, var(--ch) 60%, var(--line));
+  }
+  button:not(.on) span {
+    color: var(--ch);
   }
   .on {
     background: var(--accent);

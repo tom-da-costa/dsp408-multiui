@@ -180,8 +180,10 @@
     white-space: nowrap;
   }
   .chips button:not(.on) {
-    background: color-mix(in srgb, var(--ch) 16%, var(--panel-2));
     border-color: color-mix(in srgb, var(--ch) 60%, var(--line));
+  }
+  .chips button:not(.on) .slot {
+    color: var(--ch);
   }
   .on {
     outline: 2px solid var(--accent);

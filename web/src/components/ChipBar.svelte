@@ -91,8 +91,10 @@
     text-overflow: ellipsis;
   }
   .ch:not(.on) {
-    background: color-mix(in srgb, var(--ch) 16%, var(--panel-2));
     border-color: color-mix(in srgb, var(--ch) 60%, var(--line));
+  }
+  .ch:not(.on) span {
+    color: var(--ch);
   }
   .on {
     background: var(--accent);

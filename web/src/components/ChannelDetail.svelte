@@ -40,7 +40,7 @@
 {:else}
   <div class="detail">
     <div class="top">
-      <h2><span class="ch-dot" style:--ch={app.color(path)}></span> {slotLabel(path)} <span class="muted">{channel.name}</span></h2>
+      <h2 style:--ch={app.color(path)}><span class="ch-dot"></span> {slotLabel(path)} <span class="muted">{channel.name}</span></h2>
       <LevelBar {path} />
     </div>
 
@@ -85,6 +85,7 @@
   }
   h2 {
     margin: 0;
+    color: var(--ch);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;

@@ -67,7 +67,9 @@
     break-inside: avoid;
   }
   .block > :global(.card) {
-    background: color-mix(in srgb, var(--ch) 10%, var(--panel));
     border: 2px solid color-mix(in srgb, var(--ch) 70%, var(--line));
+  }
+  .block > :global(.card .title) {
+    color: var(--ch);
   }
 </style>

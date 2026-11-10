@@ -77,11 +77,12 @@
     flex-direction: column;
     gap: 8px;
     padding: 8px 4px;
-    background: color-mix(in srgb, var(--ch) 10%, var(--panel));
+    background: var(--panel);
     border: 2px solid color-mix(in srgb, var(--ch) 70%, var(--line));
     border-radius: var(--radius);
   }
   .name {
+    color: var(--ch);
     display: grid;
     min-height: 40px;
     padding: 2px 4px;
@@ -96,7 +97,7 @@
   }
   .slot {
     font-size: 0.7rem;
-    color: var(--muted);
+    color: inherit;
   }
   .link {
     margin-left: 2px;

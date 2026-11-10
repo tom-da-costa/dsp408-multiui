@@ -93,12 +93,13 @@
     flex-direction: column;
     gap: 8px;
     padding: 8px 6px;
-    background: color-mix(in srgb, var(--ch) 10%, var(--panel));
+    background: var(--panel);
     border: 2px solid color-mix(in srgb, var(--ch) 70%, var(--line));
     border-radius: var(--radius);
     min-height: 0;
   }
   .name {
+    color: var(--ch);
     display: grid;
     min-height: 40px;
     padding: 2px 4px;
@@ -113,7 +114,7 @@
   }
   .slot {
     font-size: 0.7rem;
-    color: var(--muted);
+    color: inherit;
   }
   .strip.muted strong {
     color: var(--danger);

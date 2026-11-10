@@ -94,7 +94,7 @@
     display: grid;
     gap: 8px;
     padding: 8px;
-    background: color-mix(in srgb, var(--ch) 10%, var(--panel));
+    background: var(--panel);
     border: 2px solid color-mix(in srgb, var(--ch) 70%, var(--line));
     border-radius: var(--radius);
   }
@@ -103,6 +103,7 @@
     background: var(--panel-2);
   }
   .head {
+    color: var(--ch);
     display: grid;
     justify-items: start;
     min-height: 40px;
@@ -113,7 +114,7 @@
   }
   .slot {
     font-size: 0.75rem;
-    color: var(--muted);
+    color: inherit;
   }
   .strip.muted strong {
     color: var(--danger);
