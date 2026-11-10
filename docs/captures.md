@@ -9,8 +9,8 @@ simulator), and how to turn the recordings into test fixtures. This is how the o
 | Tool | Command | Use |
 |---|---|---|
 | Simulator | `uv run dsp408-sim --frame-log editor.jsonl` (or the `dsp408-sim` Windows executable) | Fake DSP; logs every request it receives |
-| Proxy | `uv run dsp408-multiui proxy --dsp-host <DSP-IP> --log session.jsonl` | Sits between the editor and a real DSP; logs both directions |
-| Probe | `uv run dsp408-multiui probe --dsp-host <IP> {info,meters,dump-config,diff-config,raw}` | Query the device directly |
+| Proxy | `uv run tracks-dsp-controller proxy --dsp-host <DSP-IP> --log session.jsonl` | Sits between the editor and a real DSP; logs both directions |
+| Probe | `uv run tracks-dsp-controller probe --dsp-host <IP> {info,meters,dump-config,diff-config,raw}` | Query the device directly |
 | Wireshark | filter `tcp.port == 9761` | Fallback when the editor cannot be pointed at an arbitrary IP |
 
 Each line of a JSONL frame log is `{"ts", "dir", "hex", "decoded"}`. `dir` is `host->dsp` or
@@ -49,7 +49,7 @@ Goal: learn how the editor **encodes requests**. This answers Q2–Q7 and Q12.
 
 Goal: learn how the **device answers**. This answers Q1 and Q8–Q11.
 
-1. Run `uv run dsp408-multiui proxy --dsp-host <DSP-IP> --log session.jsonl` on a machine that
+1. Run `uv run tracks-dsp-controller proxy --dsp-host <DSP-IP> --log session.jsonl` on a machine that
    can reach the DSP, and point the editor at that machine.
 2. Q1 (meters): play a steady sine of known level into In A, then raise the gain until the clip
    LED lights. Trigger the limiter on Out1 by lowering its threshold. Then run

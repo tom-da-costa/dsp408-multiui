@@ -4,13 +4,13 @@ from pathlib import Path
 
 import pytest
 
-from dsp408_multiui.protocol.meters import (
+from tracks_dsp_controller.protocol.meters import (
     MeterError,
     decode_meters,
     encode_meters,
     meter_data_length,
 )
-from dsp408_multiui.protocol.profile import DEFAULT_PROFILE as P
+from tracks_dsp_controller.protocol.profile import DEFAULT_PROFILE as P
 
 FIXTURES = Path(__file__).parent.parent / "fixtures" / "meters"
 
@@ -128,7 +128,7 @@ def test_level24_vectors_from_4x4_mini() -> None:
 
 @pytest.mark.parametrize("profile", [P, FLOAT16, LEVEL24])
 def test_encode_decode_roundtrip(profile: object) -> None:
-    from dsp408_multiui.protocol.profile import ProtocolProfile
+    from tracks_dsp_controller.protocol.profile import ProtocolProfile
 
     assert isinstance(profile, ProtocolProfile)
     n = profile.channel_count

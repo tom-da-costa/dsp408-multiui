@@ -3,13 +3,13 @@ from typing import Any
 
 import pytest
 
-from dsp408_multiui.protocol import commands as c
-from dsp408_multiui.protocol import config_map as cm
-from dsp408_multiui.protocol.profile import DEFAULT_PROFILE as P
-from dsp408_multiui.state.convert import build_state
-from dsp408_multiui.state.models import DeviceInfo, DeviceState
-from dsp408_multiui.state.registry import ParamError, resolve
-from dsp408_multiui.state.store import Patch, Snapshot, StateStore, get_path, set_path
+from tracks_dsp_controller.protocol import commands as c
+from tracks_dsp_controller.protocol import config_map as cm
+from tracks_dsp_controller.protocol.profile import DEFAULT_PROFILE as P
+from tracks_dsp_controller.state.convert import build_state
+from tracks_dsp_controller.state.models import DeviceInfo, DeviceState
+from tracks_dsp_controller.state.registry import ParamError, resolve
+from tracks_dsp_controller.state.store import Patch, Snapshot, StateStore, get_path, set_path
 
 FOREST = Path(__file__).parent.parent / "fixtures" / "config" / "forest_408.bin"
 U08 = FOREST.with_name("dsp408_u08.bin")

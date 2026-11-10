@@ -2,7 +2,7 @@ from pathlib import Path
 
 import pytest
 
-from dsp408_multiui.protocol.profile import (
+from tracks_dsp_controller.protocol.profile import (
     DEFAULT_PROFILE,
     CompressorLayout,
     MeterFormat,

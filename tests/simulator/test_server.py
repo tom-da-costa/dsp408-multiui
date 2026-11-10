@@ -7,13 +7,17 @@ from collections.abc import AsyncIterator
 
 import pytest
 
-from dsp408_multiui.device.transport import DspConnection, TransportError, TransportTimeoutError
-from dsp408_multiui.framelog import FrameLog
-from dsp408_multiui.protocol import commands as c
-from dsp408_multiui.protocol import responses as r
-from dsp408_multiui.protocol.framing import encode_frame
-from dsp408_multiui.protocol.profile import DEFAULT_PROFILE as P
-from dsp408_multiui.simulator import Faults, SecondClient, SimulatedDevice, SimulatorServer
+from tracks_dsp_controller.device.transport import (
+    DspConnection,
+    TransportError,
+    TransportTimeoutError,
+)
+from tracks_dsp_controller.framelog import FrameLog
+from tracks_dsp_controller.protocol import commands as c
+from tracks_dsp_controller.protocol import responses as r
+from tracks_dsp_controller.protocol.framing import encode_frame
+from tracks_dsp_controller.protocol.profile import DEFAULT_PROFILE as P
+from tracks_dsp_controller.simulator import Faults, SecondClient, SimulatedDevice, SimulatorServer
 
 
 def fast_device() -> SimulatedDevice:

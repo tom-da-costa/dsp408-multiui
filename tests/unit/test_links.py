@@ -1,8 +1,8 @@
 import pytest
 
-from dsp408_multiui.protocol import commands as c
-from dsp408_multiui.protocol.links import LinkError, link_requests, masks_for, normalise
-from dsp408_multiui.protocol.profile import DEFAULT_PROFILE as P
+from tracks_dsp_controller.protocol import commands as c
+from tracks_dsp_controller.protocol.links import LinkError, link_requests, masks_for, normalise
+from tracks_dsp_controller.protocol.profile import DEFAULT_PROFILE as P
 
 OWNER_OUTPUTS = [0x11, 0x22, 0x44, 0x88, 0, 0, 0, 0]  # Out 1+5, 2+6, 3+7, 4+8
 

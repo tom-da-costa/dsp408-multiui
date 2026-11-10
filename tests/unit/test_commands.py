@@ -1,7 +1,7 @@
 import pytest
 
-from dsp408_multiui.protocol import commands as cmd
-from dsp408_multiui.protocol.profile import DEFAULT_PROFILE as P
+from tracks_dsp_controller.protocol import commands as cmd
+from tracks_dsp_controller.protocol.profile import DEFAULT_PROFILE as P
 
 H = bytes.fromhex
 
@@ -51,7 +51,7 @@ def test_decode_roundtrip(request_: cmd.Request, payload: str) -> None:
 
 
 def test_compressor_narrow_layout() -> None:
-    from dsp408_multiui.protocol.profile import CompressorLayout
+    from tracks_dsp_controller.protocol.profile import CompressorLayout
 
     narrow = P.with_overrides({"codecs": {"compressor_layout": CompressorLayout.NARROW.value}})
     request = cmd.SetCompressor(4, 15, 49, 499, 3, 220)

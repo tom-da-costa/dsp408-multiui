@@ -12,7 +12,7 @@
 #
 # A push of tag vX.Y.Z publishes release vX.Y.Z. A push to main publishes the pre-release "main"
 # (tag main-latest; a tag cannot be named like the branch): it always holds the latest build of
-# main, with fixed file names such as dsp408-multiui-main-linux-amd64.
+# main, with fixed file names such as tracks-dsp-controller-main-linux-amd64.
 set -eu
 
 ROLLING_TAG="main-latest"

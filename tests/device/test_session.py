@@ -6,17 +6,17 @@ from typing import Any
 
 import pytest
 
-from dsp408_multiui.device.session import (
+from tracks_dsp_controller.device.session import (
     DeviceSession,
     DeviceStatus,
     DeviceUnavailableError,
     clamp_meter_rate,
 )
-from dsp408_multiui.protocol.meters import MeterReading
-from dsp408_multiui.protocol.profile import DEFAULT_PROFILE
-from dsp408_multiui.simulator import Faults, SimulatedDevice, SimulatorServer, apply_scenario
-from dsp408_multiui.state.registry import ParamError
-from dsp408_multiui.state.store import Patch, Snapshot, StateStore
+from tracks_dsp_controller.protocol.meters import MeterReading
+from tracks_dsp_controller.protocol.profile import DEFAULT_PROFILE
+from tracks_dsp_controller.simulator import Faults, SimulatedDevice, SimulatorServer, apply_scenario
+from tracks_dsp_controller.state.registry import ParamError
+from tracks_dsp_controller.state.store import Patch, Snapshot, StateStore
 
 P = DEFAULT_PROFILE.with_overrides({"timing": {"command_timeout_s": 0.2}})
 

@@ -1,4 +1,4 @@
-# dsp408-multiui
+# tracks-dsp-controller
 
 Self-hosted web app to control a **t.racks DSP 408** over the network from several browsers
 at once (phones first), with live metering.
@@ -19,7 +19,7 @@ every client on the local network and keeps them in sync in real time. It works 
 > on the simulator or on a spare preset first, keep backups of your presets, and use it at your
 > own risk. The software comes with **no warranty** ([AGPL-3.0](LICENSE), sections 15–16).
 
-Try it without a DSP: `uv run dsp408-multiui --demo`, then open http://localhost:8080 (code
+Try it without a DSP: `uv run tracks-dsp-controller --demo`, then open http://localhost:8080 (code
 `0000`).
 
 ## Features
@@ -61,14 +61,14 @@ Try it without a DSP: `uv run dsp408-multiui --demo`, then open http://localhost
 
 ```bash
 # From a clone (needs only uv)
-git clone https://github.com/tom-da-costa/dsp408-multiui.git && cd dsp408-multiui
-uv run dsp408-multiui --dsp-host 192.168.1.50 --pin 1234
+git clone https://github.com/tom-da-costa/tracks-dsp-controller.git && cd tracks-dsp-controller
+uv run tracks-dsp-controller --dsp-host 192.168.1.50 --pin 1234
 
 # Demo without a DSP (a simulated DSP runs inside the app)
-uv run dsp408-multiui --demo
+uv run tracks-dsp-controller --demo
 
 # Docker
-docker run -d -p 8080:8080 -e DSP408_PIN=1234 ghcr.io/tom-da-costa/dsp408-multiui --dsp-host 192.168.1.50
+docker run -d -p 8080:8080 -e DSP408_PIN=1234 ghcr.io/tom-da-costa/tracks-dsp-controller --dsp-host 192.168.1.50
 
 # Docker Compose
 cp .env.example .env   # set DSP408_HOST, DSP408_PIN …
@@ -76,14 +76,14 @@ docker compose up -d
 ```
 
 Standalone executables (linux-amd64, linux-arm64, windows-amd64) are attached to each
-[release](https://github.com/tom-da-costa/dsp408-multiui/releases): download one and run
-`./dsp408-multiui-<version>-linux-amd64 --dsp-host 192.168.1.50`. The latest build of `main` is
+[release](https://github.com/tom-da-costa/tracks-dsp-controller/releases): download one and run
+`./tracks-dsp-controller-<version>-linux-amd64 --dsp-host 192.168.1.50`. The latest build of `main` is
 always available as the
-[**main** pre-release](https://github.com/tom-da-costa/dsp408-multiui/releases/tag/main-latest)
+[**main** pre-release](https://github.com/tom-da-costa/tracks-dsp-controller/releases/tag/main-latest)
 (fixed file names, rebuilt on every push).
 
 Then open `http://<server-ip>:8080` from any device on the LAN. Run
-`dsp408-multiui --help` for every option; each one can also be set with a `DSP408_<NAME>`
+`tracks-dsp-controller --help` for every option; each one can also be set with a `DSP408_<NAME>`
 environment variable.
 
 ## On a phone
@@ -106,14 +106,14 @@ init sequence, timeouts, reconnects, several clients.
 # Terminal 1: the simulated DSP (listens on 0.0.0.0:9761, like a real one)
 uv run dsp408-sim --state-dir sim-state
 # Terminal 2: the app, pointed at it (or at the IP of the machine running dsp408-sim)
-uv run dsp408-multiui --dsp-host 127.0.0.1
+uv run tracks-dsp-controller --dsp-host 127.0.0.1
 
 # Both in Docker; `docker attach dsp408-sim` opens the simulator console
 docker compose -f compose.sim.yaml up -d
 ```
 
 - `--state-dir DIR` keeps stored presets and the active preset across restarts (one `Uxx.bin`
-  per preset, the same format as `dsp408-multiui probe dump-config`).
+  per preset, the same format as `tracks-dsp-controller probe dump-config`).
 - `--preset 8=u08.bin` loads a config dumped from a real DSP into U08.
 - `--scenario demo|silent|clipping|stress` sets the initial presets and input signals.
 - `--fast` answers preset recall and store at once (the real DSP takes about 3 s and 7 s).

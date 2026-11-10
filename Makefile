@@ -20,7 +20,7 @@ typecheck:  ## Run mypy
 test:  ## Run the test suite
 	uv run pytest
 
-e2e:  ## End-to-end: dsp408-sim and dsp408-multiui run as two programs
+e2e:  ## End-to-end: dsp408-sim and tracks-dsp-controller run as two programs
 	uv run pytest -m e2e -v
 
 cov:  ## Run tests with coverage
@@ -38,7 +38,7 @@ NPM_DEV = $(if $(shell command -v npm 2>/dev/null),cd web && npm,docker run --rm
 	$$([ -t 0 ] && echo -it) --network host -u $$(id -u):$$(id -g) -e HOME=/tmp \
 	-e npm_config_update_notifier=false -v $(CURDIR):/app -w /app/web node:22-alpine npm)
 
-web:  ## Build the UI into src/dsp408_multiui/web (the build is committed)
+web:  ## Build the UI into src/tracks_dsp_controller/web (the build is committed)
 	$(NPM) ci --no-audit --no-fund
 	$(NPM) run build
 
@@ -54,9 +54,9 @@ web-dev:  ## Vite dev server only, hot reload on :5173 (start a backend on :8080
 #   uv run dsp408-sim --host 127.0.0.1   then   make dev DEV_BACKEND="--dsp-host 127.0.0.1"
 DEV_BACKEND ?= --demo
 backend:  ## Backend only (--demo) on :8080, for `make web-dev` in another terminal
-	uv run dsp408-multiui $(DEV_BACKEND) --host 127.0.0.1 --port 8080
+	uv run tracks-dsp-controller $(DEV_BACKEND) --host 127.0.0.1 --port 8080
 
 dev:  ## UI with hot reload on http://<this-machine>:5173, backend (--demo) on :8080
 	@trap 'kill 0' INT TERM EXIT; \
-	uv run dsp408-multiui $(DEV_BACKEND) --host 127.0.0.1 --port 8080 & \
+	uv run tracks-dsp-controller $(DEV_BACKEND) --host 127.0.0.1 --port 8080 & \
 	$(NPM_DEV) run dev -- --host 0.0.0.0

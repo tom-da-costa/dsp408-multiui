@@ -4,15 +4,15 @@ import asyncio
 
 import pytest
 
-from dsp408_multiui.device.pipeline import (
+from tracks_dsp_controller.device.pipeline import (
     CommandPipeline,
     CommandTimeoutError,
     PipelineClosedError,
 )
-from dsp408_multiui.device.transport import TransportError, TransportTimeoutError
-from dsp408_multiui.protocol import commands as c
-from dsp408_multiui.protocol import responses as r
-from dsp408_multiui.protocol.profile import DEFAULT_PROFILE as P
+from tracks_dsp_controller.device.transport import TransportError, TransportTimeoutError
+from tracks_dsp_controller.protocol import commands as c
+from tracks_dsp_controller.protocol import responses as r
+from tracks_dsp_controller.protocol.profile import DEFAULT_PROFILE as P
 
 
 class FakeConn:

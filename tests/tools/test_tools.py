@@ -7,16 +7,16 @@ from pathlib import Path
 
 import pytest
 
-from dsp408_multiui import cli
-from dsp408_multiui.device.transport import DspConnection, TransportTimeoutError
-from dsp408_multiui.framelog import FrameLog
-from dsp408_multiui.protocol import commands as c
-from dsp408_multiui.protocol import config_map as cm
-from dsp408_multiui.protocol import responses as r
-from dsp408_multiui.protocol.profile import DEFAULT_PROFILE as P
-from dsp408_multiui.simulator import Faults, SimulatedDevice, SimulatorServer, apply_scenario
-from dsp408_multiui.tools import probe
-from dsp408_multiui.tools.proxy import ProxyServer
+from tracks_dsp_controller import cli
+from tracks_dsp_controller.device.transport import DspConnection, TransportTimeoutError
+from tracks_dsp_controller.framelog import FrameLog
+from tracks_dsp_controller.protocol import commands as c
+from tracks_dsp_controller.protocol import config_map as cm
+from tracks_dsp_controller.protocol import responses as r
+from tracks_dsp_controller.protocol.profile import DEFAULT_PROFILE as P
+from tracks_dsp_controller.simulator import Faults, SimulatedDevice, SimulatorServer, apply_scenario
+from tracks_dsp_controller.tools import probe
+from tracks_dsp_controller.tools.proxy import ProxyServer
 
 
 @pytest.fixture

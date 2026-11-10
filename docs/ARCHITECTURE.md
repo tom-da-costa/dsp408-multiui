@@ -1,14 +1,14 @@
 # Architecture
 
-How dsp408-multiui is built: components, state, the command pipeline to the DSP, the simulator,
+How tracks-dsp-controller is built: components, state, the command pipeline to the DSP, the simulator,
 the client/server API and the security model. The device protocol itself is in
 [PROTOCOL.md](PROTOCOL.md).
 
 ```
- phone ─┐                     ┌──────────────────────────────┐   TCP 9761   ┌─────────┐
- phone ─┼── HTTP + WebSocket ─┤  dsp408-multiui (1 process)  ├──────────────┤ DSP 408 │
- PC ────┘      (LAN only)     │  FastAPI · state · protocol  │ (sole client)└─────────┘
-                              └──────────────────────────────┘
+ phone ─┐                     ┌─────────────────────────────────────┐   TCP 9761   ┌─────────┐
+ phone ─┼── HTTP + WebSocket ─┤  tracks-dsp-controller (1 process)  ├──────────────┤ DSP 408 │
+ PC ────┘      (LAN only)     │  FastAPI · state · protocol         │ (sole client)└─────────┘
+                              └─────────────────────────────────────┘
 ```
 
 ## 1. Constraints
@@ -27,7 +27,7 @@ the client/server API and the security model. The device protocol itself is in
 A single Python process, asyncio throughout.
 
 ```
-src/dsp408_multiui/
+src/tracks_dsp_controller/
   protocol/   pure, I/O-free: framing, checksum, value codecs, command builders, response parsers,
               config-blob map (offsets → model), protocol profile
   device/     asyncio TCP transport · CommandPipeline (queue, coalescing, ACK/timeout) ·
@@ -201,15 +201,15 @@ The threat model is a trusted private LAN; the goal is to stop casual or acciden
 Every option also reads `DSP408_<NAME>` from the environment.
 
 ```
-dsp408-multiui [serve] --dsp-host 192.168.1.50 [options]   # "serve" is the default sub-command
+tracks-dsp-controller [serve] --dsp-host 192.168.1.50 [options]   # "serve" is the default sub-command
   --dsp-port 9761          --host 0.0.0.0        --port 8080
   --pin 0000               --meter-rate 5        (1–10 Hz)
   --lock-idle-timeout 120  --resync-interval 0   (seconds, 0 = off)
   --command-timeout 0.5    --experimental        --profile file.toml
   --demo [--demo-scenario demo|silent|clipping|stress]
   --log-level info
-dsp408-multiui probe --dsp-host IP {info|meters|dump-config|diff-config|raw HEX}
-dsp408-multiui proxy --listen 0.0.0.0:9761 --dsp-host IP --log frames.jsonl
+tracks-dsp-controller probe --dsp-host IP {info|meters|dump-config|diff-config|raw HEX}
+tracks-dsp-controller proxy --listen 0.0.0.0:9761 --dsp-host IP --log frames.jsonl
 
 dsp408-sim [--host 0.0.0.0] [--port 9761] [--scenario demo] [--state-dir DIR]
            [--preset SLOT=FILE] [--fast] [--latency-ms N] [--drop-rate P] …
