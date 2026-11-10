@@ -33,6 +33,7 @@ LEVEL24 = P.with_overrides(
     {
         "meters": {
             "format": "level24",
+            "output_slots": 4,  # the 4x4 Mini's frame has one slot per channel
             "tail_length": 3,
             "tail_limit_byte": 0,
             "tail_comp_byte": None,

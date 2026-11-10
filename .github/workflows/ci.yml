@@ -39,7 +39,7 @@ jobs:
         run: uv run pytest --cov --cov-report=term-missing
 
   e2e:
-    # dsp408-sim and tracks-dsp-controller started side by side as two programs; the app reaches the
+    # tracks-dsp-sim and tracks-dsp-controller started side by side as two programs; the app reaches the
     # simulated DSP over TCP like a real one (tests/e2e/test_stack.py).
     runs-on: ubuntu-latest
     steps:

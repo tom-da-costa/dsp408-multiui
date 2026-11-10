@@ -1,4 +1,4 @@
-"""PyInstaller entry point for the standalone simulator executable (dsp408-sim)."""
+"""PyInstaller entry point for the standalone simulator executable (tracks-dsp-sim)."""
 
 from tracks_dsp_controller.simulator.cli import main
 

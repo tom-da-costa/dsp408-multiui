@@ -27,6 +27,7 @@ class ProfileError(ValueError):
 
 # TOML section -> field names, so that profile files stay readable.
 _SECTIONS: dict[str, tuple[str, ...]] = {
+    "device": ("model",),
     "frame": ("host_dst",),
     "topology": (
         "input_count",
@@ -52,6 +53,8 @@ _SECTIONS: dict[str, tuple[str, ...]] = {
     ),
     "meters": (
         "meter_format",
+        "meter_input_slots",
+        "meter_output_slots",
         "meter_tail_length",
         "meter_tail_limit_byte",
         "meter_tail_comp_byte",
@@ -69,6 +72,8 @@ _PREFIXED_SECTIONS = {"meters": "meter_"}
 @dataclass(frozen=True, slots=True)
 class ProtocolProfile:
     name: str = "builtin"
+    # device
+    model: str = "DSP408"  # model name, as at the start of the 0x13 identity string
     # frame
     host_dst: int = 0x01
     # topology
@@ -96,6 +101,10 @@ class ProtocolProfile:
     slopes: tuple[str, ...] = ()
     # meters
     meter_format: MeterFormat = MeterFormat.FLOAT32
+    # The meter frame has fixed input and output slots, whatever the model: the 206 fills slots
+    # In A-B and Out 1-6 of a 4 + 8 frame and leaves the others at zero.
+    meter_input_slots: int = 4
+    meter_output_slots: int = 8
     meter_tail_length: int = 2
     meter_tail_limit_byte: int | None = 1
     meter_tail_comp_byte: int | None = 0
@@ -126,6 +135,8 @@ class ProtocolProfile:
             raise ProfileError("host_dst must be a byte")
         if self.input_count > 8 or self.output_count > 8:
             raise ProfileError("bitmasks limit inputs and outputs to 8 each")
+        if self.meter_input_slots < self.input_count or self.meter_output_slots < self.output_count:
+            raise ProfileError("the meter frame needs a slot for every channel")
         if not self.freq_min_hz < self.freq_max_hz:
             raise ProfileError("freq_min_hz must be < freq_max_hz")
         if not 0 < self.q_min < self.q_max:
@@ -157,6 +168,18 @@ class ProtocolProfile:
 
     def peq_band_count(self, channel: int) -> int:
         return self.peq_bands_input if self.is_input(channel) else self.peq_bands_output
+
+    @property
+    def meter_slot_count(self) -> int:
+        return self.meter_input_slots + self.meter_output_slots
+
+    def meter_slot(self, channel: int) -> int:
+        """Position of ``channel`` (protocol index) in the meter frame."""
+        if self.is_input(channel):
+            return channel
+        if self.is_output(channel):
+            return self.meter_input_slots + channel - self.input_count
+        raise ValueError(f"channel out of range: {channel}")
 
     # --- loading --------------------------------------------------------------------------
     def with_overrides(self, data: dict[str, Any]) -> ProtocolProfile:
@@ -192,18 +215,28 @@ def _coerce(name: str, value: Any) -> Any:
     return value
 
 
-def _read_default_document() -> dict[str, Any]:
+# Built-in models: model -> profile file layered on top of default.toml (the DSP 408).
+MODELS: dict[str, str | None] = {"408": None, "206": "dsp206.toml", "204": "dsp204.toml"}
+
+
+def _read_builtin_document(name: str) -> dict[str, Any]:
     text = (
         resources.files("tracks_dsp_controller.protocol")
-        .joinpath("profiles/default.toml")
+        .joinpath(f"profiles/{name}")
         .read_text("utf-8")
     )
     return tomllib.loads(text)
 
 
-def load_profile(path: str | Path | None = None) -> ProtocolProfile:
-    """Load the built-in default profile, optionally overridden by a TOML file."""
-    profile = ProtocolProfile().with_overrides(_read_default_document())
+def load_profile(path: str | Path | None = None, model: str = "408") -> ProtocolProfile:
+    """Load the built-in profile of ``model`` (408, 206 or 204), optionally overridden by a
+    TOML file."""
+    if model not in MODELS:
+        raise ProfileError(f"unknown model {model!r}; choose from {', '.join(MODELS)}")
+    profile = ProtocolProfile().with_overrides(_read_builtin_document("default.toml"))
+    overlay = MODELS[model]
+    if overlay is not None:
+        profile = profile.with_overrides(_read_builtin_document(overlay))
     if path is not None:
         with Path(path).open("rb") as handle:
             profile = profile.with_overrides(tomllib.load(handle))

@@ -1,4 +1,4 @@
-"""The standalone simulator program (``dsp408-sim``): storage, console, CLI, end to end."""
+"""The standalone simulator program (``tracks-dsp-sim``): storage, console, CLI, end to end."""
 
 import asyncio
 import contextlib
@@ -208,7 +208,7 @@ def test_main_reports_errors(tmp_path: Path, capsys: pytest.CaptureFixture[str])
 
 
 async def test_backend_session_against_the_program(tmp_path: Path) -> None:
-    """The backend's device session talks to ``dsp408-sim`` like to a real DSP on the network."""
+    """The backend's device session talks to ``tracks-dsp-sim`` like to a real DSP."""
     port = free_port()
     args = parse(
         "--host", "127.0.0.1", "--port", str(port), "--fast", "--console", "off",
@@ -268,6 +268,6 @@ def test_the_program_console_on_stdin() -> None:
         input="status\nlatency 5\nquit\n", capture_output=True, text=True, timeout=20,
     )  # fmt: skip
     assert proc.returncode == 0
-    assert "identity        DSP408 V0104P" in proc.stdout
+    assert "model           DSP 408, identity DSP408 V0104P" in proc.stdout
     assert "latency 5 ms" in proc.stdout
     assert "stopping" in proc.stdout

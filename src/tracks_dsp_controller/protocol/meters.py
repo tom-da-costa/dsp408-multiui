@@ -1,8 +1,10 @@
 """Meter frames (0x40 response, docs/PROTOCOL.md §6).
 
-Layout of the data after the opcode: one 3-byte triplet per channel (inputs first, then
-outputs), then ``meter_tail_length`` tail bytes. How a triplet encodes the level is a profile
-setting because the sources disagree:
+Layout of the data after the opcode: one 3-byte triplet per slot, then ``meter_tail_length``
+tail bytes. The frame has ``meter_input_slots`` input slots then ``meter_output_slots`` output
+slots (4 + 8 on both the 408 and the 206: the 206 leaves In C-D and Out 7-8 at zero).
+
+How a triplet encodes the level is a profile setting because the sources disagree:
 
 * ``float32`` (DSP 408, verified on hardware): the triplet is the top three bytes of a
   little-endian IEEE-754 float32 (byte 2 = bits 8-15, byte 0 = bits 16-23, byte 1 = bits
@@ -43,7 +45,7 @@ class MeterReading:
 
 
 def meter_data_length(profile: ProtocolProfile) -> int:
-    return profile.channel_count * TRIPLET + profile.meter_tail_length
+    return profile.meter_slot_count * TRIPLET + profile.meter_tail_length
 
 
 def _linear_to_db(linear: float, profile: ProtocolProfile) -> float:
@@ -101,9 +103,10 @@ def decode_meters(data: bytes, profile: ProtocolProfile) -> MeterReading:
         raise MeterError(f"meter data is {len(data)} bytes, profile expects {expected}")
     levels: list[float | None] = []
     for ch in range(profile.channel_count):
-        linear = _decode_triplet(data[ch * TRIPLET : (ch + 1) * TRIPLET], profile)
+        slot = profile.meter_slot(ch)
+        linear = _decode_triplet(data[slot * TRIPLET : (slot + 1) * TRIPLET], profile)
         levels.append(None if linear is None else _linear_to_db(linear, profile))
-    tail = data[profile.channel_count * TRIPLET :]
+    tail = data[profile.meter_slot_count * TRIPLET :]
     outputs = profile.output_count
 
     def tail_bits(index: int | None) -> tuple[bool, ...] | None:
@@ -129,10 +132,11 @@ def encode_meters(
     """Build the data of a meter frame (used by the simulator)."""
     if len(levels_db) != profile.channel_count:
         raise MeterError(f"need {profile.channel_count} levels, got {len(levels_db)}")
-    body = b"".join(
-        _encode_triplet(None if db is None else _db_to_linear(db, profile), profile)
-        for db in levels_db
-    )
+    body = bytearray(profile.meter_slot_count * TRIPLET)  # unused slots read zero
+    for ch, db in enumerate(levels_db):
+        slot = profile.meter_slot(ch)
+        triplet = _encode_triplet(None if db is None else _db_to_linear(db, profile), profile)
+        body[slot * TRIPLET : (slot + 1) * TRIPLET] = triplet
     tail = bytearray(profile.meter_tail_length)
 
     def put_bits(index: int | None, flags: list[bool] | None) -> None:
@@ -146,4 +150,4 @@ def encode_meters(
         tail[profile.meter_tail_clip_byte] = int(
             any(db is not None and db >= profile.meter_clip_db for db in inputs)
         )
-    return body + bytes(tail)
+    return bytes(body + tail)

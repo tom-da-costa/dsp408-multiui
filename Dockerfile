@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1
 # tracks-dsp-controller: single-process web controller for the t.racks DSP 408.
-# The image also contains the simulated DSP: run it with `--entrypoint dsp408-sim` (compose.sim.yaml).
+# The image also contains the simulated DSP: run it with `--entrypoint tracks-dsp-sim` (compose.sim.yaml).
 # The web UI is pre-built and committed (src/tracks_dsp_controller/web), so no Node stage is needed.
 
 FROM python:3.12-slim AS build
@@ -17,7 +17,7 @@ LABEL org.opencontainers.image.title="tracks-dsp-controller" \
       org.opencontainers.image.description="Multi-client web controller for the t.racks DSP 408" \
       org.opencontainers.image.licenses="AGPL-3.0-or-later"
 RUN useradd --system --uid 10001 --home-dir /app dsp408 \
- && mkdir -p /app/state && chown dsp408:dsp408 /app/state   # dsp408-sim --state-dir
+ && mkdir -p /app/state && chown dsp408:dsp408 /app/state   # tracks-dsp-sim --state-dir
 COPY --from=build --chown=dsp408:dsp408 /app/.venv /app/.venv
 ENV PATH="/app/.venv/bin:$PATH" \
     PYTHONUNBUFFERED=1 \

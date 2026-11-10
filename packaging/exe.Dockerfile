@@ -1,4 +1,4 @@
-# Standalone Linux executables (web app + dsp408-sim), built for the Docker host's platform
+# Standalone Linux executables (web app + tracks-dsp-sim), built for the Docker host's platform
 # (or --platform linux/arm64 with QEMU). Debian bookworm keeps an older glibc baseline.
 #   docker buildx build --platform linux/amd64 --build-arg NAME=tracks-dsp-controller-linux-amd64 \
 #     -f packaging/exe.Dockerfile -o dist .

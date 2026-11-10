@@ -1,4 +1,4 @@
-"""Preset persistence for the standalone simulator (``dsp408-sim --state-dir DIR``).
+"""Preset persistence for the standalone simulator (``tracks-dsp-sim --state-dir DIR``).
 
 A real DSP 408 keeps its presets across power cycles. With a state directory, the simulator
 does the same: every stored user preset is written as ``U01.bin`` … ``U20.bin`` (the 1448-byte
@@ -26,9 +26,9 @@ def preset_file(directory: Path, slot: int) -> Path:
     return directory / f"U{slot:02d}.bin"
 
 
-def read_config(path: Path) -> cm.RawConfig:
+def read_config(path: Path, layout: cm.ConfigLayout = cm.LAYOUT_408) -> cm.RawConfig:
     """Read a config dump (``probe dump-config`` output or a stored preset file)."""
-    return cm.decode_config(path.read_bytes())
+    return cm.decode_config(path.read_bytes(), layout)
 
 
 def _write_atomic(path: Path, data: bytes) -> None:
@@ -51,7 +51,7 @@ class PresetStore:
             if not path.exists():
                 continue
             try:
-                config = read_config(path)
+                config = read_config(path, cm.layout_for(device.profile))
             except (OSError, cm.ConfigError) as exc:
                 log.warning("ignoring %s: %s", path, exc)
                 continue

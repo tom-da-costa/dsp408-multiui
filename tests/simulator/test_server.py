@@ -134,7 +134,7 @@ async def test_second_client_kicks_the_first() -> None:
 async def test_second_client_accepted(server: SimulatorServer) -> None:
     async with connection(server) as first, connection(server) as second:
         await first.request(c.SetGain(0, 100))
-        assert await second.request(c.Handshake()) == r.HandshakeReply(b"\x14")
+        assert await second.request(c.Handshake()) == r.HandshakeReply(b"\x13")
         assert server.client_count == 2
 
 

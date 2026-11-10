@@ -36,7 +36,7 @@ src/tracks_dsp_controller/
               counter, change events) · parameter registry (path → validator, encoder, opcode)
   server/     FastAPI app · auth (code, sessions) · WebSocket hub (fan-out) · LockManager ·
               static file serving of the built UI
-  simulator/  protocol-accurate fake DSP 408 (asyncio TCP server), see §5
+  simulator/  protocol-accurate fake DSP 408, 206 or 204 (asyncio TCP server), see §5
   tools/      CLI sub-commands: probe, proxy (frame logger)
   web/        built UI, generated from /web and committed
 web/          Svelte 5 + TypeScript + Vite sources of the UI
@@ -116,8 +116,10 @@ with exponential backoff (1 s → 30 s) and re-reads the full state after reconn
 
 ## 5. Simulator
 
-A fake DSP 408 that the backend cannot tell apart from the device, as far as the protocol is
-known.
+A fake DSP that the backend cannot tell apart from the device, as far as the protocol is known.
+It plays a DSP 408 by default, or a 206 or 204 (`--model`, `simulator/models.py`): the model
+selects a built-in protocol profile (§6) and the bytes of the init replies. The 206 follows
+captures of a real device; the 204 is extrapolated from it ([PROTOCOL.md §10](PROTOCOL.md)).
 
 - An asyncio TCP server (default port 9761). It reuses `protocol/` to decode requests and encode
   responses.
@@ -130,16 +132,19 @@ known.
   recall/store, refusal of a second TCP client.
 - It loads the same protocol profile as the backend (§6) and logs every frame it receives, so the
   official editor can be pointed at it to capture its requests ([captures.md](captures.md)).
-- It is a **separate program**, `dsp408-sim`, reached over TCP like a real DSP, so tests cover the
-  real network path. The **demo mode** (`serve --demo`) runs the same simulated device inside the
+- It is a **separate program**, `tracks-dsp-sim`, reached over TCP like a real DSP, so tests
+  cover the real network path. The **demo mode** (`serve --demo`) runs the same simulated device inside the
   backend process.
 
 ## 6. Protocol profile
 
 Every protocol detail that is not certain is a field of a `ProtocolProfile`
-(`protocol/profile.py`, defaults in `protocol/profiles/default.toml`): meter decoder and tail
-bytes, frequency step count and Q scale, delay sample rate, compressor and limiter layouts, slope
-table, frame DST byte, command timeouts. Verifying something on hardware changes profile values
+(`protocol/profile.py`, defaults in `protocol/profiles/default.toml`): meter decoder, slots and
+tail bytes, frequency step count and Q scale, delay sample rate, compressor and limiter layouts,
+slope table, device address, channel counts, config pages, command timeouts. Other models are
+small files layered on top of the 408 defaults (`dsp206.toml`, `dsp204.toml`,
+`load_profile(model=...)`); the config blob layout follows the channel counts
+(`ConfigLayout` in `protocol/config_map.py`). Verifying something on hardware changes profile values
 and test fixtures, not the architecture. The profile can be overridden with `--profile file.toml`.
 
 ## 7. Client ↔ server API
@@ -210,8 +215,8 @@ tracks-dsp-controller [serve] --dsp-host 192.168.1.50 [options]   # "serve" is t
 tracks-dsp-controller probe --dsp-host IP {info|meters|dump-config|diff-config|raw HEX}
 tracks-dsp-controller proxy --listen 0.0.0.0:9761 --dsp-host IP --log frames.jsonl
 
-dsp408-sim [--host 0.0.0.0] [--port 9761] [--scenario demo] [--state-dir DIR]
-           [--preset SLOT=FILE] [--fast] [--latency-ms N] [--drop-rate P] …
+tracks-dsp-sim [--model 408|206|204] [--host 0.0.0.0] [--port 9761] [--scenario demo]
+               [--state-dir DIR] [--preset SLOT=FILE] [--fast] [--latency-ms N] …
 ```
 
 ## 10. Design choices

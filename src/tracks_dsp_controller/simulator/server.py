@@ -9,7 +9,7 @@ from enum import StrEnum
 
 from tracks_dsp_controller.framelog import FROM_DEVICE, TO_DEVICE, FrameLog
 from tracks_dsp_controller.protocol.commands import Opcode
-from tracks_dsp_controller.protocol.framing import DEVICE, HOST, Frame, FrameDecoder
+from tracks_dsp_controller.protocol.framing import HOST, Frame, FrameDecoder
 from tracks_dsp_controller.simulator.device import Link, SimulatedDevice
 from tracks_dsp_controller.simulator.faults import Faults
 
@@ -166,7 +166,8 @@ class SimulatorServer:
             return False
         if reply.response is None or self.faults.roll(self.faults.drop_rate):
             return True
-        out = Frame(DEVICE, HOST, reply.response.encode())
+        # The 206 answers from the address the request was sent to (0x02, or 0x01 like a 408).
+        out = Frame(frame.dst or self.device.profile.host_dst, HOST, reply.response.encode())
         wire = bytearray(out.encode())
         if self.faults.roll(self.faults.corrupt_rate):
             wire[-1] ^= 0xFF

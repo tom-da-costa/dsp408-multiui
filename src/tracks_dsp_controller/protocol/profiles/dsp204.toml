@@ -1,0 +1,31 @@
+# Protocol profile of the t.racks DSP 204 (2 inputs, 4 outputs), layered on top of default.toml
+# (the DSP 408): only the differences are listed.
+#
+# Nothing here has been observed on a DSP 204: every value is extrapolated from the DSP 206
+# (dsp206.toml), which shares the protocol generation (tag UNKNOWN in docs/PROTOCOL.md). It exists
+# so that the simulator can play a 204; captures of a real 204 are welcome.
+
+name = "dsp204"
+
+[device]
+model = "DSP204"           # UNKNOWN: identity assumed to be "DSP204 V0104P"
+
+[frame]
+host_dst = 0x02            # UNKNOWN: as the 206
+
+[topology]
+input_count = 2            # 204: 2 inputs (product specification)
+output_count = 4           # 204: 4 outputs (product specification)
+preset_count = 20          # UNKNOWN: as the 206
+peq_bands_input = 8        # UNKNOWN: as the 206
+peq_bands_output = 9       # UNKNOWN: as the 206
+geq_bands = 31             # UNKNOWN: as the 206
+
+[config]
+page_count = 15            # UNKNOWN: the 408 layout with 2 inputs and 4 outputs is 724 bytes
+page_size = 50
+last_page_size = 24
+
+[meters]
+input_slots = 4            # UNKNOWN: same 4 + 8 frame as the 206
+output_slots = 8

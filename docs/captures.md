@@ -8,7 +8,7 @@ simulator), and how to turn the recordings into test fixtures. This is how the o
 
 | Tool | Command | Use |
 |---|---|---|
-| Simulator | `uv run dsp408-sim --frame-log editor.jsonl` (or the `dsp408-sim` Windows executable) | Fake DSP; logs every request it receives |
+| Simulator | `uv run tracks-dsp-sim --frame-log editor.jsonl` (or the `tracks-dsp-sim` Windows executable) | Fake DSP; logs every request it receives |
 | Proxy | `uv run tracks-dsp-controller proxy --dsp-host <DSP-IP> --log session.jsonl` | Sits between the editor and a real DSP; logs both directions |
 | Probe | `uv run tracks-dsp-controller probe --dsp-host <IP> {info,meters,dump-config,diff-config,raw}` | Query the device directly |
 | Wireshark | filter `tcp.port == 9761` | Fallback when the editor cannot be pointed at an arbitrary IP |
@@ -21,7 +21,7 @@ Each line of a JSONL frame log is `{"ts", "dir", "hex", "decoded"}`. `dir` is `h
 Goal: learn how the editor **encodes requests**. This answers Q2–Q7 and Q12.
 
 1. On the Linux machine, run:
-   `uv run dsp408-sim --scenario demo --frame-log editor.jsonl` (it listens on all interfaces).
+   `uv run tracks-dsp-sim --scenario demo --frame-log editor.jsonl` (it listens on all interfaces).
    Open TCP port 9761 in the firewall if needed.
 2. On the Windows PC, start the editor and connect to the Linux machine's IP. If the editor only
    offers device discovery, try entering the IP manually. If that is impossible, use the proxy

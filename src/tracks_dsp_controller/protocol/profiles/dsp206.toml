@@ -1,0 +1,33 @@
+# Protocol profile of the t.racks DSP 206 (2 inputs, 6 outputs), layered on top of default.toml
+# (the DSP 408): only the differences are listed.
+#
+# Tags (docs/PROTOCOL.md): 206 = observed on a real DSP 206, firmware V0104P, in the Wireshark
+# captures of FlexiFlizz/t.racks-DSP-control (official editor and device); HYP = our hypothesis.
+# The 206 shares the 408's protocol and record formats; its config blob is the 408 layout with
+# 2 inputs and 6 outputs (docs/PROTOCOL.md §10).
+
+name = "dsp206"
+
+[device]
+model = "DSP206"           # 206: identity "DSP206 V0104P"
+
+[frame]
+host_dst = 0x02            # 206: the editor addresses it as 0x02 (it also answers on 0x01,
+                           # replying from the address it was sent to)
+
+[topology]
+input_count = 2            # 206: protocol indices 0x00-0x01 (In A-B)
+output_count = 6           # 206: protocol indices 0x02-0x07 (Out 1-6), right after the inputs
+preset_count = 20          # 206: 0x29 answered for U01..U20
+peq_bands_input = 8        # 206 (config blob)
+peq_bands_output = 9       # 206 (config blob)
+geq_bands = 31             # 206 (config blob)
+
+[config]
+page_count = 19            # 206: 0x27 pages 0x00-0x12
+page_size = 50             # 206
+last_page_size = 28        # 206: 928-byte blob
+
+[meters]
+input_slots = 4            # 206: the meter frame keeps the 408's 4 + 8 slots (LEN = 0x27);
+output_slots = 8           # In C-D and Out 7-8 read zero

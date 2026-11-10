@@ -37,7 +37,7 @@ def read_config(device: SimulatedDevice) -> cm.RawConfig:
 
 
 def test_init_sequence(device: SimulatedDevice) -> None:
-    assert ask(device, c.Handshake()) == r.HandshakeReply(bytes((20,)))
+    assert ask(device, c.Handshake()) == r.HandshakeReply(b"\x13")  # 408 (HW)
     info = ask(device, c.GetDeviceInfo())
     assert isinstance(info, r.DeviceInfo)
     assert info.model == "DSP408"
