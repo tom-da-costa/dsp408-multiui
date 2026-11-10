@@ -153,11 +153,12 @@
       <legend>Limiter</legend>
       <label class="choice"
         ><input type="radio" bind:group={form.mode} value="hard" /> Hard
-        <small>2 dB margin</small></label
+        <small>Hornplans' threshold (the load factor keeps the speaker under its AES power)</small
+        ></label
       >
       <label class="choice"
         ><input type="radio" bind:group={form.mode} value="soft" /> Soft
-        <small>no margin</small></label
+        <small>2 dB higher</small></label
       >
     </fieldset>
   </section>
@@ -174,10 +175,12 @@
           <dt>Amplifier limit</dt>
           <dd class:lowest={result.limitedBy === "amp"}>{dbu(result.ampDbu)}</dd>
         {/if}
-        <dt>Threshold (Hornplans)</dt>
+        <dt>Hard threshold (Hornplans)</dt>
         <dd>{dbu(result.hornplansDbu)}</dd>
-        <dt>Margin ({form.mode})</dt>
-        <dd>−{result.marginDb} dB → {dbu(result.afterMarginDbu)}</dd>
+        {#if form.mode === "soft"}
+          <dt>Soft threshold (+{result.extraDb} dB)</dt>
+          <dd>{dbu(result.thresholdDbu)}</dd>
+        {/if}
         <dt>DSP step (0.5 dB, rounded down)</dt>
         <dd>{dbu(result.compThresholdDbu)}</dd>
       </dl>

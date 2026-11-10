@@ -7,14 +7,18 @@
 //   amp threshold     = 20·log10(√(P_amp / 2 · Z) / 0.775) − amp gain   (amp at half its power)
 //   threshold         = the lower of the two, rounded down to 0.1 dB (Hornplans' result)
 //
-// Then this app subtracts the margin (hard limiter: 2 dB, soft: 0 dB), rounds down to the DSP's
-// 0.5 dB step for the compressor, and puts the limiter 6 dB above it.
+// Hornplans' result is the hard limiter: the open / closed load factor already keeps the speaker
+// 1.9 / 3.7 dB under its AES power. A soft limiter sits 2 dB higher on the speaker side (the
+// amplifier limit stays a ceiling). This matches another calculator the owner uses: 1700 W AES,
+// 8 ohm, 40.5 dB -> hard open 1.1, hard closed -0.7, soft open 3.1 dBu. The compressor gets
+// that value rounded down to the DSP's 0.5 dB step; the limiter goes 6 dB above it.
 
 export type Load = "open" | "closed";
 export type Mode = "hard" | "soft";
 
 export const LOAD_FACTOR: Record<Load, number> = { open: 1.5625, closed: 2.34375 };
-export const MARGIN_DB: Record<Mode, number> = { hard: 2, soft: 0 };
+/** dB added on the speaker side: hard = Hornplans, soft = 2 dB above. */
+export const SOFT_EXTRA_DB: Record<Mode, number> = { hard: 0, soft: 2 };
 export const LIMITER_ABOVE_COMP_DB = 6;
 export const THRESHOLD_RANGE_DBU: [number, number] = [-90, 20];
 const DBU_REF_V = 0.775;
@@ -33,9 +37,9 @@ export interface LimiterResult {
   speakerDbu: number;
   ampDbu: number | null;
   limitedBy: "speaker" | "amp";
-  hornplansDbu: number; // the calculator's own result (lower of the two, rounded down to 0.1)
-  marginDb: number;
-  afterMarginDbu: number; // Hornplans' result minus the margin, before the DSP's 0.5 dB step
+  hornplansDbu: number; // Hornplans' result = the hard threshold (rounded down to 0.1)
+  extraDb: number; // soft: +2 dB on the speaker side
+  thresholdDbu: number; // the hard or soft threshold (rounded down to 0.1), before the DSP step
   compThresholdDbu: number; // what is applied (0.5 dB steps, clamped to the DSP range)
   limitThresholdDbu: number;
   clamped: boolean; // the result was outside the DSP's threshold range
@@ -71,19 +75,21 @@ export function computeLimiter(input: LimiterInput): LimiterResult {
   );
   const ampDbu =
     input.ampPowerW === null ? null : inputDbu(input.ampPowerW / 2, input.impedanceOhm, input.ampGainDb);
-  const lowest = ampDbu !== null && ampDbu < speakerDbu ? ampDbu : speakerDbu;
-  const hornplansDbu = Number(floorTo(lowest, 0.1).toFixed(1));
-  const marginDb = MARGIN_DB[input.mode];
-  const wanted = floorTo(hornplansDbu - marginDb, THRESHOLD_STEP);
+  const lower = (speaker: number) => (ampDbu !== null && ampDbu < speaker ? ampDbu : speaker);
+  const hornplansDbu = Number(floorTo(lower(speakerDbu), 0.1).toFixed(1));
+  const extraDb = SOFT_EXTRA_DB[input.mode];
+  const level = lower(speakerDbu + extraDb);
+  const thresholdDbu = Number(floorTo(level, 0.1).toFixed(1));
+  const wanted = floorTo(thresholdDbu, THRESHOLD_STEP);
   const compThresholdDbu = clamp(wanted);
   const limitThresholdDbu = clamp(compThresholdDbu + LIMITER_ABOVE_COMP_DB);
   return {
     speakerDbu,
     ampDbu,
-    limitedBy: ampDbu !== null && ampDbu < speakerDbu ? "amp" : "speaker",
+    limitedBy: ampDbu !== null && ampDbu < speakerDbu + extraDb ? "amp" : "speaker",
     hornplansDbu,
-    marginDb,
-    afterMarginDbu: Number((hornplansDbu - marginDb).toFixed(1)),
+    extraDb,
+    thresholdDbu,
     compThresholdDbu,
     limitThresholdDbu,
     clamped: compThresholdDbu !== wanted,
