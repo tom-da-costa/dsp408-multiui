@@ -10,6 +10,7 @@
   import GeqSection from "./GeqSection.svelte";
   import LevelBar from "./LevelBar.svelte";
   import PeqSection from "./PeqSection.svelte";
+  import ResponseGraph from "./ResponseGraph.svelte";
   import RoutingSection from "./RoutingSection.svelte";
   import Section from "./Section.svelte";
 
@@ -49,6 +50,8 @@
         routing to {channel.linked.length > 1 ? "them" : "it"} too.
       </p>
     {/if}
+
+    <ResponseGraph {path} />
 
     <div class="sections">
       <Section id="channel" title="Channel">
