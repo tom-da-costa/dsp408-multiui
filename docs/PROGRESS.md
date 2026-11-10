@@ -11,7 +11,7 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` to do · `[-]` dropped or defer
 - [x] `pyproject.toml` (uv, hatchling, Python ≥ 3.12), `src/dsp408_multiui/` layout, CLI stub
 - [x] Ruff (lint + format), mypy strict on `protocol/` and `state/`, pytest + coverage config
 - [x] `Makefile`, `.gitignore`
-- [x] Gitea Actions `ci.yaml` (lint, format check, mypy, tests)
+- [x] CI workflow (lint, format check, mypy, tests); GitHub Actions since 2026-11-10
 - [x] `docs/SOURCES.md` attribution entries for copied vectors
 
 ### 0.2 `protocol/`
@@ -99,14 +99,15 @@ Notes:
 
 ## Phase 6: Distribution
 - [x] Committed UI + `web` CI job (fails if the committed build is stale)
-- [~] PyInstaller executables: linux-amd64 built and smoke-tested; windows-amd64 built but
-  untested (fails under Wine, see docs/release.md); linux-arm64 needs QEMU on the runner
+- [~] PyInstaller executables: linux-amd64 built and smoke-tested; linux-arm64 and
+  windows-amd64 now built natively on GitHub runners (`--version` smoke test in CI); the Windows
+  executable still needs a check on a real Windows machine
 - [x] Docker image, `compose.yaml`, `.env.example` (amd64 tested; arm64 via buildx in the release)
-- [~] Release workflow written (`.gitea/workflows/release.yaml`); not run yet: needs Docker access
-  and QEMU on the runner plus a `REGISTRY_TOKEN` secret (docs/release.md)
+- [~] Release workflow (`.github/workflows/release.yml`): executables on native runners, multi-arch
+  image on `ghcr.io`; first tagged release pending
 
-**Status: mostly done.** Remaining: a first tagged release on the Gitea runner, and a test of the
-Windows executable on a real Windows machine.
+**Status: mostly done.** Remaining: a first tagged release, and a test of the Windows executable
+on a real Windows machine.
 
 ## Phase 7: Remaining MVP parameters
 - [x] PEQ, HPF/LPF, delay, compressor, limiter
@@ -180,8 +181,8 @@ Findings (details in PROTOCOL.md):
 - [x] `release.yaml` also runs on every push to `main`: tests, then the pre-release **main** (tag
   `main-latest`) is recreated with the executables of the app and of `dsp408-sim`
   (`packaging/release.sh`); image tag `:main`
-- [x] Runner checked: Docker and buildx OK; no QEMU (arm64 skipped with a warning); the Actions
-  token cannot push packages, so the image waits for a `REGISTRY_TOKEN` secret
+- [x] Moved to GitHub Actions (2026-11-10): the Actions token publishes releases and pushes the
+  image to `ghcr.io`; no secret to configure
 
 ## Phase 9: Hardening and later items
 - [ ] (see PLAN)
@@ -209,3 +210,4 @@ Findings (details in PROTOCOL.md):
 | 2026-11-10 | "Unsaved changes" indicator: top bar badge, Presets › Save to Uxx, warning before a recall. |
 | 2026-11-10 | Channel links verified on the DSP (2a copies, 3b sets the mask) and editable (Params › Link). Exact device steps on − / +, held buttons repeat. |
 | 2026-11-09 | UI: Params / Channels / All-in-one views, left tab rail. Meters and thresholds shown in dBu (full scale = +20 dBu), from a read-only observation on the DSP. |
+| 2026-11-10 | Repository moved from Gitea to public GitHub; CI and releases on GitHub Actions (native arm64 and Windows runners, image on `ghcr.io`). |

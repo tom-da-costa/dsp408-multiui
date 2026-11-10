@@ -4,21 +4,25 @@ on:
   push:
     branches: [main]
   pull_request:
-    types: [opened, synchronize, reopened]
   workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   python:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - name: Install uv
-        env:
-          UV_VERSION: "0.13.0"
-        run: |
-          curl -LsSf "https://astral.sh/uv/${UV_VERSION}/install.sh" | sh
-          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+      - uses: astral-sh/setup-uv@v6
+        with:
+          version: "0.13.0"
+          enable-cache: true
 
       - name: Install dependencies
         run: uv sync --locked
@@ -39,14 +43,12 @@ jobs:
     # simulated DSP over TCP like a real one (tests/e2e/test_stack.py).
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - name: Install uv
-        env:
-          UV_VERSION: "0.13.0"
-        run: |
-          curl -LsSf "https://astral.sh/uv/${UV_VERSION}/install.sh" | sh
-          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+      - uses: astral-sh/setup-uv@v6
+        with:
+          version: "0.13.0"
+          enable-cache: true
 
       - name: Install dependencies
         run: uv sync --locked
@@ -56,31 +58,42 @@ jobs:
           DSP408_E2E_LOG_DIR: e2e-logs
         run: uv run pytest -m e2e -v
 
+      - name: Keep the logs of a failed run
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-logs
+          path: e2e-logs
+          if-no-files-found: ignore
+
   web:
     runs-on: ubuntu-latest
-    container:
-      image: node:22-bookworm
+    defaults:
+      run:
+        working-directory: web
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: web/package-lock.json
 
       - name: Install
-        working-directory: web
         run: npm ci --no-audit --no-fund
 
       - name: Type check
-        working-directory: web
         run: npm run check
 
       - name: Unit tests
-        working-directory: web
         run: npm test
 
       - name: The committed build is up to date
         run: |
-          cd web && npm run build && cd ..
-          git config --global --add safe.directory "$PWD"
-          if [ -n "$(git status --porcelain -- src/dsp408_multiui/web)" ]; then
-            git status --short -- src/dsp408_multiui/web
+          npm run build
+          if [ -n "$(git status --porcelain -- ../src/dsp408_multiui/web)" ]; then
+            git status --short -- ../src/dsp408_multiui/web
             echo "::error::src/dsp408_multiui/web is stale: run 'make web' and commit the result"
             exit 1
           fi

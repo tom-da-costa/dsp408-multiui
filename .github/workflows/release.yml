@@ -1,0 +1,148 @@
+# Releases (docs/release.md):
+# - push to main  -> pre-release "main" (tag main-latest), rebuilt on every push, image :main
+# - tag vX.Y.Z    -> release vX.Y.Z, image :X.Y.Z and :latest
+# Each release holds the standalone executables of the app and of the dsp408-sim simulator,
+# built natively: linux-amd64, linux-arm64 (arm64 runner) and windows-amd64 (Windows runner).
+# The multi-arch Docker image goes to the GitHub container registry (ghcr.io).
+name: Release
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  workflow_dispatch:
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+
+env:
+  GH_TOKEN: ${{ github.token }}
+  GH_REPO: ${{ github.repository }}
+
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Tag matches the pyproject version
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          VERSION="$(sed -n 's/^version = "\(.*\)"/\1/p' pyproject.toml)"
+          if [ "v$VERSION" != "$GITHUB_REF_NAME" ]; then
+            echo "::error::tag $GITHUB_REF_NAME does not match pyproject version $VERSION"; exit 1
+          fi
+
+      - uses: astral-sh/setup-uv@v6
+        with:
+          version: "0.13.0"
+          enable-cache: true
+
+      - name: Tests (nothing is published from a failing commit)
+        run: |
+          uv sync --locked
+          uv run pytest -q
+          uv run pytest -q -m e2e
+
+      - name: Create the release
+        run: packaging/release.sh prepare
+
+  exe-linux:
+    needs: prepare
+    strategy:
+      matrix:
+        include:
+          - arch: amd64
+            runner: ubuntu-24.04
+          - arch: arm64
+            runner: ubuntu-24.04-arm
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Build (Debian bookworm container, for an older glibc baseline)
+        run: |
+          eval "$(packaging/release.sh env)"
+          docker buildx build \
+            --build-arg "NAME=dsp408-multiui-${ASSET_VERSION}-linux-${{ matrix.arch }}" \
+            -f packaging/exe.Dockerfile -o dist .
+
+      - name: Upload to the release
+        run: packaging/release.sh upload dist/dsp408-*-linux-${{ matrix.arch }}
+
+  exe-windows:
+    needs: prepare
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: bash
+    env:
+      UV_PYTHON: "3.12"
+      UV_PYTHON_PREFERENCE: only-system
+    steps:
+      - name: Keep LF line endings (the build scripts are POSIX shell)
+        run: git config --global core.autocrlf false
+
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - uses: astral-sh/setup-uv@v6
+        with:
+          version: "0.13.0"
+
+      - name: Build
+        run: |
+          eval "$(packaging/release.sh env)"
+          packaging/build_exe.sh "dsp408-multiui-${ASSET_VERSION}-windows-amd64"
+          for exe in dist/*.exe; do "$exe" --version; done
+
+      - name: Upload to the release
+        run: packaging/release.sh upload dist/dsp408-*-windows-amd64.exe
+
+  docker:
+    needs: prepare
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Image name and tags
+        id: meta
+        run: |
+          eval "$(packaging/release.sh env)"
+          IMAGE="ghcr.io/$(echo "$GITHUB_REPOSITORY" | tr '[:upper:]' '[:lower:]')"
+          {
+            echo "tags<<EOF"
+            for T in $IMAGE_TAGS; do echo "$IMAGE:$T"; done
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
+
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: |
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
