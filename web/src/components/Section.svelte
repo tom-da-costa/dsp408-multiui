@@ -1,7 +1,9 @@
 <script lang="ts">
-  // A collapsible card of the channel detail, with the "not hardware-verified" badge.
+  // A collapsible card of the channel detail, with the "not hardware-verified" badge. In a
+  // strip (lib/layout.ts) only the badge, the actions and the content are shown.
   import type { Snippet } from "svelte";
   import { app } from "../lib/app.svelte";
+  import { inStrip } from "../lib/layout";
   import { nav } from "../lib/nav.svelte";
 
   interface Props {
@@ -15,29 +17,43 @@
 
   let { id, title, kind, actions, children }: Props = $props();
 
+  const bare = inStrip();
   const open = $derived(nav.isOpen(id));
   const unverified = $derived(kind !== undefined && !app.verified(kind));
   const blocked = $derived(unverified && !app.hello?.experimental);
 </script>
 
+{#snippet badge()}
+  {#if unverified}
+    <span
+      class="badge"
+      class:blocked
+      title={blocked
+        ? "Not verified on a real DSP 408 yet: start the server with --experimental to edit it"
+        : "Not verified on a real DSP 408 yet"}>{blocked ? "locked: experimental" : "unverified"}</span
+    >
+  {/if}
+{/snippet}
+
+{#if bare}
+  <div class="bare">
+    {#if unverified || actions}
+      <div class="bare-head">{@render badge()}{#if actions}{@render actions()}{/if}</div>
+    {/if}
+    {@render children()}
+  </div>
+{:else}
 <section class="card">
   <header>
     <button class="title" onclick={() => nav.toggle(id)} aria-expanded={open}>
       <span class="chevron" class:open aria-hidden="true">›</span>{title}
     </button>
-    {#if unverified}
-      <span
-        class="badge"
-        class:blocked
-        title={blocked
-          ? "Not verified on a real DSP 408 yet: start the server with --experimental to edit it"
-          : "Not verified on a real DSP 408 yet"}>{blocked ? "locked: experimental" : "unverified"}</span
-      >
-    {/if}
+    {@render badge()}
     {#if actions && open}<div class="actions">{@render actions()}</div>{/if}
   </header>
   {#if open}<div class="body">{@render children()}</div>{/if}
 </section>
+{/if}
 
 <style>
   section {
@@ -92,5 +108,18 @@
   }
   .body {
     padding-bottom: 10px;
+  }
+  .bare {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .bare-head {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 6px;
   }
 </style>

@@ -1,6 +1,7 @@
 <script lang="ts">
   // Compressor, limiter or noise gate: a ratio choice plus numeric fields.
   import { app } from "../lib/app.svelte";
+  import { inStrip } from "../lib/layout";
   import type { Limits } from "../lib/types";
   import Field from "./Field.svelte";
   import Section from "./Section.svelte";
@@ -38,6 +39,7 @@
     release_ms: "Release",
   };
 
+  const vertical = inStrip();
   const limits = $derived(app.hello?.limits);
   const ratios = $derived(app.hello?.profile.ratios ?? []);
   const editable = $derived(app.editable(kind));
@@ -76,6 +78,7 @@
         </select>
       </label>
     {/if}
+    <div class:vfields-grid={vertical} class:two-rows={FIELDS[kind].length >= 4}>
     {#each FIELDS[kind] as key (key)}
       {@const [min, max] = range(key, limits)}
       {#if key === "threshold_db"}
@@ -119,6 +122,7 @@
         />
       {/if}
     {/each}
+    </div>
   {/if}
 </Section>
 
