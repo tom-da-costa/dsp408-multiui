@@ -364,6 +364,10 @@
   .chips .now {
     font-size: 0.65rem;
   }
+  .chips .ch-bar:not(.on) {
+    background: color-mix(in srgb, var(--ch) 16%, var(--panel-2));
+    border-color: color-mix(in srgb, var(--ch) 60%, var(--line));
+  }
   .chips .on {
     outline: 2px solid var(--accent);
     outline-offset: -2px;

@@ -77,9 +77,8 @@
     flex-direction: column;
     gap: 8px;
     padding: 8px 4px;
-    background: var(--panel);
-    border: 1px solid var(--line);
-    border-top: 3px solid var(--ch);
+    background: color-mix(in srgb, var(--ch) 10%, var(--panel));
+    border: 2px solid color-mix(in srgb, var(--ch) 70%, var(--line));
     border-radius: var(--radius);
   }
   .name {

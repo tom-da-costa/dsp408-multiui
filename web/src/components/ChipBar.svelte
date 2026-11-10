@@ -42,6 +42,7 @@
       data-key={item.key}
       class:on={isOn(item.key)}
       class:two={item.sub !== undefined}
+      class:ch={item.color !== undefined}
       class:ch-bar={item.color !== undefined}
       style:--ch={item.color}
       role={toggles ? undefined : "tab"}
@@ -88,6 +89,10 @@
     max-width: 9ch;
     overflow: hidden;
     text-overflow: ellipsis;
+  }
+  .ch:not(.on) {
+    background: color-mix(in srgb, var(--ch) 16%, var(--panel-2));
+    border-color: color-mix(in srgb, var(--ch) 60%, var(--line));
   }
   .on {
     background: var(--accent);
