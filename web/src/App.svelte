@@ -8,7 +8,7 @@
   import Presets from "./components/Presets.svelte";
   import Settings from "./components/Settings.svelte";
   import Toasts from "./components/Toasts.svelte";
-  import TopBar from "./components/TopBar.svelte";
+  import RailStatus from "./components/RailStatus.svelte";
   import { app } from "./lib/app.svelte";
   import { nav, TABS, type Tab } from "./lib/nav.svelte";
 
@@ -50,10 +50,14 @@
     }
   }
 
+  // On a phone the expanded rail covers the page: fold it once something is picked.
+  function foldOnPhone() {
+    if (expanded && window.matchMedia("(max-width: 699px)").matches) toggleRail();
+  }
+
   function select(tab: Tab) {
     nav.select(tab);
-    // On a phone the expanded rail covers the page: fold it once a tab is picked.
-    if (expanded && window.matchMedia("(max-width: 699px)").matches) toggleRail();
+    foldOnPhone();
   }
 
   onMount(() => {
@@ -89,6 +93,7 @@
       >
         <span class="icon" aria-hidden="true">{expanded ? "«" : "»"}</span>
       </button>
+      <RailStatus {expanded} onpick={foldOnPhone} />
       {#each TABS as [key, text, icon] (key)}
         <button
           class:selected={nav.tab === key}
@@ -116,7 +121,6 @@
       <button class="scrim" aria-label="Collapse the tab bar" onclick={toggleRail}></button>
     {/if}
     <div class="page">
-      <TopBar />
       <main>
         {#if !app.device}
           <p class="muted center">
@@ -144,7 +148,7 @@
 <style>
   .layout {
     --rail: 56px;
-    --rail-open: 180px;
+    --rail-open: 210px;
     position: relative;
     height: 100%;
     display: grid;
@@ -216,7 +220,7 @@
     grid-column: 2; /* stays put when the expanded rail floats (phone) */
     min-width: 0;
     display: grid;
-    grid-template-rows: auto 1fr;
+    grid-template-rows: 1fr;
     min-height: 0;
   }
   main {

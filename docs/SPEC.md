@@ -314,10 +314,12 @@ with live changes kept in memory. There is **no database** and no data volume.
 
 Mobile-first, dark theme by default (stage use), system font stack, no external assets.
 
-**Global chrome.** A top bar shows the DSP status dot, the active preset name and the **lock
-button**, which has three states: free / mine (idle countdown, tap to release) / other (owner's
-name, read-only badge). A "DEMO" badge is shown in demo mode. On a phone, a bottom tab bar offers **Mixer ·
-Matrix · Presets · Settings**; on desktop it becomes a side bar.
+**Global chrome.** No top bar: a tab rail is always on the left, folded to icons or expanded
+with labels (it floats over the page on a phone; the choice is remembered). Its top shows the
+DSP status dot, the active preset (slot when folded, name when expanded; an orange dot or
+"unsaved" for unsaved changes; "DEMO" in demo mode; tap: Presets) and the **lock button**, which
+has three states: free / mine (idle countdown, tap to release) / other (owner's name, read-only).
+Tabs: **Live · Params · Channels · All-in-one · Presets · Settings**, then a full-screen toggle.
 
 **Mixer.** Channel strips for In A–D, then Out 1–8. On a phone, the strips scroll horizontally
 with "In / Out / All" filter chips; on desktop, all 12 strips fit on screen. Each strip shows:
