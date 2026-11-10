@@ -91,6 +91,13 @@ through a single queue (`device/pipeline.py`):
 5. **Ordering.** The state store is updated, and the patch broadcast, **after** the DSP
    acknowledges the write, so every client converges on what the device accepted.
 
+At each connection the session first reads the device's identity (handshake and `13`, on the
+profile's address, then on `01` and `02`) and picks the model's protocol profile (DSP 408, 206
+or 204, `--model auto`); with `--model 408|206|204` it refuses a device reporting another model.
+When the model changes, every client gets a new `hello` with the channel counts, then a snapshot.
+The parameters verified on the 408 are enabled on the 206 and 204 as well (same commands and
+records); `device.model_tested` tells the UI that this project has not tested the model.
+
 The device session goes through `connecting → initialising → online ↔ offline`. It reconnects
 with exponential backoff (1 s → 30 s) and re-reads the full state after reconnecting.
 
@@ -167,7 +174,7 @@ WebSocket `/ws` (cookie auth plus an `Origin` check). JSON messages `{type, ...}
 | S→C | `snapshot` | `rev`, full `state` (device info, presets, channels, `modified`: the live setup changed since the last recall or store, `null` when unknown) |
 | S→C | `patch` | `rev`, `changes: [{path, value}]`, `origin` (client_id or `device`) |
 | S→C | `meters` | `seq`, `levels` (12 values in dB or `null`; the whole field is `null` when the poll failed), `clip` (12 bools), `limit` (8 bools or `null`), `comp` (8 bools or `null`), `input_clip` |
-| S→C | `device` | `status`, `error?`, `model`, `firmware` |
+| S→C | `device` | `status`, `error?`, `model`, `firmware`, `identity`, `model_tested` |
 | S→C | `lock` | `owner_id?`, `owner_name?`, `idle_remaining_s?`, `idle_timeout_s` |
 | S→C | `settings` | `meter_rate_hz`, `lock_idle_timeout_s` (sent on change) |
 | S→C | `clients` | list of `{id, name}` |
@@ -210,7 +217,8 @@ tracks-dsp-controller [serve] --dsp-host 192.168.1.50 [options]   # "serve" is t
   --pin 0000               --meter-rate 5        (1–10 Hz)
   --lock-idle-timeout 120  --resync-interval 0   (seconds, 0 = off)
   --command-timeout 0.5    --experimental        --profile file.toml
-  --demo [--demo-scenario demo|silent|clipping|stress]
+  --model auto              (auto: detected from the identity; or 408, 206, 204)
+  --demo [--demo-scenario demo|silent|clipping|stress]   (simulates --model; 408 with auto)
   --log-level info
 tracks-dsp-controller probe --dsp-host IP {info|meters|dump-config|diff-config|raw HEX}
 tracks-dsp-controller proxy --listen 0.0.0.0:9761 --dsp-host IP --log frames.jsonl

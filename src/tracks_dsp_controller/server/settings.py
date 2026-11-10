@@ -21,6 +21,7 @@ class ServerConfig:
     experimental: bool = False
     demo: bool = False  # no DSP: a simulated one runs in this process
     demo_scenario: str = "demo"
+    model: str = "auto"  # "auto" (detect from the identity), "408", "206" or "204"
 
     def __post_init__(self) -> None:
         if not self.demo and not self.dsp_host:
@@ -31,6 +32,8 @@ class ServerConfig:
             raise ValueError("--lock-idle-timeout must be > 0")
         if self.resync_interval_s < 0:
             raise ValueError("--resync-interval must be >= 0")
+        if self.model not in ("auto", "408", "206", "204"):
+            raise ValueError("--model must be auto, 408, 206 or 204")
 
     @property
     def allow_unverified(self) -> bool:

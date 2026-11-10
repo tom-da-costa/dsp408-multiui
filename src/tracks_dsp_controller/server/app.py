@@ -17,8 +17,13 @@ from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
 from pydantic import BaseModel
 
 from tracks_dsp_controller import __version__
-from tracks_dsp_controller.device.session import DeviceSession
-from tracks_dsp_controller.protocol.profile import ProtocolProfile
+from tracks_dsp_controller.device.session import DeviceSession, ProfileFactory
+from tracks_dsp_controller.protocol.profile import (
+    MODELS,
+    ProtocolProfile,
+    detect_model,
+    load_profile,
+)
 from tracks_dsp_controller.server.auth import (
     SESSION_COOKIE,
     AuthManager,
@@ -29,6 +34,7 @@ from tracks_dsp_controller.server.lock import LockManager
 from tracks_dsp_controller.server.settings import DEFAULT_PIN, ServerConfig
 from tracks_dsp_controller.server.ws import Hub
 from tracks_dsp_controller.simulator import Faults, SimulatedDevice, SimulatorServer, apply_scenario
+from tracks_dsp_controller.simulator.models import SIM_MODELS
 from tracks_dsp_controller.state.store import StateStore
 
 log = logging.getLogger(__name__)
@@ -38,7 +44,7 @@ LOCK_TICK_S = 1.0
 PLACEHOLDER_HTML = """<!doctype html>
 <html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>DSP 408 control</title></head>
+<title>DSP control</title></head>
 <body style="font-family: system-ui, sans-serif; margin: 2rem; background: #111; color: #eee">
 <h1>The web UI is not built</h1>
 <p>The server is running, but <code>src/tracks_dsp_controller/web/</code> has no
@@ -83,19 +89,37 @@ def create_app(
     *,
     web_dir: Path | None = None,
     simulated_device: SimulatedDevice | None = None,
+    profile_for: ProfileFactory | None = None,
 ) -> FastAPI:
-    """Build the application. The device session starts with the app's lifespan."""
+    """Build the application. The device session starts with the app's lifespan.
+
+    ``profile`` is the profile used until the device is identified; ``profile_for`` builds the
+    profile of another model (default: the built-in one)."""
     web_root = web_dir or default_web_dir()
-    if config.command_timeout_s is not None:
-        profile = profile.with_overrides(
-            {"timing": {"command_timeout_s": config.command_timeout_s}}
-        )
+    base_profile_for = profile_for or (lambda key: load_profile(model=key))
+
+    def with_timeout(p: ProtocolProfile) -> ProtocolProfile:
+        if config.command_timeout_s is None:
+            return p
+        return p.with_overrides({"timing": {"command_timeout_s": config.command_timeout_s}})
+
+    def model_profile(key: str) -> ProtocolProfile:
+        return with_timeout(base_profile_for(key))
+
+    if config.model in MODELS and detect_model(profile.model) != config.model:
+        profile = model_profile(config.model)
+    profile = with_timeout(profile)
     store = StateStore()
     auth = AuthManager(config.pin)
     lock = LockManager(config.lock_idle_timeout_s)
     simulator: SimulatorServer | None = None
     if config.demo:
-        device = simulated_device or SimulatedDevice(profile)
+        # The simulated model: --model, or the profile's (408 by default) with --model auto.
+        demo_key = config.model if config.model in MODELS else detect_model(profile.model) or "408"
+        demo_profile = (
+            profile if demo_key == detect_model(profile.model) else model_profile(demo_key)
+        )
+        device = simulated_device or SimulatedDevice(demo_profile, model=SIM_MODELS[demo_key])
         faults = Faults()
         if simulated_device is None:
             apply_scenario(config.demo_scenario, device, faults)
@@ -107,6 +131,8 @@ def create_app(
         profile,
         store,
         meter_rate_hz=config.meter_rate_hz,
+        model=config.model,
+        profile_for=model_profile,
     )
     hub = Hub(config, session, store, auth, lock)
     ctx = AppContext(config, profile, store, session, auth, lock, hub, simulator)

@@ -18,7 +18,12 @@ from pathlib import Path
 
 from tracks_dsp_controller import __version__
 from tracks_dsp_controller.protocol import config_map as cm
-from tracks_dsp_controller.protocol.profile import ProtocolProfile, load_profile
+from tracks_dsp_controller.protocol.profile import (
+    MODELS,
+    ProtocolProfile,
+    detect_model,
+    load_profile,
+)
 
 DSP_PORT = 9761
 
@@ -49,7 +54,13 @@ def _common(suppress: bool) -> argparse.ArgumentParser:
         "--profile",
         type=Path,
         default=default or _env("PROFILE"),
-        help="protocol profile TOML overriding the built-in defaults",
+        help="protocol profile TOML overriding the built-in profile of the model",
+    )
+    common.add_argument(
+        "--model",
+        choices=["auto", *MODELS],
+        default=default or _env("MODEL", "auto"),
+        help="DSP model: auto (default: detected from the device's identity), 408, 206 or 204",
     )
     return common
 
@@ -57,7 +68,7 @@ def _common(suppress: bool) -> argparse.ArgumentParser:
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="tracks-dsp-controller",
-        description="Multi-client web controller for the t.racks DSP 408.",
+        description="Multi-client web controller for the t.racks DSP 408 (and DSP 206, 204).",
         parents=[_common(suppress=False)],
     )
     parser.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
@@ -94,7 +105,7 @@ def build_parser() -> argparse.ArgumentParser:
         "--experimental",
         action="store_true",
         default=_env_flag("EXPERIMENTAL"),
-        help="allow parameters not yet verified on a DSP 408",
+        help="allow parameters not yet verified on a DSP 408 (the 206 and 204 use the same list)",
     )
     serve.add_argument(
         "--demo",
@@ -162,8 +173,9 @@ async def _serve(args: argparse.Namespace, profile: ProtocolProfile) -> int:
         experimental=args.experimental,
         demo=args.demo,
         demo_scenario=args.demo_scenario,
+        model=args.model,
     )
-    app = create_app(config, profile)
+    app = create_app(config, profile, profile_for=lambda key: load_profile(args.profile, key))
     target = "demo mode (no DSP)" if config.demo else f"{config.dsp_host}:{config.dsp_port}"
     print(
         f"tracks-dsp-controller {__version__}: http://{config.host}:{config.port} -> {target}",
@@ -189,11 +201,21 @@ async def _probe(args: argparse.Namespace, profile: ProtocolProfile) -> int:
 
     if args.action == "diff-config":
         before, after = args.before.read_bytes(), args.after.read_bytes()
+        if args.model == "auto":  # offline: the dump's size tells the model
+            sizes = {load_profile(args.profile, key).config_size: key for key in MODELS}
+            profile = load_profile(args.profile, sizes.get(len(before), "408"))
         print(probe.format_diff(before, after, cm.layout_for(profile)))
         return 0
-    if args.timeout:
-        profile = profile.with_overrides({"timing": {"command_timeout_s": args.timeout}})
+    timeout = {"timing": {"command_timeout_s": args.timeout}} if args.timeout else {}
+    profile = profile.with_overrides(timeout)
     async with DspConnection(args.dsp_host, args.dsp_port, profile) as conn:
+        if args.model == "auto" and args.action != "raw":
+            identity = await probe.read_identity(conn)
+            key = detect_model(identity)
+            if key is None:
+                raise ValueError(f"unknown device {identity!r}: use --model 408|206|204")
+            profile = load_profile(args.profile, key).with_overrides(timeout)
+            conn.profile = profile
         if args.action != "info" and not getattr(args, "no_init", False):
             # The 408 serves config pages and meters only after the init sequence.
             await probe.read_info(conn)
@@ -263,7 +285,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         parser.print_help()
         return 0
     try:
-        profile = load_profile(args.profile)
+        profile = load_profile(args.profile, "408" if args.model == "auto" else args.model)
     except (OSError, ValueError) as exc:
         print(f"error: cannot load profile: {exc}", file=sys.stderr)
         return 2

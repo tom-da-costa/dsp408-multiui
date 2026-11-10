@@ -1,7 +1,7 @@
 {
-  "name": "DSP 408 control",
-  "short_name": "DSP 408",
-  "description": "Multi-client controller for the t.racks DSP 408",
+  "name": "t.racks DSP control",
+  "short_name": "DSP",
+  "description": "Multi-client controller for the t.racks DSP 408, 206 and 204",
   "start_url": "/",
   "scope": "/",
   "display": "fullscreen",

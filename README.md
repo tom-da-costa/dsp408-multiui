@@ -1,7 +1,7 @@
 # tracks-dsp-controller
 
-Self-hosted web app to control a **t.racks DSP 408** over the network from several browsers
-at once (phones first), with live metering.
+Self-hosted web app to control a **t.racks DSP 408, 206 or 204** over the network from several
+browsers at once (phones first), with live metering. The model is detected automatically.
 
 One backend process owns the TCP connection to the DSP. It serves a mobile-first web UI to
 every client on the local network and keeps them in sync in real time. It works fully offline.
@@ -48,7 +48,7 @@ Try it without a DSP: `uv run tracks-dsp-controller --demo`, then open http://lo
 |---|---|
 | **t.racks DSP 408**, firmware **V0104P** | Supported. Every parameter the app edits was verified on this device: the DSP acknowledged the write and its config read showed the expected bytes |
 | DSP 408 with another firmware | Probably works, not tested. Parameters behave the same as long as the protocol did not change; reports welcome |
-| t.racks DSP 206 / DSP 204 | Not supported by the app yet. The simulator plays both (`tracks-dsp-sim --model 206`): the 206 from captures of a real device, the 204 from the protocol notes of an app tested on one |
+| t.racks DSP 206 / DSP 204 (firmware V0104P) | Supported, **not tested by this project**: detected automatically, same commands and config records as the 408, checked against captures of a real 206 and the notes of an app used on a real 204 ([docs/PROTOCOL.md §10](docs/PROTOCOL.md)). The parameters verified on the 408 are enabled; reports welcome |
 | Other t.racks / Musicrown models (DSP 4x4 Mini, …) | Not supported. They share the protocol family but have other channel counts and config layouts |
 | Connection to the DSP | Ethernet, TCP port 9761. No USB. Use the app **or** the official editor, not both at the same time |
 | Server: Linux x86-64 and arm64 | Standalone executables (glibc ≥ 2.36: Debian 12, Ubuntu 24.04, Raspberry Pi OS bookworm 64-bit and later), Docker image, or `uv run` |
@@ -64,6 +64,7 @@ Try it without a DSP: `uv run tracks-dsp-controller --demo`, then open http://lo
 # From a clone (needs only uv)
 git clone https://github.com/tom-da-costa/tracks-dsp-controller.git && cd tracks-dsp-controller
 uv run tracks-dsp-controller --dsp-host 192.168.1.50 --pin 1234
+# The DSP model is detected; --model 408|206|204 enforces one (refused if the device differs)
 
 # Demo without a DSP (a simulated DSP runs inside the app)
 uv run tracks-dsp-controller --demo
@@ -115,7 +116,7 @@ docker compose -f compose.sim.yaml up -d
 
 - `--model 408|206|204` picks the simulated device (default 408). The 206 follows captures of a
   real DSP 206, the 204 the protocol notes of BetterDSPControl, tested on a real 204
-  ([docs/PROTOCOL.md §10](docs/PROTOCOL.md)). The app itself only drives a 408 for now.
+  ([docs/PROTOCOL.md §10](docs/PROTOCOL.md)). The app detects the model it is connected to.
 - `--state-dir DIR` keeps stored presets and the active preset across restarts (one `Uxx.bin`
   per preset, the same format as `tracks-dsp-controller probe dump-config`).
 - `--preset 8=u08.bin` loads a config dumped from a real DSP (of the same model) into U08.

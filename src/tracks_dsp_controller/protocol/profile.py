@@ -217,6 +217,18 @@ def _coerce(name: str, value: Any) -> Any:
 
 # Built-in models: model -> profile file layered on top of default.toml (the DSP 408).
 MODELS: dict[str, str | None] = {"408": None, "206": "dsp206.toml", "204": "dsp204.toml"}
+TESTED_MODELS = frozenset({"408"})  # models this project has verified on real hardware
+
+
+def detect_model(identity: str) -> str | None:
+    """Model key ("408", "206", "204") of a 0x13 identity such as "DSP206 V0104P", or None.
+
+    A "FIR DSP 408" (identity "FIR408 ...", own config layout) is not a DSP 408."""
+    text = identity.replace(" ", "").upper()
+    for key in MODELS:
+        if text.startswith(f"DSP{key}"):
+            return key
+    return None
 
 
 def _read_builtin_document(name: str) -> dict[str, Any]:
