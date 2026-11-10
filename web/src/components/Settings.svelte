@@ -28,7 +28,7 @@
         step="1"
         bind:value={rate}
         onchange={saveRate}
-        disabled={app.lockedByOther}
+        disabled={app.lockedByOther || app.screenLocked}
       />
     </label>
     <p class="muted">Applies to every connected client.</p>
@@ -41,7 +41,7 @@
         <li>
           {client.name}
           {#if client.id === app.hello?.client_id}<span class="muted">(you)</span>{/if}
-          {#if client.id === app.lock?.owner_id}<span class="badge">lock</span>{/if}
+          {#if client.id === app.lock?.owner_id}<span class="badge">control</span>{/if}
         </li>
       {/each}
     </ul>

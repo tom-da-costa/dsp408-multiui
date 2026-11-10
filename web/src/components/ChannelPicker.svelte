@@ -13,15 +13,22 @@
 
   const all = $derived(selection.all);
   const allShown = $derived(selection.hidden.length === 0);
+  const locked = $derived(app.screenLocked); // the locked screen keeps the channels shown
 </script>
 
 <div class="picker" role="group" aria-label="Channels shown">
-  <button class="quick" class:on={allShown} onclick={() => selection.only("")}>All</button>
-  <button class="quick" class:on={!allShown && selection.isOnly("inputs.")} onclick={() => selection.only("inputs.")}
-    >In</button
+  <button class="quick" class:on={allShown} disabled={locked} onclick={() => selection.only("")}>All</button>
+  <button
+    class="quick"
+    class:on={!allShown && selection.isOnly("inputs.")}
+    disabled={locked}
+    onclick={() => selection.only("inputs.")}>In</button
   >
-  <button class="quick" class:on={!allShown && selection.isOnly("outputs.")} onclick={() => selection.only("outputs.")}
-    >Out</button
+  <button
+    class="quick"
+    class:on={!allShown && selection.isOnly("outputs.")}
+    disabled={locked}
+    onclick={() => selection.only("outputs.")}>Out</button
   >
   <span class="sep"></span>
   {#each all as c (c.path)}
@@ -30,6 +37,7 @@
       style:--ch={app.color(c.path)}
       class:on={selection.isShown(c.path)}
       aria-pressed={selection.isShown(c.path)}
+      disabled={locked}
       title={`${slotLabel(c.path)} ${c.name}`}
       onclick={() => selection.toggle(c.path)}
     >
@@ -87,6 +95,9 @@
   .picker .chan:not(.on) span,
   .picker .chan:not(.on) small {
     color: var(--ch);
+  }
+  .picker .on:disabled {
+    opacity: 1;
   }
   .picker .on {
     background: var(--accent);

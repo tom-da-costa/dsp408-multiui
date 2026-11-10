@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { app } from "../lib/app.svelte";
+
   // A horizontally scrolling row of chips: sub-tabs (one selected) or toggles (several on).
   interface Item {
     key: string;
@@ -48,7 +50,7 @@
       role={toggles ? undefined : "tab"}
       aria-selected={toggles ? undefined : isOn(item.key)}
       aria-pressed={toggles ? isOn(item.key) : undefined}
-      disabled={item.disabled}
+      disabled={item.disabled || app.screenLocked}
       onclick={() => onselect(item.key)}
     >
       <span>{item.label}</span>
@@ -96,6 +98,9 @@
   .ch:not(.on) span,
   .ch:not(.on) small {
     color: var(--ch);
+  }
+  .on:disabled {
+    opacity: 1; /* locked screen: the current choice stays readable */
   }
   .on {
     background: var(--accent);

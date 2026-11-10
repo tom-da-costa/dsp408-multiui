@@ -21,7 +21,12 @@ from tracks_dsp_controller.device.pipeline import CommandTimeoutError, PipelineC
 from tracks_dsp_controller.device.session import DeviceSession, DeviceStatus, DeviceUnavailableError
 from tracks_dsp_controller.protocol import codecs as c
 from tracks_dsp_controller.protocol.meters import MeterReading
-from tracks_dsp_controller.server.auth import AuthManager, ClientSession
+from tracks_dsp_controller.server.auth import (
+    AuthManager,
+    ClientSession,
+    LoginError,
+    RateLimitedError,
+)
 from tracks_dsp_controller.server.lock import LockManager, LockState
 from tracks_dsp_controller.server.settings import ServerConfig
 from tracks_dsp_controller.state.registry import HARDWARE_VERIFIED, ParamError, is_verified
@@ -30,6 +35,8 @@ from tracks_dsp_controller.state.store import Patch, Snapshot, StateStore, Store
 log = logging.getLogger(__name__)
 
 QUEUE_SIZE = 256
+# Accepted while the session's screen is locked.
+SCREEN_LOCK_TYPES = {"screen.lock", "screen.unlock"}
 ACTIVITY_TYPES = {"set", "preset.recall", "preset.store", "lock.acquire", "activity", "resync"}
 
 
@@ -192,6 +199,7 @@ class Hub:
             "type": "hello",
             "client_id": client.id,
             "name": client.session.name,
+            "screen_locked": client.session.screen_locked,
             "server_version": __version__,
             "demo": self.config.demo,
             "experimental": self.config.allow_unverified,
@@ -282,6 +290,10 @@ class Hub:
         if kind == "ping":
             self._send(client, {"type": "pong", "req": req})
             return
+        if client.session.screen_locked and kind not in SCREEN_LOCK_TYPES:
+            if kind != "activity":  # interactions behind the lock screen are not activity
+                self._send(client, _result(req, "screen_locked", "the screen is locked"))
+            return
         if kind in ACTIVITY_TYPES:
             self.lock.touch(client.id)
         if kind == "activity":
@@ -306,9 +318,16 @@ class Hub:
         self._send(client, _result(req))
 
     def _require_lock(self, client: Client) -> None:
+        """Control (the `lock.*` messages): only its holder may write while someone has it."""
         if not self.lock.can_write(client.id):
             owner = self.lock.state().owner_name or "another client"
-            raise RequestError("locked", f"controls are locked by {owner}")
+            raise RequestError("locked", f"{owner} has control")
+
+    def set_screen_lock(self, session: ClientSession, locked: bool) -> None:
+        """Lock or unlock the screen of a browser session; all its tabs follow."""
+        session.screen_locked = locked
+        for client in [cl for cl in self.clients if cl.session is session]:
+            self._send(client, {"type": "screen_lock", "locked": locked})
 
     async def _handle(self, client: Client, kind: str, message: dict[str, Any]) -> None:
         match kind:
@@ -343,10 +362,24 @@ class Hub:
                 await self.session.set_links(side, groups, client.id)
             case "lock.acquire":
                 if not self.lock.acquire(client.id, client.session.name):
-                    raise RequestError("locked", "the lock is held by another client")
+                    raise RequestError("locked", "another client has control")
             case "lock.release":
                 if not self.lock.release(client.id):
-                    raise RequestError("invalid", "you do not hold the lock")
+                    raise RequestError("invalid", "you do not have control")
+            case "screen.lock":
+                self.set_screen_lock(client.session, True)
+            case "screen.unlock":
+                pin = message.get("pin")
+                if not isinstance(pin, str):
+                    raise RequestError("invalid", "pin must be a string")
+                address = client.websocket.client.host if client.websocket.client else "unknown"
+                try:
+                    self.auth.check_pin(pin, address)
+                except RateLimitedError as exc:
+                    raise RequestError("rate_limited", str(exc)) from exc
+                except LoginError as exc:
+                    raise RequestError("wrong_code", "wrong code") from exc
+                self.set_screen_lock(client.session, False)
             case "settings.set":
                 self._require_lock(client)
                 rate = message.get("meter_rate_hz")

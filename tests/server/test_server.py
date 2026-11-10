@@ -365,6 +365,39 @@ def test_two_clients_and_the_lock(client: TestClient) -> None:
             assert device.live.outputs[1].mute
 
 
+def test_screen_lock(client: TestClient) -> None:
+    """A locked screen refuses every request until the access code is typed again."""
+    login(client, "FOH")
+    with client.websocket_connect("/ws") as ws:
+        assert receive_until(ws, "hello")["screen_locked"] is False
+        assert request(ws, {"type": "screen.lock", "req": 1})["ok"]
+        assert receive_until(ws, "screen_lock")["locked"] is True
+        denied = request(ws, {"type": "set", "req": 2, "path": "outputs.0.mute", "value": True})
+        assert denied["error"] == "screen_locked"
+        assert request(ws, {"type": "lock.acquire", "req": 3})["error"] == "screen_locked"
+        wrong = request(ws, {"type": "screen.unlock", "req": 4, "pin": "0000"})
+        assert wrong["error"] == "wrong_code"
+    # a reload (new WebSocket, same session) stays locked
+    with client.websocket_connect("/ws") as ws:
+        assert receive_until(ws, "hello")["screen_locked"] is True
+        assert request(ws, {"type": "screen.unlock", "req": 5, "pin": "4321"})["ok"]
+        assert receive_until(ws, "screen_lock")["locked"] is False
+        assert request(ws, {"type": "set", "req": 6, "path": "outputs.0.mute", "value": True})["ok"]
+
+
+def test_screen_unlock_is_rate_limited(client: TestClient) -> None:
+    login(client)
+    with client.websocket_connect("/ws") as ws:
+        receive_until(ws, "hello")
+        assert request(ws, {"type": "screen.lock", "req": 1})["ok"]
+        for req in range(2, 7):
+            assert request(ws, {"type": "screen.unlock", "req": req, "pin": "bad"})["error"] == (
+                "wrong_code"
+            )
+        limited = request(ws, {"type": "screen.unlock", "req": 7, "pin": "4321"})
+        assert limited["error"] == "rate_limited"  # even the right code, as for the login
+
+
 def test_presets_settings_resync(client: TestClient) -> None:
     login(client, "Op")
     with client.websocket_connect("/ws") as ws:

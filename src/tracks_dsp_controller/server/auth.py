@@ -32,6 +32,9 @@ class ClientSession:
     client_id: str
     name: str
     created: float
+    # Screen lock: the browser's UI is locked until the access code is typed again. Kept here,
+    # not in the browser, so that a reload does not unlock it; every tab of the session follows.
+    screen_locked: bool = False
 
 
 @dataclass(slots=True)
@@ -54,7 +57,8 @@ class AuthManager:
     _attempts: dict[str, _Attempts] = field(default_factory=dict)
     _counter: int = 0
 
-    def login(self, pin: str, name: str | None, address: str) -> ClientSession:
+    def check_pin(self, pin: str, address: str) -> None:
+        """Check the access code, with the per-address rate limit (login, screen unlock)."""
         now = self.clock()
         attempts = self._attempts.setdefault(address, _Attempts())
         if attempts.blocked_until > now:
@@ -66,6 +70,10 @@ class AuthManager:
                 attempts.blocked_until = now + COOLDOWN_S
             raise LoginError("wrong code")
         self._attempts.pop(address, None)
+
+    def login(self, pin: str, name: str | None, address: str) -> ClientSession:
+        self.check_pin(pin, address)
+        now = self.clock()
         self._counter += 1
         client_id = f"c{self._counter}-{secrets.token_hex(3)}"
         session = ClientSession(

@@ -1,7 +1,10 @@
 <script lang="ts">
-  // Bottom of the tab rail: who I am (tap: Settings) and the lock button.
+  // Bottom of the tab rail: who I am (tap: Settings), Control (take / release: the other
+  // clients become read-only) and the screen lock (lock / unlock: this browser becomes
+  // read-only, the screen stays readable; unlocking asks for the access code).
   import { app } from "../lib/app.svelte";
   import { nav } from "../lib/nav.svelte";
+  import UnlockScreen from "./UnlockScreen.svelte";
 
   interface Props {
     expanded: boolean;
@@ -20,12 +23,18 @@
     app.lockDeadline === null ? null : Math.max(0, Math.round((app.lockDeadline - now) / 1000)),
   );
   const me = $derived(app.me?.name ?? "");
+  let unlocking = $state(false);
+
+  function toggleScreen() {
+    if (app.screenLocked) unlocking = true;
+    else void app.lockScreen();
+  }
 
   function mmss(seconds: number): string {
     return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`;
   }
 
-  async function toggleLock() {
+  async function toggleControl() {
     if (app.iOwnLock) await app.run({ type: "lock.release" });
     else await app.run({ type: "lock.acquire" });
   }
@@ -37,33 +46,50 @@
 </script>
 
 <div class="block" class:expanded>
-  <button class="me" onclick={openSettings} title={`You are "${me}"`}>
+  <button class="me" onclick={openSettings} disabled={app.screenLocked} title={`You are "${me}"`}>
     <span class="icon" aria-hidden="true">👤</span>
     <span class="name">{me}</span>
   </button>
 
   {#if app.lockedByOther}
-    <div class="lock other" title={`Read-only: locked by ${app.lock?.owner_name ?? "someone"}`}>
-      <span class="icon">🔒</span>
-      <span class="text">{app.lock?.owner_name}</span>
+    <div class="control other" title={`Read-only: ${app.lock?.owner_name ?? "someone"} has control`}>
+      <span class="icon">✋</span>
+      <span class="text">{app.lock?.owner_name} has control</span>
     </div>
   {:else}
     <button
-      class="lock"
+      class="control"
       class:mine={app.iOwnLock}
-      onclick={toggleLock}
-      disabled={!app.connected}
-      title={app.iOwnLock ? "Release the lock" : "Lock the controls for me"}
+      onclick={toggleControl}
+      disabled={!app.connected || app.screenLocked}
+      title={app.iOwnLock
+        ? "Release control: the other clients can change settings again"
+        : "Take control: the other clients become read-only"}
     >
       <span class="icon">
-        {app.iOwnLock ? "🔓" : "🔒"}
+        ✋
         {#if app.iOwnLock && remaining !== null && !expanded}<small>{mmss(remaining)}</small>{/if}
       </span>
-      <span class="text"
-        >{#if app.iOwnLock}Unlock {remaining !== null ? mmss(remaining) : ""}{:else}Lock{/if}</span
+      <span class="text two"
+        >{#if app.iOwnLock}Release control{#if remaining !== null}<small
+              >idle release in {mmss(remaining)}</small
+            >{/if}{:else}Take control{/if}</span
       >
     </button>
   {/if}
+  <button
+    class="screen"
+    class:locked={app.screenLocked}
+    onclick={toggleScreen}
+    disabled={!app.connected}
+    title={app.screenLocked
+      ? "Unlock the screen (asks for the access code)"
+      : "Lock the screen: nothing can be changed here until the access code is typed"}
+  >
+    <span class="icon">🔒</span>
+    <span class="text">{app.screenLocked ? "Unlock screen" : "Lock screen"}</span>
+  </button>
+  {#if unlocking && app.screenLocked}<UnlockScreen onclose={() => (unlocking = false)} />{/if}
 </div>
 
 <style>
@@ -134,7 +160,20 @@
   .expanded .text {
     opacity: 1;
   }
-  .lock.mine {
+  .two {
+    display: grid;
+    line-height: 1.15;
+  }
+  .two small {
+    font-size: 0.7rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .screen.locked {
+    background: var(--danger);
+    color: #fff;
+  }
+  .control.mine {
     background: var(--warn);
     color: #000;
   }

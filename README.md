@@ -37,8 +37,11 @@ Try it without a DSP: `uv run tracks-dsp-controller --demo`, then open http://lo
 - DSP presets U01–U20: recall, store, rename, with an "unsaved changes" indicator
 - Live meters per channel (level, peak, clip, limiter and compressor indicators), 5 Hz by default,
   adjustable from 1 to 10 Hz
-- Multi-client: last writer wins by default, plus an exclusive lock held while the owner is
-  active (released after 120 s of inactivity)
+- Multi-client: last writer wins by default. A client can **take control**: the others become
+  read-only while it is active (released after 120 s of inactivity)
+- **Lock screen**: this browser becomes read-only and stays on the current view (everything
+  stays readable, meters included) until *Unlock screen* and the access code, for a computer or
+  phone left unattended; a reload stays locked
 - Access protected by a shared code (default `0000`, set with `--pin`)
 - No database, no internet access needed, no external assets
 - `tracks-dsp-sim`: a separate program that simulates a DSP 408, 206 or 204 on the network, to

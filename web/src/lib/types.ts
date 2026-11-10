@@ -121,6 +121,8 @@ export interface Hello {
   type: "hello";
   client_id: string;
   name: string;
+  /** This browser session's screen is locked (see App.lockScreen). */
+  screen_locked: boolean;
   server_version: string;
   demo: boolean;
   experimental: boolean;

@@ -64,7 +64,7 @@
 
   onMount(() => {
     void app.start();
-    // Any interaction counts as activity for the lock (throttled in app.activity).
+    // Any interaction counts as activity for Control (throttled in app.activity).
     const onActivity = () => app.activity();
     const onPop = () => nav.fromHash();
     const onFullscreen = () => (fullscreen = document.fullscreenElement !== null);
@@ -101,6 +101,7 @@
           class:selected={nav.tab === key}
           onclick={() => select(key)}
           aria-current={nav.tab === key}
+          disabled={app.screenLocked && nav.tab !== key}
           title={text}
         >
           <span class="icon" aria-hidden="true">{icon}</span>
