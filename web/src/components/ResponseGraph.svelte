@@ -1,8 +1,12 @@
 <script lang="ts">
-  // Frequency response of one channel (filters + PEQ + GEQ), computed from its settings.
+  // Frequency response of one channel (filters + PEQ + GEQ), computed from its settings, with
+  // the total curves of other channels picked in the "Compare with" row.
   import { app } from "../lib/app.svelte";
+  import { slotLabel } from "../lib/nav.svelte";
+  import { overlayColor, overlays } from "../lib/overlays.svelte";
   import { channelResponse, F_MAX, F_MIN } from "../lib/response";
-  import type { InputChannel, OutputChannel } from "../lib/types";
+  import type { Channel, InputChannel, OutputChannel } from "../lib/types";
+  import ChipBar from "./ChipBar.svelte";
 
   interface Props {
     path: string;
@@ -22,12 +26,36 @@
     channel && profile ? channelResponse(channel, profile.peq_types, profile.slopes) : null,
   );
 
+  // Other channels to overlay (their total curve only).
+  const allChannels = $derived<[string, Channel][]>([
+    ...(app.device?.inputs ?? []).map((c, i) => [`inputs.${i}`, c] as [string, Channel]),
+    ...(app.device?.outputs ?? []).map((c, i) => [`outputs.${i}`, c] as [string, Channel]),
+  ]);
+  const inputCount = $derived(app.hello?.profile.input_count ?? 4);
+  const others = $derived(
+    profile
+      ? allChannels
+          .filter(([p]) => p !== path && overlays.paths.includes(p))
+          .map(([p, c]) => ({
+            path: p,
+            name: `${slotLabel(p)} ${c.name}`.trim(),
+            color: overlayColor(p, inputCount),
+            total: channelResponse(c, profile.peq_types, profile.slopes).total,
+          }))
+      : [],
+  );
+
   let width = $state(600);
   const HEIGHT = 240;
   const PAD = { left: 34, right: 16, top: 8, bottom: 20 };
   const BOTTOM_DB = -30;
   const topDb = $derived(
-    response ? Math.max(12, Math.ceil((Math.max(...response.total) + 2) / 6) * 6) : 12,
+    response
+      ? Math.max(
+          12,
+          Math.ceil((Math.max(...response.total, ...others.flatMap((o) => o.total)) + 2) / 6) * 6,
+        )
+      : 12,
   );
 
   const GRID_HZ = [20, 50, 100, 200, 500, 1000, 2000, 5000, 10000, 20000];
@@ -70,8 +98,20 @@
       <span class="key xo"></span>HPF / LPF
       <span class="key band"></span>EQ bands
       {#if response?.geq}<span class="key geq"></span>GEQ{/if}
+      {#each others as o (o.path)}<span class="key" style:background={o.color}></span>{o.name}{/each}
     </span>
   </header>
+  <div class="compare">
+    <span class="muted">Compare with</span>
+    <ChipBar
+      items={allChannels
+        .filter(([p]) => p !== path)
+        .map(([p]) => ({ key: p, label: slotLabel(p) }))}
+      selected={overlays.paths.filter((p) => p !== path)}
+      onselect={(p) => overlays.toggle(p)}
+      label="Channels to overlay"
+    />
+  </div>
   <div class="plot" bind:clientWidth={width}>
     {#if response}
       <svg {width} height={HEIGHT} role="img" aria-label="Frequency response of the channel">
@@ -97,6 +137,9 @@
             <path class="band" d={line(p.curve)} />
           {/each}
           {#if response.geq}<path class="geq" d={line(response.geq)} />{/if}
+          {#each others as o (o.path)}
+            <path class="other" style:stroke={o.color} d={line(o.total)} />
+          {/each}
           <path class="xo" d={line(response.crossover)} />
           <path class="total" d={line(response.total)} />
           {#each markers as m (m.n)}
@@ -203,6 +246,25 @@
     stroke: var(--warn);
     stroke-width: 1;
     opacity: 0.55;
+  }
+  path.other {
+    stroke-width: 1.8;
+    opacity: 0.85;
+  }
+  .compare {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: center;
+    gap: 8px;
+    font-size: 0.8rem;
+  }
+  .compare :global(.chips) {
+    padding-bottom: 6px;
+  }
+  .compare :global(.chips button) {
+    min-height: 30px;
+    padding: 0 10px;
+    font-size: 0.8rem;
   }
   path.geq {
     stroke: #c77dff;
