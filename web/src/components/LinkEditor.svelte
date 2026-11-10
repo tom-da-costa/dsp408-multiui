@@ -72,8 +72,6 @@
       .filter((g) => g.length > 1);
     void apply(side, rest);
   }
-
-  const COLORS = ["#4da3ff", "#ffb020", "#c77dff", "#3ddc97", "#ff6b9a", "#9ad14b"];
 </script>
 
 {#if device}
@@ -87,6 +85,8 @@
           {#each channels(side) as ch, i (i)}
             {@const g = groupOf(side, i)}
             <button
+              class="ch-bar"
+              style:--ch={app.color(`${side}.${i}`)}
               class:on={chosen.includes(i)}
               aria-pressed={chosen.includes(i)}
               disabled={!editable || busy}
@@ -95,7 +95,7 @@
               <span class="slot">{label(side, i)}</span>
               <small>{ch.name || "—"}</small>
               {#if g >= 0}
-                <span class="badge" style:background={COLORS[g % COLORS.length]}
+                <span class="badge" style:background={app.color(`${side}.${i}`)}
                   >🔗 {g + 1}</span
                 >
               {/if}
@@ -106,7 +106,7 @@
         <ul class="groups">
           {#each groups(side) as group, g (group.join())}
             <li>
-              <span class="dot" style:background={COLORS[g % COLORS.length]}></span>
+              <span class="dot" style:background={app.color(`${side}.${group[0]}`)}></span>
               Group {g + 1}: {group.map((i) => label(side, i)).join(" + ")}
             </li>
           {:else}

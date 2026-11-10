@@ -9,7 +9,7 @@
   const items = $derived([
     ...(device?.inputs ?? []).map((c, i) => ({ path: `inputs.${i}`, name: c.name })),
     ...(device?.outputs ?? []).map((c, i) => ({ path: `outputs.${i}`, name: c.name })),
-  ].map(({ path, name }) => ({ key: path, label: slotLabel(path), sub: name })));
+  ].map(({ path, name }) => ({ key: path, label: slotLabel(path), sub: name, color: app.color(path) })));
 </script>
 
 <ChipBar {items} selected={nav.channel} onselect={(p) => nav.selectChannel(p)} label="Channel" />

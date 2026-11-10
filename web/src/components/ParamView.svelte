@@ -51,7 +51,9 @@
   {/if}
   <div class="cards">
     {#each paths as [path, name] (path)}
-      <ParamBlock param={nav.param} {path} title={title(path, name)} />
+      <div class="block" style:--ch={app.color(path)}>
+        <ParamBlock param={nav.param} {path} title={title(path, name)} />
+      </div>
     {/each}
   </div>
 {/if}
@@ -60,5 +62,11 @@
   .cards {
     columns: 3 360px;
     column-gap: 10px;
+  }
+  .block {
+    break-inside: avoid;
+  }
+  .block > :global(.card) {
+    border-left: 4px solid var(--ch);
   }
 </style>

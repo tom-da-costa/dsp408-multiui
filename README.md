@@ -28,6 +28,8 @@ Try it without a DSP: `uv run tracks-dsp-controller --demo`, then open http://lo
   filters and delay (in ms and metres) on every channel, compressor and limiter on outputs, noise
   gate and 31-band GEQ on inputs, channel names
 - Channel links, as on the DSP: linked channels follow each other
+- A colour per channel, the same in every view; linked channels share the colour of the
+  lowest-numbered channel of their group
 - Frequency response graph on each channel page (filters, PEQ, GEQ), with other channels' curves
   as an overlay
 - Limiter calculator: compressor and limiter thresholds from the amplifier gain and the speaker

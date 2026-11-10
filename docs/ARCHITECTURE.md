@@ -115,6 +115,9 @@ with exponential backoff (1 s → 30 s) and re-reads the full state after reconn
 - The client reconnects its WebSocket automatically and gets a fresh snapshot. If the session is
   gone (server restart), it shows the login screen.
 - A fader only moves on a drag that starts on its knob, so scrolling never moves a fader.
+- **Channel colours** (`web/src/lib/colors.ts`): fixed by position (inputs and outputs have
+  their own palettes), shown on strips, chips, headers, the response graph's overlays and the
+  link groups. Linked channels take the colour of the lowest-numbered channel of their group.
 
 ### Multi-client rules
 

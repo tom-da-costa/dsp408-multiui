@@ -61,7 +61,8 @@
     <span class="sep"></span>
     {#each all as c (c.path)}
       <button
-        class="chan"
+        class="chan ch-bar"
+        style:--ch={app.color(c.path)}
         class:on={!hidden.includes(c.path)}
         aria-pressed={!hidden.includes(c.path)}
         title={`${slotLabel(c.path)} ${c.name}`}

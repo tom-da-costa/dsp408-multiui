@@ -62,7 +62,7 @@
 
 <div class="strips">
   {#each channels as { path, channel } (path)}
-    <section class="strip" class:muted={channel.mute}>
+    <section class="strip" class:muted={channel.mute} style:--ch={app.color(path)}>
       <button class="head" onclick={() => nav.open(path)} title="Open this channel">
         <span class="slot">{slotLabel(path)}{channel.linked.length ? " 🔗" : ""}</span>
         <strong>{channel.name || "—"}</strong>
@@ -96,6 +96,7 @@
     padding: 8px;
     background: var(--panel);
     border: 1px solid var(--line);
+    border-top: 3px solid var(--ch);
     border-radius: var(--radius);
   }
   .strip :global(section.card) {

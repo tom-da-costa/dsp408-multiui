@@ -4,6 +4,7 @@
     key: string;
     label: string;
     sub?: string; // second line (a channel name)
+    color?: string; // channel colour (lib/colors.ts), shown as a bar under the chip
     disabled?: boolean;
   }
 
@@ -41,6 +42,8 @@
       data-key={item.key}
       class:on={isOn(item.key)}
       class:two={item.sub !== undefined}
+      class:ch-bar={item.color !== undefined}
+      style:--ch={item.color}
       role={toggles ? undefined : "tab"}
       aria-selected={toggles ? undefined : isOn(item.key)}
       aria-pressed={toggles ? isOn(item.key) : undefined}

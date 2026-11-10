@@ -26,7 +26,7 @@
   const floor = $derived(app.hello?.profile.meter_floor_db ?? -90);
 </script>
 
-<section class="strip" class:muted={channel.mute}>
+<section class="strip" class:muted={channel.mute} style:--ch={app.color(path)}>
   <button
     class="name"
     title={`${slotLabel(path)} ${channel.name}: open the channel settings`}
@@ -79,6 +79,7 @@
     padding: 8px 4px;
     background: var(--panel);
     border: 1px solid var(--line);
+    border-top: 3px solid var(--ch);
     border-radius: var(--radius);
   }
   .name {

@@ -204,6 +204,8 @@
       <div class="chips" role="group" aria-label="Outputs">
         {#each outputs as ch, i (i)}
           <button
+            class="ch-bar"
+            style:--ch={app.color(`outputs.${i}`)}
             class:on={selected.includes(i)}
             aria-pressed={selected.includes(i)}
             disabled={!editable || busy}

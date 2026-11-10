@@ -40,7 +40,7 @@
 {:else}
   <div class="detail">
     <div class="top">
-      <h2>{slotLabel(path)} <span class="muted">{channel.name}</span></h2>
+      <h2><span class="ch-dot" style:--ch={app.color(path)}></span> {slotLabel(path)} <span class="muted">{channel.name}</span></h2>
       <LevelBar {path} />
     </div>
 
