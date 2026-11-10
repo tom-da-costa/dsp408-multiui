@@ -136,7 +136,8 @@
   .picker .chan:not(.on) {
     border-color: color-mix(in srgb, var(--ch) 60%, var(--line));
   }
-  .picker .chan:not(.on) span {
+  .picker .chan:not(.on) span,
+  .picker .chan:not(.on) small {
     color: var(--ch);
   }
   .picker .on {

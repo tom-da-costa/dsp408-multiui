@@ -97,7 +97,7 @@
       <span class="key xo"></span>HPF / LPF
       <span class="key band"></span>EQ bands
       {#if response?.geq}<span class="key geq"></span>GEQ{/if}
-      {#each others as o (o.path)}<span class="key" style:background={o.color}></span>{o.name}{/each}
+      {#each others as o (o.path)}<span class="key" style:background={o.color}></span><span style:color={o.color}>{o.name}</span>{/each}
     </span>
   </header>
   <div class="compare">

@@ -66,7 +66,8 @@
   button:not(.on) {
     border-color: color-mix(in srgb, var(--ch) 60%, var(--line));
   }
-  button:not(.on) span {
+  button:not(.on) span,
+  button:not(.on) small {
     color: var(--ch);
   }
   .on {

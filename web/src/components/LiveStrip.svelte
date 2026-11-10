@@ -118,11 +118,13 @@
     color: inherit;
   }
   .strip.muted {
-    /* Muted: a thick red frame and a reddened background (the name keeps its channel colour,
-       which can itself be red). An inset shadow, so the strip keeps its size. */
-    border-color: var(--danger);
-    box-shadow: inset 0 0 0 2px var(--danger);
-    background: color-mix(in srgb, var(--danger) 14%, var(--panel));
+    /* Muted: red diagonal hatching (the name keeps its channel colour, which can itself be
+       red). */
+    background-image: repeating-linear-gradient(
+      -45deg,
+      rgb(255 77 94 / 0.3) 0 4px, /* --danger at 30 % */
+      transparent 4px 16px
+    );
   }
   .leds {
     display: grid;

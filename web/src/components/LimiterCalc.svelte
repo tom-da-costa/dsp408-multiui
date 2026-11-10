@@ -367,7 +367,8 @@
   .chips .ch-bar:not(.on) {
     border-color: color-mix(in srgb, var(--ch) 60%, var(--line));
   }
-  .chips .ch-bar:not(.on) span {
+  .chips .ch-bar span,
+  .chips .ch-bar small:not(.now) {
     color: var(--ch);
   }
   .chips .on {

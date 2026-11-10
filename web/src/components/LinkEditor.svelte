@@ -182,7 +182,8 @@
   .chips button:not(.on) {
     border-color: color-mix(in srgb, var(--ch) 60%, var(--line));
   }
-  .chips button:not(.on) .slot {
+  .chips button .slot,
+  .chips button small {
     color: var(--ch);
   }
   .on {
