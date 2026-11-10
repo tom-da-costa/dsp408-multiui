@@ -2,6 +2,7 @@
   import { onMount } from "svelte";
   import AllInOne from "./components/AllInOne.svelte";
   import ChannelsView from "./components/ChannelsView.svelte";
+  import LimiterCalc from "./components/LimiterCalc.svelte";
   import LiveView from "./components/LiveView.svelte";
   import Login from "./components/Login.svelte";
   import ParamView from "./components/ParamView.svelte";
@@ -136,6 +137,8 @@
           <ChannelsView />
         {:else if nav.tab === "aio"}
           <AllInOne />
+        {:else if nav.tab === "limiter"}
+          <LimiterCalc />
         {:else if nav.tab === "presets"}
           <Presets />
         {:else}

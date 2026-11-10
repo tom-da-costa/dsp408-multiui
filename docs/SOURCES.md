@@ -10,6 +10,12 @@ much each source is trusted.
 | https://github.com/FlexiFlizz/t.racks-DSP-control | DSP 206 | TCP + USB HID | GPL-3.0 | Python driver and simulator; source for delay, phase, dynamics and slopes |
 | https://github.com/IMBArator/miniDSP-Linux | DSP 4x4 Mini | USB HID | GPL-3.0 | Most rigorous protocol documentation of the family |
 
+Other references:
+
+| Reference | Used for |
+|---|---|
+| Marc.O, "Intelligent limiter threshold" calculator, http://hornplans.free.fr/limiteur.html (iframe `marc34.o.free.fr/limit_amp/calc_limit.htm`) | The method of the Limiter calc tab (`web/src/lib/limiter.ts`): formulas and constants (open load AES / 1.5625, closed AES / 2.34375, amp at half power, 0.775 V = 0 dBu), dBu mode. Re-implemented from the published formulas; no code copied. |
+
 ## Reuse rules
 
 - GPL-3.0 code may be combined with this AGPL-3.0 project (GPLv3 §13 / AGPLv3 §13).
