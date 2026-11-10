@@ -1,8 +1,10 @@
 <script lang="ts">
-  // "All-in-one" tab: one column per channel with the settings picked in the chip row.
-  // The choice is remembered in this browser.
+  // "All-in-one" tab: one column per channel with the settings picked in the chip row, for the
+  // channels picked in the row below (as in the Live tab). Both are remembered in this browser.
   import { app } from "../lib/app.svelte";
-  import { nav, PARAM_SCOPE, PARAMS, SIDES, slotLabel, type Param } from "../lib/nav.svelte";
+  import { nav, PARAM_SCOPE, PARAMS, slotLabel, type Param } from "../lib/nav.svelte";
+  import { ChannelSelection } from "../lib/selection.svelte";
+  import ChannelPicker from "./ChannelPicker.svelte";
   import ChipBar from "./ChipBar.svelte";
   import LevelBar from "./LevelBar.svelte";
   import ParamBlock from "./ParamBlock.svelte";
@@ -33,12 +35,14 @@
     }
   }
 
+  const selection = new ChannelSelection("dsp408.aio.hidden");
   const device = $derived(app.device);
   const channels = $derived(
-    [
-      ...(device?.inputs ?? []).map((c, i) => ({ path: `inputs.${i}`, channel: c })),
-      ...(device?.outputs ?? []).map((c, i) => ({ path: `outputs.${i}`, channel: c })),
-    ].filter(({ path }) => nav.side === "all" || path.startsWith(nav.side)),
+    selection.shown.flatMap((path) => {
+      const [side, n] = path.split(".");
+      const channel = (side === "inputs" ? device?.inputs : device?.outputs)?.[Number(n)];
+      return channel ? [{ path, channel }] : [];
+    }),
   );
 
   function applies(param: Param, path: string): boolean {
@@ -53,15 +57,13 @@
   onselect={toggle}
   label="Settings shown"
 />
-<ChipBar
-  items={SIDES.map(([key, label]) => ({ key, label }))}
-  selected={nav.side}
-  onselect={(k) => (nav.side = k as typeof nav.side)}
-  label="Channels shown"
-/>
+<ChannelPicker {selection} />
 
 <div class="strips">
-  {#each channels as { path, channel } (path)}
+  {#each channels as { path, channel }, i (path)}
+    {#if i > 0 && path.startsWith("outputs.") && channels[i - 1]?.path.startsWith("inputs.")}
+      <div class="divider"></div>
+    {/if}
     <section class="strip" class:muted={channel.mute} style:--ch={app.color(path)}>
       <button class="head" onclick={() => nav.open(path)} title="Open this channel">
         <span class="slot">{slotLabel(path)}{channel.linked.length ? " 🔗" : ""}</span>
@@ -72,8 +74,10 @@
         <ParamBlock {param} {path} />
       {/each}
     </section>
+  {:else}
+    <p class="muted">No channel selected: pick some above.</p>
   {/each}
-  {#if shown.length === 0}
+  {#if shown.length === 0 && channels.length > 0}
     <p class="muted">Pick the settings to show above.</p>
   {/if}
 </div>
@@ -87,6 +91,12 @@
     overscroll-behavior-x: contain;
     scroll-snap-type: x proximity;
     padding-bottom: 8px;
+  }
+  .divider {
+    flex: 0 0 2px;
+    align-self: stretch;
+    background: var(--line);
+    border-radius: 1px;
   }
   .strip {
     flex: 0 0 min(300px, calc(100vw - 110px));

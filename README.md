@@ -94,6 +94,9 @@ environment variable.
 
 - **Live** view (first tab): per channel, CLIP / CMP / LIM indicators, a meter graduated every
   10 dB with the compressor (C) and limiter (L) thresholds, the gain fader with − / + and MUTE.
+- **All-in-one** view: one column per channel with the settings you pick. In both views, the
+  top row picks the channels shown (all, inputs, outputs or any set); each view remembers its
+  choice in the browser.
 - **Full screen:** the ⛶ button at the bottom of the tab bar (Android, desktop browsers).
 - **Install on the home screen:** iPhone: Safari › Share › *Add to Home Screen*; it then opens
   full screen without the browser bars. Android: Chrome installs web apps only over HTTPS (or
