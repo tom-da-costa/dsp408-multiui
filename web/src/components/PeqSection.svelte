@@ -44,7 +44,14 @@
   {/snippet}
   <ol class="bands" class:bypassed={channel.peq_bypass}>
     {#each channel.peq as band, n (n)}
-      <li class:off={band.bypass} class:open={expanded === n}>
+      <!-- "neutral": on, but a peak / shelf at 0 dB does nothing: greyed like an off band -->
+      {@const neutral = !band.bypass && usesGain(band.type) && band.gain_db === 0}
+      <li
+        class:off={band.bypass}
+        class:neutral
+        class:open={expanded === n}
+        title={neutral ? "On, but at 0 dB: no effect" : undefined}
+      >
         <div class="row">
           <button
             class="summary"
@@ -176,8 +183,12 @@
   .dim {
     color: var(--muted);
   }
-  li.off .summary {
+  li.off .summary,
+  li.neutral .summary {
     color: var(--muted);
+  }
+  li.neutral .switch.on {
+    opacity: 0.45;
   }
   .editor {
     padding: 4px 10px 10px;
