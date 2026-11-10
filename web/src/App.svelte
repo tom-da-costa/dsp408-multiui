@@ -2,6 +2,7 @@
   import { onMount } from "svelte";
   import AllInOne from "./components/AllInOne.svelte";
   import ChannelsView from "./components/ChannelsView.svelte";
+  import LiveView from "./components/LiveView.svelte";
   import Login from "./components/Login.svelte";
   import ParamView from "./components/ParamView.svelte";
   import Presets from "./components/Presets.svelte";
@@ -32,6 +33,23 @@
     }
   }
 
+  // Full screen (Android, desktop): hidden where unsupported (iPhone: install it instead, from
+  // Safari's Share › Add to Home Screen) and when already running as an installed app.
+  let fullscreen = $state(false);
+  const canFullscreen =
+    typeof document !== "undefined" &&
+    document.fullscreenEnabled &&
+    !window.matchMedia("(display-mode: fullscreen), (display-mode: standalone)").matches;
+
+  async function toggleFullscreen() {
+    try {
+      if (document.fullscreenElement) await document.exitFullscreen();
+      else await document.documentElement.requestFullscreen({ navigationUI: "hide" });
+    } catch {
+      app.toast("Full screen is not available here", "error");
+    }
+  }
+
   function select(tab: Tab) {
     nav.select(tab);
     // On a phone the expanded rail covers the page: fold it once a tab is picked.
@@ -43,6 +61,8 @@
     // Any interaction counts as activity for the lock (throttled in app.activity).
     const onActivity = () => app.activity();
     const onPop = () => nav.fromHash();
+    const onFullscreen = () => (fullscreen = document.fullscreenElement !== null);
+    document.addEventListener("fullscreenchange", onFullscreen);
     window.addEventListener("popstate", onPop);
     window.addEventListener("pointerdown", onActivity, { passive: true });
     window.addEventListener("keydown", onActivity);
@@ -50,6 +70,7 @@
       window.removeEventListener("pointerdown", onActivity);
       window.removeEventListener("keydown", onActivity);
       window.removeEventListener("popstate", onPop);
+      document.removeEventListener("fullscreenchange", onFullscreen);
     };
   });
 </script>
@@ -79,6 +100,17 @@
           <span class="text">{text}</span>
         </button>
       {/each}
+      {#if canFullscreen}
+        <button
+          class="bottom"
+          onclick={toggleFullscreen}
+          aria-pressed={fullscreen}
+          title={fullscreen ? "Exit full screen" : "Full screen"}
+        >
+          <span class="icon" aria-hidden="true">{fullscreen ? "🗗" : "⛶"}</span>
+          <span class="text">{fullscreen ? "Exit full screen" : "Full screen"}</span>
+        </button>
+      {/if}
     </nav>
     {#if expanded}
       <button class="scrim" aria-label="Collapse the tab bar" onclick={toggleRail}></button>
@@ -90,6 +122,8 @@
           <p class="muted center">
             {app.connected ? "Waiting for the DSP…" : "Connecting to the server…"}
           </p>
+        {:else if nav.tab === "live"}
+          <LiveView />
         {:else if nav.tab === "params"}
           <ParamView />
         {:else if nav.tab === "channels"}
@@ -115,6 +149,11 @@
     height: 100%;
     display: grid;
     grid-template-columns: var(--rail) 1fr;
+    /* Installed app with a translucent status bar, notches in landscape */
+    padding-top: env(safe-area-inset-top);
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+    box-sizing: border-box;
   }
   nav {
     position: relative;
@@ -160,6 +199,9 @@
   nav .fold {
     min-height: 44px;
     margin-bottom: 6px;
+  }
+  nav .bottom {
+    margin-top: auto;
   }
   .expanded nav {
     width: var(--rail-open);

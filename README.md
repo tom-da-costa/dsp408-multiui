@@ -49,6 +49,16 @@ release: download one and run `./dsp408-multiui-<version>-linux-amd64 --dsp-host
 Then open `http://<server-ip>:8080` from any device on the LAN. See
 [docs/release.md](docs/release.md) for how releases are built.
 
+## On a phone
+
+- **Live** view (first tab): per channel, CLIP / CMP / LIM indicators, a meter graduated every
+  10 dB with the compressor (C) and limiter (L) thresholds, the gain fader with − / + and MUTE.
+- **Full screen:** the ⛶ button at the bottom of the tab bar (Android, desktop browsers).
+- **Install on the home screen:** iPhone: Safari › Share › *Add to Home Screen*; it then opens
+  full screen without the browser bars. Android: Chrome installs web apps only over HTTPS (or
+  on localhost); over plain `http://` on the LAN, use the full-screen button, or put the app
+  behind an HTTPS reverse proxy with a valid certificate to get *Install app*.
+
 ## Testing without a DSP: `dsp408-sim`
 
 `dsp408-sim` is a separate program that behaves like a DSP 408 on the network (TCP port 9761).

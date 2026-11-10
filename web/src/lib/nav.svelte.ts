@@ -3,6 +3,7 @@
 // browser's back button (or a phone's back gesture) work.
 
 export const TABS = [
+  ["live", "Live", "🎛"],
   ["params", "Params", "🎚"],
   ["channels", "Channels", "🔈"],
   ["aio", "All-in-one", "▥"],
@@ -70,7 +71,7 @@ function isTab(text: string): text is Tab {
 }
 
 class Nav {
-  tab = $state<Tab>("params");
+  tab = $state<Tab>("live");
   param = $state<Param>("gain");
   channel = $state("inputs.0");
   /** Channels shown by the multi-channel views. */
