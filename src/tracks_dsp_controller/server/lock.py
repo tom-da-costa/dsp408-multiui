@@ -81,8 +81,3 @@ class LockManager:
     def can_write(self, client_id: str) -> bool:
         self.expire()
         return self._owner_id in (None, client_id)
-
-    def rename(self, client_id: str, name: str) -> None:
-        if self._owner_id == client_id:
-            self._owner_name = name
-            self._emit()

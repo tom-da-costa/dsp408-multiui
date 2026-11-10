@@ -336,15 +336,6 @@ class Hub:
                     raise RequestError("invalid", "meter_rate_hz must be a number")
                 self.session.meter_rate_hz = rate
                 self.broadcast(self.settings_message())
-            case "rename":
-                name = message.get("name")
-                if not isinstance(name, str):
-                    raise RequestError("invalid", "name must be a string")
-                renamed = self.auth.rename(client.session.token, name)
-                if renamed is not None:
-                    self.lock.rename(client.id, renamed.name)
-                self._send(client, {"type": "self", "name": client.session.name})
-                self.broadcast(self.clients_message())
             case "resync":
                 await self.session.resync()
             case _:

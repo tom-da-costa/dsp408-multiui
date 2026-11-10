@@ -1,5 +1,5 @@
 <script lang="ts">
-  // Bottom of the tab rail: who I am (tap: Settings, to rename) and the lock button.
+  // Bottom of the tab rail: who I am (tap: Settings) and the lock button.
   import { app } from "../lib/app.svelte";
   import { nav } from "../lib/nav.svelte";
 
@@ -37,7 +37,7 @@
 </script>
 
 <div class="block" class:expanded>
-  <button class="me" onclick={openSettings} title={`You are "${me}" (tap to rename in Settings)`}>
+  <button class="me" onclick={openSettings} title={`You are "${me}"`}>
     <span class="icon" aria-hidden="true">👤</span>
     <span class="name">{me}</span>
   </button>

@@ -2,7 +2,6 @@
   import { app } from "../lib/app.svelte";
 
   let rate = $state(app.settings?.meter_rate_hz ?? 5);
-  let name = $state(app.me?.name ?? "");
 
   $effect(() => {
     if (app.settings) rate = app.settings.meter_rate_hz;
@@ -10,11 +9,6 @@
 
   async function saveRate() {
     await app.run({ type: "settings.set", meter_rate_hz: rate });
-  }
-
-  async function rename(event: SubmitEvent) {
-    event.preventDefault();
-    if (await app.run({ type: "rename", name })) app.toast("Name updated");
   }
 
   async function refresh() {
@@ -38,14 +32,6 @@
       />
     </label>
     <p class="muted">Applies to every connected client.</p>
-  </section>
-
-  <section class="card">
-    <h2>You</h2>
-    <form onsubmit={rename}>
-      <input type="text" maxlength="32" bind:value={name} aria-label="Display name" />
-      <button type="submit">Rename</button>
-    </form>
   </section>
 
   <section class="card">
@@ -93,10 +79,6 @@
   input[type="range"] {
     width: 100%;
     min-height: var(--tap);
-  }
-  form {
-    display: flex;
-    gap: 8px;
   }
   ul {
     margin: 0;

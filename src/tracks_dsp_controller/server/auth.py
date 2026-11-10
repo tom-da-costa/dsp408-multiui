@@ -80,11 +80,5 @@ class AuthManager:
     def get(self, token: str | None) -> ClientSession | None:
         return self._sessions.get(token) if token else None
 
-    def rename(self, token: str, name: str) -> ClientSession | None:
-        session = self._sessions.get(token)
-        if session is not None:
-            session.name = clean_name(name, session.name)
-        return session
-
     def logout(self, token: str | None) -> ClientSession | None:
         return self._sessions.pop(token, None) if token else None
