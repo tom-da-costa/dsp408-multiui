@@ -1,4 +1,5 @@
-# Standalone Linux executables (web app + dsp408-sim), built for the target platform (use --platform linux/arm64 with QEMU).
+# Standalone Linux executables (web app + dsp408-sim), built for the Docker host's platform
+# (or --platform linux/arm64 with QEMU). Debian bookworm keeps an older glibc baseline.
 #   docker buildx build --platform linux/amd64 --build-arg NAME=dsp408-multiui-linux-amd64 \
 #     -f packaging/exe.Dockerfile -o dist .
 FROM python:3.12-bookworm AS build

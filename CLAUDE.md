@@ -82,8 +82,9 @@ make web-test                             # svelte-check + vitest
 
 ## Repository conventions
 
-- Hosted on a personal **Gitea**. CI uses Gitea Actions on a **Docker runner**; arm64 builds
-  use QEMU. Use Gitea Actions syntax in `.gitea/workflows/`, not GitHub-only features.
+- Hosted on **GitHub** (public): https://github.com/OWNER/dsp408-multiui. CI and releases use
+  GitHub Actions (`.github/workflows/`) on GitHub-hosted runners: native arm64 runner for the
+  linux-arm64 executable, Windows runner for the Windows executable, images on `ghcr.io`.
 - Conventional Commits (`feat:`, `fix:`, `docs:` …).
 - Upstream projects (`docs/SOURCES.md`) can be cloned for reference **outside the repo**, in a
   scratch directory. Never vendor them. Copied code or test vectors keep their copyright notice

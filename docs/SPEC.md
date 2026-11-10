@@ -28,7 +28,7 @@ network.
 | **No database** | All persistent data (presets) lives in the DSP. The server keeps only in-memory state. |
 | **No DSP available during development** | A protocol-accurate **simulator** is a first-class component, used for development, tests and demos (§4.5). Uncertain protocol details are kept configurable (§4.6). |
 | Python + uv for the backend; TypeScript allowed for the UI | FastAPI backend; the UI is built with Vite and embedded in the Python package. |
-| Repository on a personal **Gitea** | CI runs on Gitea Actions (GitHub-Actions syntax); packages are published to the Gitea registries. |
+| Public repository on **GitHub** (moved from a personal Gitea on 2026-11-10) | CI runs on GitHub Actions; releases on GitHub, Docker images on `ghcr.io`. |
 | One DSP for now, possibly several later | Device code is isolated behind a `DeviceSession` object. No global singletons. |
 
 ## 3. Functional requirements
@@ -304,8 +304,8 @@ with live changes kept in memory. There is **no database** and no data volume.
 | Mode | Command | Needs |
 |---|---|---|
 | From a git clone | `git clone … && cd dsp408-multiui && uv run dsp408-multiui --dsp-host IP` | git, uv. **No Node**: the built UI is committed (see D9). |
-| Standalone executable | Download `dsp408-multiui-<version>-<os>-<arch>` from the Gitea release page, then `./dsp408-multiui --dsp-host IP` | Nothing (Python is bundled). Targets: linux-amd64, linux-arm64, windows-amd64. |
-| Docker | `docker run -d -p 8080:8080 -e DSP408_PIN=1234 <registry>/dsp408-multiui --dsp-host IP` | Docker |
+| Standalone executable | Download `dsp408-multiui-<version>-<os>-<arch>` from the GitHub release page, then `./dsp408-multiui --dsp-host IP` | Nothing (Python is bundled). Targets: linux-amd64, linux-arm64, windows-amd64. |
+| Docker | `docker run -d -p 8080:8080 -e DSP408_PIN=1234 ghcr.io/OWNER/dsp408-multiui --dsp-host IP` | Docker |
 | Docker Compose | `docker compose up -d` with the provided `compose.yaml` (settings through environment variables) | Docker Compose |
 | Demo without a DSP | any of the above with `--demo` | — |
 | Test bench without a DSP | `dsp408-sim` (executable, `uv run dsp408-sim`, or `docker compose -f compose.sim.yaml up`), then the app with `--dsp-host` pointing at it | — |
@@ -390,7 +390,7 @@ model and firmware, version, logout.
 | D11 | UI in English, French translation later | Owner decision |
 
 | D12 | Standalone executable targets: linux-amd64, linux-arm64, windows-amd64 (no macOS) | Owner decision |
-| D13 | CI runs on the Gitea **Docker runner**. arm64 builds use QEMU emulation (`binfmt` + `docker buildx`); the arm64 PyInstaller executable is built inside an emulated arm64 container. | Only a Docker runner is available. Emulated builds are slow but only run on release tags. The Windows executable is cross-built with Wine (`tobix/pywine`); it still has to be tested on a real Windows machine (docs/release.md). |
+| D13 | CI runs on **GitHub-hosted runners**. The executables are built natively: linux-amd64 and linux-arm64 in a Debian bookworm container on the matching runner (`ubuntu-24.04`, `ubuntu-24.04-arm`), windows-amd64 on `windows-latest`. Only the multi-arch Docker image uses QEMU (`docker/setup-qemu-action`). | Native builds are fast and can be smoke-tested (`--version`) on their own platform. The bookworm container keeps an older glibc baseline (Raspberry Pi OS, Debian 12). Until 2026-11-10 the project ran on a Gitea Docker runner with QEMU and Wine; the Wine cross-build (`packaging/windows.Dockerfile`) remains for local use. |
 
 ## 12. Open questions for the owner
 

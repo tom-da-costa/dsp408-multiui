@@ -36,9 +36,9 @@ uv.lock
 Makefile                  # lint, test, web, web-check, exe, docker
 Dockerfile                # python slim + uv (UI already built and committed)
 compose.yaml              # single service, settings through environment variables
-.gitea/workflows/
-  ci.yaml                 # lint · test · web-check · integration
-  release.yaml            # on tag: executables, Docker multi-arch, Gitea release
+.github/workflows/
+  ci.yml                  # lint · test · web-check · integration
+  release.yml             # on tag: executables, Docker multi-arch, GitHub release
 docs/                     # SPEC, PLAN, PROTOCOL, captures.md
 src/dsp408_multiui/
   __init__.py  __main__.py  cli.py
@@ -73,8 +73,8 @@ Development workflow:
 - `uv init --package`, Python ≥ 3.12, hatchling. Dependencies: `fastapi`, `uvicorn[standard]`,
   `pydantic`. Dev dependencies: `pytest`, `pytest-asyncio`, `ruff`, `mypy`, `httpx`.
 - Ruff (lint + format), mypy strict for `protocol/` and `state/`.
-- Gitea Actions `ci.yaml` running `ruff check`, `ruff format --check`, `mypy` and `pytest`.
-  Prerequisite: an `act_runner` registered on the Gitea instance.
+- CI workflow `ci.yml` (GitHub Actions) running `ruff check`, `ruff format --check`, `mypy` and
+  `pytest`.
 - `docs/SOURCES.md` gets attribution notes (all sources are GPL-3.0, compatible with AGPL-3.0).
 
 **0.2 `protocol/` (pure, I/O-free, fully unit-tested)**
@@ -254,12 +254,12 @@ matrix, preset recall/store and live meters work, and the lock behaves as specif
   profile included) for linux-amd64, linux-arm64 and windows-amd64. A smoke test runs
   `--version` and `--demo` with a health check on each.
 - **Docker**: slim Python image, multi-arch (amd64 and arm64, built with buildx), non-root user,
-  `HEALTHCHECK` on `/api/health`, pushed to the Gitea container registry.
+  `HEALTHCHECK` on `/api/health`, pushed to the GitHub container registry (`ghcr.io`).
 - **Docker Compose**: `compose.yaml` with one service, `restart: unless-stopped`, port 8080, and
   `DSP408_HOST`, `DSP408_PIN`, `DSP408_METER_RATE` and other settings from a `.env` file
   (`.env.example` provided).
 - **Releases**: on a `vX.Y.Z` tag, `release.yaml` builds the executables and the Docker image and
-  creates a Gitea release with the executables attached. The version comes from the git tag; a
+  creates a GitHub release with the executables attached. The version comes from the git tag; a
   changelog is maintained.
 - README quickstart for each launch mode (SPEC §7.1).
 
