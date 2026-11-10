@@ -33,7 +33,8 @@ credentials). Release notes come from the merged PRs (`gh release create --gener
   built UI in `src/tracks_dsp_controller/web/` is committed), standalone PyInstaller executable,
   `docker run`, `docker compose up`.
 - **Develop and test against the simulator.** It reproduces the DSP 408's recorded behaviour
-  (`tests/hardware/`). `dsp408-sim` is a separate program that the backend reaches over TCP
+  (`tests/hardware/`), and plays a DSP 206 or 204 with `--model` (docs/PROTOCOL.md §10).
+  `tracks-dsp-sim` is a separate program that the backend reaches over TCP
   like the real device; `serve --demo` runs the same simulated device in-process. Never assume
   an unverified protocol detail is true: put it in the `ProtocolProfile` (ARCHITECTURE §6).
 - **The owner's real DSP 408 is in production use.** Read-only commands (`probe info`, `probe
@@ -69,10 +70,10 @@ credentials). Release notes come from the merged PRs (`gh release create --gener
 ```bash
 uv sync                                            # install
 uv run tracks-dsp-controller --demo                # demo: backend + in-process simulated DSP on :8080
-uv run dsp408-sim --host 127.0.0.1                 # separate simulated DSP 408 on :9761, with a console
+uv run tracks-dsp-sim --host 127.0.0.1             # separate simulated DSP 408 on :9761 (--model 206)
 uv run tracks-dsp-controller --dsp-host 127.0.0.1  # backend connected to it like to a real DSP
 uv run pytest                                      # tests
-make e2e                                           # dsp408-sim + tracks-dsp-controller as two programs
+make e2e                                           # tracks-dsp-sim + tracks-dsp-controller as two programs
 uv run ruff check . && uv run ruff format --check . && uv run mypy
 make dev                                           # UI hot reload on :5173 + backend --demo on :8080
 make web                                           # rebuild the committed UI (CI fails if stale)

@@ -204,7 +204,7 @@ class DeviceSession:
         self, conn: reader.Requester, previous: DeviceState | None
     ) -> DeviceState:
         summary = await reader.read_info(conn)
-        raw = cm.decode_config(await reader.read_config_blob(conn))
+        raw = cm.decode_config(await reader.read_config_blob(conn), cm.layout_for(self.profile))
         await reader.activate(conn)
         parts = summary.identity.split()
         self.info = DeviceInfo(

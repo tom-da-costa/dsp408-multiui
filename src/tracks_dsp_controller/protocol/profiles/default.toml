@@ -1,14 +1,18 @@
 # Default protocol profile for the t.racks DSP 408.
 #
-# Every value that is not verified on a DSP 408 lives here (docs/ARCHITECTURE.md §6). The comments give
-# the confidence tag from docs/PROTOCOL.md: 408 = seen on a DSP 408, SIB = sibling model only,
+# Every value that is not verified on a DSP 408 lives here (docs/ARCHITECTURE.md §6). The comments
+# give the confidence tag from docs/PROTOCOL.md: 408 = seen on a DSP 408, SIB = sibling model only,
 # CONFLICT = sources disagree (the chosen value is the ▶ choice), HYP = our own hypothesis.
+# Other models (dsp206.toml, dsp204.toml) are layered on top of this file.
 # Override with `--profile my.toml`: any subset of keys, same sections.
 
 name = "dsp408-default"
 
+[device]
+model = "DSP408"           # 408: identity "DSP408 V0104P"
+
 [frame]
-host_dst = 0x01            # 408 (t.racks-DSP-control claims 0x02 on the 206)
+host_dst = 0x01            # 408 (the 206 uses 0x02)
 
 [topology]
 input_count = 4            # 408
@@ -42,6 +46,8 @@ slopes = ["Off", "BW-6", "BL-6", "BW-12", "BL-12", "LR-12", "BW-18", "BL-18", "B
 [meters]
 format = "float32"         # 408: each triplet is the top 3 bytes of a little-endian float32
                            # (linear); "float16" (dsp-408-ui) is wrong on a 408
+input_slots = 4            # 408: one triplet per channel, inputs first
+output_slots = 8
 tail_length = 2            # 408 (LEN = 0x27)
 tail_comp_byte = 0         # 408: per-output "compressor active" bitmask
 tail_limit_byte = 1        # 408: per-output "limiter active" bitmask

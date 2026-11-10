@@ -1,12 +1,12 @@
 #!/usr/bin/env sh
 # Build the standalone executables for the current platform into dist/:
 #   <name>                 the web application (tracks-dsp-controller)
-#   <name with dsp408-sim> the simulated DSP (dsp408-sim), e.g. dsp408-sim-v1.0.0-linux-amd64
+#   <name with tracks-dsp-sim> the simulated DSP (tracks-dsp-sim), e.g. tracks-dsp-sim-v1.0.0-linux-amd64
 # Usage: packaging/build_exe.sh <output-name>     (run from the repository root)
 # Needs Python >= 3.12 and uv; on Windows, run it under Git Bash or adapt the commands.
 set -eu
 NAME="${1:-tracks-dsp-controller}"
-SIM_NAME="$(echo "$NAME" | sed 's/^tracks-dsp-controller/dsp408-sim/')"
+SIM_NAME="$(echo "$NAME" | sed 's/^tracks-dsp-controller/tracks-dsp-sim/')"
 [ "$SIM_NAME" != "$NAME" ] || SIM_NAME="$NAME-sim"
 SEP=":"
 case "$(uname -s 2>/dev/null || echo Windows)" in

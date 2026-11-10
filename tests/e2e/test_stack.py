@@ -1,4 +1,4 @@
-"""End to end: ``dsp408-sim`` and ``tracks-dsp-controller`` run as two separate programs.
+"""End to end: ``tracks-dsp-sim`` and ``tracks-dsp-controller`` run as two separate programs.
 
 The simulator listens on TCP like a DSP 408; the app connects to it with ``--dsp-host``. The
 tests then drive the app as the browser does (HTTP login, WebSocket) and check the effect on the
@@ -79,7 +79,7 @@ class Stack:
 
     def start_sim(self) -> None:
         self.sim = self._spawn(
-            "dsp408-sim",
+            "tracks-dsp-sim",
             [
                 *command("DSP408_E2E_SIM_CMD", "tracks_dsp_controller.simulator"),
                 "--host", "127.0.0.1", "--port", str(self.sim_port),

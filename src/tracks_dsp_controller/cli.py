@@ -1,7 +1,7 @@
 """Command-line entry point (``tracks-dsp-controller``).
 
 ``serve`` (the default) runs the web application; ``probe`` and ``proxy`` are developer tools.
-The simulated DSP is a separate program, ``dsp408-sim`` (``simulator/cli.py``). Every option can
+The simulated DSP is a separate program, ``tracks-dsp-sim`` (``simulator/cli.py``). Every option can
 also come from a ``DSP408_<NAME>`` environment variable.
 """
 
@@ -17,6 +17,7 @@ from collections.abc import Sequence
 from pathlib import Path
 
 from tracks_dsp_controller import __version__
+from tracks_dsp_controller.protocol import config_map as cm
 from tracks_dsp_controller.protocol.profile import ProtocolProfile, load_profile
 
 DSP_PORT = 9761
@@ -100,7 +101,7 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         default=_env_flag("DEMO"),
         help="demo mode: no DSP, a simulated one runs inside this process "
-        "(to test against a separate fake DSP on the network, use dsp408-sim)",
+        "(to test against a separate fake DSP on the network, use tracks-dsp-sim)",
     )
     serve.add_argument(
         "--demo-scenario",
@@ -187,7 +188,8 @@ async def _probe(args: argparse.Namespace, profile: ProtocolProfile) -> int:
     from tracks_dsp_controller.tools import probe
 
     if args.action == "diff-config":
-        print(probe.format_diff(args.before.read_bytes(), args.after.read_bytes()))
+        before, after = args.before.read_bytes(), args.after.read_bytes()
+        print(probe.format_diff(before, after, cm.layout_for(profile)))
         return 0
     if args.timeout:
         profile = profile.with_overrides({"timing": {"command_timeout_s": args.timeout}})

@@ -39,8 +39,8 @@ Try it without a DSP: `uv run tracks-dsp-controller --demo`, then open http://lo
   active (released after 120 s of inactivity)
 - Access protected by a shared code (default `0000`, set with `--pin`)
 - No database, no internet access needed, no external assets
-- `dsp408-sim`: a separate program that simulates a DSP 408 on the network, to test the app
-  without a device (presets kept across restarts, fault injection, live console)
+- `tracks-dsp-sim`: a separate program that simulates a DSP 408, 206 or 204 on the network, to
+  test the app without a device (presets kept across restarts, fault injection, live console)
 
 ## Compatibility
 
@@ -48,7 +48,8 @@ Try it without a DSP: `uv run tracks-dsp-controller --demo`, then open http://lo
 |---|---|
 | **t.racks DSP 408**, firmware **V0104P** | Supported. Every parameter the app edits was verified on this device: the DSP acknowledged the write and its config read showed the expected bytes |
 | DSP 408 with another firmware | Probably works, not tested. Parameters behave the same as long as the protocol did not change; reports welcome |
-| Other t.racks / Musicrown models (DSP 206, DSP 4x4 Mini, …) | Not supported. They share the protocol family but have other channel counts and config layouts |
+| t.racks DSP 206 / DSP 204 | Not supported by the app yet. The simulator plays both (`tracks-dsp-sim --model 206`): the 206 from captures of a real device, the 204 from the protocol notes of an app tested on one |
+| Other t.racks / Musicrown models (DSP 4x4 Mini, …) | Not supported. They share the protocol family but have other channel counts and config layouts |
 | Connection to the DSP | Ethernet, TCP port 9761. No USB. Use the app **or** the official editor, not both at the same time |
 | Server: Linux x86-64 and arm64 | Standalone executables (glibc ≥ 2.36: Debian 12, Ubuntu 24.04, Raspberry Pi OS bookworm 64-bit and later), Docker image, or `uv run` |
 | Server: Raspberry Pi 3 / 4 / 5 | Designed for it (64-bit OS, arm64 executable or Docker image); not tested on a Pi yet |
@@ -96,25 +97,28 @@ environment variable.
   on localhost); over plain `http://` on the LAN, use the full-screen button, or put the app
   behind an HTTPS reverse proxy with a valid certificate to get *Install app*.
 
-## Testing without a DSP: `dsp408-sim`
+## Testing without a DSP: `tracks-dsp-sim`
 
-`dsp408-sim` is a separate program that behaves like a DSP 408 on the network (TCP port 9761).
-The app connects to it exactly as to the real device, so the whole path is tested: connection,
-init sequence, timeouts, reconnects, several clients.
+`tracks-dsp-sim` is a separate program that behaves like a t.racks DSP on the network (TCP port
+9761). The app connects to it exactly as to the real device, so the whole path is tested:
+connection, init sequence, timeouts, reconnects, several clients.
 
 ```bash
 # Terminal 1: the simulated DSP (listens on 0.0.0.0:9761, like a real one)
-uv run dsp408-sim --state-dir sim-state
-# Terminal 2: the app, pointed at it (or at the IP of the machine running dsp408-sim)
+uv run tracks-dsp-sim --state-dir sim-state
+# Terminal 2: the app, pointed at it (or at the IP of the machine running tracks-dsp-sim)
 uv run tracks-dsp-controller --dsp-host 127.0.0.1
 
-# Both in Docker; `docker attach dsp408-sim` opens the simulator console
+# Both in Docker; `docker attach tracks-dsp-sim` opens the simulator console
 docker compose -f compose.sim.yaml up -d
 ```
 
+- `--model 408|206|204` picks the simulated device (default 408). The 206 follows captures of a
+  real DSP 206, the 204 the protocol notes of BetterDSPControl, tested on a real 204
+  ([docs/PROTOCOL.md §10](docs/PROTOCOL.md)). The app itself only drives a 408 for now.
 - `--state-dir DIR` keeps stored presets and the active preset across restarts (one `Uxx.bin`
   per preset, the same format as `tracks-dsp-controller probe dump-config`).
-- `--preset 8=u08.bin` loads a config dumped from a real DSP into U08.
+- `--preset 8=u08.bin` loads a config dumped from a real DSP (of the same model) into U08.
 - `--scenario demo|silent|clipping|stress` sets the initial presets and input signals.
 - `--fast` answers preset recall and store at once (the real DSP takes about 3 s and 7 s).
 - `--latency-ms`, `--drop-rate`, `--corrupt-rate`, `--nan-rate` and `--second-client
@@ -123,8 +127,8 @@ docker compose -f compose.sim.yaml up -d
   recall), `kick` (drop the connections), `offline 10` (unreachable for 10 s), `latency 200`,
   `drop 0.1`, `signal A steady -3`, `quit`.
 
-Every option also reads a `DSP408_SIM_<NAME>` environment variable. A `dsp408-sim` executable is
-attached to each release next to the app's.
+Every option also reads a `TRACKS_DSP_SIM_<NAME>` environment variable (`TRACKS_DSP_SIM_MODEL=206`).
+A `tracks-dsp-sim` executable is attached to each release next to the app's.
 
 ## Documentation
 
@@ -144,14 +148,15 @@ GitHub Actions.
 
 ## Sources and credits
 
-The protocol knowledge builds on the reverse-engineering work of these projects (all GPL-3.0).
-[docs/PROTOCOL.md §0](docs/PROTOCOL.md) says how much each one is trusted.
+The protocol knowledge builds on the reverse-engineering work of these projects (GPL-3.0, and MIT
+for BetterDSPControl). [docs/PROTOCOL.md §0](docs/PROTOCOL.md) says how much each one is trusted.
 
 | Project | Device | Transport | Used for |
 |---|---|---|---|
 | [Aeternitaas/dsp-408-ui](https://github.com/Aeternitaas/dsp-408-ui) | DSP 408 | TCP 9761 | The only prior source tested on a DSP 408 (Flutter app): framing, gain, mute, matrix, GEQ, presets, meter poll |
 | [juli303/t-dsp-ui](https://github.com/juli303/t-dsp-ui) | DSP 408 | TCP 9761 | Identical fork of dsp-408-ui |
-| [FlexiFlizz/t.racks-DSP-control](https://github.com/FlexiFlizz/t.racks-DSP-control) | DSP 206 | TCP + USB HID | Python driver and simulator: delay, phase, dynamics, slopes |
+| [FlexiFlizz/t.racks-DSP-control](https://github.com/FlexiFlizz/t.racks-DSP-control) | DSP 206 | TCP + USB HID | Python driver: delay, phase, dynamics, slopes; its Wireshark captures of a real 206 define the simulated 206 |
+| [Givou/BetterDSPControl](https://git.thiemoo.at/Givou/BetterDSPControl) (MIT) | DSP 204, DSP 408 | TCP + USB HID | A control app tested on a real DSP 204: its protocol notes define the simulated 204 |
 | [IMBArator/miniDSP-Linux](https://github.com/IMBArator/miniDSP-Linux) | DSP 4x4 Mini | USB HID | The most rigorous documentation of the protocol family: framing, ACKs, presets, link, meter tail |
 
 The **Limiter calc** tab (`web/src/lib/limiter.ts`) implements the method of **Marc.O**'s
@@ -167,8 +172,12 @@ Files that reuse material from these projects keep their original notices:
 | `tests/fixtures/config/forest_408.bin` | dsp-408-ui, `analyze5.py` (hex dump of a DSP 408 config read); 4 missing bytes filled with 0, see the `.meta.toml` |
 | `tests/unit/test_framing.py` (frame vectors) | dsp-408-ui `protocol.dart` / `protocol_service.dart`; miniDSP-Linux `analysis/protocol.md` |
 | `tests/unit/test_meters.py` (24-bit vectors) | miniDSP-Linux `analysis/protocol.md` (sine-sweep meter triplets) |
+| `tests/fixtures/config/dsp206_capture.bin`, `dsp206_capture_linked.bin` | t.racks-DSP-control, `capture_full.pcapng` (config reads of a real DSP 206), see the `.meta.toml` files |
+| `tests/unit/test_dsp204.py` (link masks, limiter status bytes) | BetterDSPControl `PROTOCOL.md` and `tests/test_protocol.py` (values read on a real DSP 204), MIT, (c) 2026 Givou |
+| `tests/fixtures/dsp206/frames.txt` | t.racks-DSP-control, `capture_full.pcapng`, `capture.pcapng`, `capture_peq_q.pcapng` (wire frames of a real DSP 206) |
 
-GPL-3.0 code may be combined with this AGPL-3.0 project (GPLv3 §13 / AGPLv3 §13).
+GPL-3.0 code may be combined with this AGPL-3.0 project (GPLv3 §13 / AGPLv3 §13); MIT material keeps
+its copyright notice.
 
 ## License
 

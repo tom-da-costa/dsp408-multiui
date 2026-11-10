@@ -4,8 +4,11 @@ Wire format (see docs/PROTOCOL.md §2)::
 
     10 02 | SRC | DST | LEN | PAYLOAD (LEN bytes) | 10 03 | CHK
 
-``CHK`` is the XOR of ``LEN`` and every payload byte. There is no byte stuffing, so the
-decoder frames on ``LEN`` and never searches for ``10 03``.
+``CHK`` is ``1 ^ SRC ^ DST ^ LEN`` XOR every payload byte. With the 408's addresses
+(``SRC ^ DST == 1``) this reduces to ``LEN`` XOR the payload; the 206 talks on address 0x02,
+where the full formula matters (verified on 8303 frames captured from a DSP 206).
+
+There is no byte stuffing, so the decoder frames on ``LEN`` and never searches for ``10 03``.
 """
 
 from __future__ import annotations
@@ -18,7 +21,7 @@ STX = b"\x10\x02"
 ETX = b"\x10\x03"
 
 HOST = 0x00
-DEVICE = 0x01
+DEVICE = 0x01  # address of a DSP 408 (a DSP 206 uses 0x02 and also answers on 0x01)
 
 HEADER_SIZE = 5  # STX(2) + SRC + DST + LEN
 TRAILER_SIZE = 3  # ETX(2) + CHK
@@ -29,9 +32,9 @@ class FrameError(ValueError):
     """Raised when a frame cannot be built."""
 
 
-def checksum(payload: bytes) -> int:
-    """Return ``LEN ^ payload[0] ^ ... ^ payload[-1]``."""
-    return reduce(xor, payload, len(payload) & 0xFF)
+def checksum(payload: bytes, src: int = HOST, dst: int = DEVICE) -> int:
+    """Return ``1 ^ SRC ^ DST ^ LEN ^ payload[0] ^ ... ^ payload[-1]``."""
+    return reduce(xor, payload, 1 ^ src ^ dst ^ (len(payload) & 0xFF))
 
 
 @dataclass(frozen=True, slots=True)
@@ -53,7 +56,7 @@ class Frame:
 
     @property
     def from_device(self) -> bool:
-        return self.src == DEVICE
+        return self.src != HOST
 
     def encode(self) -> bytes:
         return encode_frame(self.payload, src=self.src, dst=self.dst)
@@ -68,7 +71,11 @@ def encode_frame(payload: bytes, *, src: int = HOST, dst: int = DEVICE) -> bytes
     if not (0 <= src <= 0xFF and 0 <= dst <= 0xFF):
         raise FrameError("src/dst must be bytes")
     return (
-        STX + bytes((src, dst, len(payload))) + bytes(payload) + ETX + bytes((checksum(payload),))
+        STX
+        + bytes((src, dst, len(payload)))
+        + bytes(payload)
+        + ETX
+        + bytes((checksum(payload, src, dst),))
     )
 
 
@@ -107,7 +114,7 @@ class FrameDecoder:
                 break
             payload = bytes(buf[HEADER_SIZE : HEADER_SIZE + length])
             trailer = buf[HEADER_SIZE + length : total]
-            if length == 0 or trailer[:2] != ETX or trailer[2] != checksum(payload):
+            if length == 0 or trailer[:2] != ETX or trailer[2] != checksum(payload, buf[2], buf[3]):
                 # Not a real frame start: drop the 0x10 and look for the next STX.
                 self.bad_frames += 1
                 self.skipped_bytes += 1

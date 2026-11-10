@@ -1,8 +1,8 @@
-"""``dsp408-sim``: a simulated DSP 408 on the network, as a program of its own.
+"""``tracks-dsp-sim``: a simulated t.racks DSP on the network, as a program of its own.
 
-It listens on TCP port 9761 like the real device. Point ``tracks-dsp-controller --dsp-host``,
-the probe tools or the official editor at it. Every option can also come from a
-``DSP408_SIM_<NAME>`` environment variable.
+It plays a DSP 408 (default), 206 or 204 (``--model``) and listens on TCP port 9761 like the real
+device. Point ``tracks-dsp-controller --dsp-host``, the probe tools or the official editor at it.
+Every option can also come from a ``TRACKS_DSP_SIM_<NAME>`` environment variable.
 """
 
 from __future__ import annotations
@@ -18,18 +18,18 @@ from collections.abc import Sequence
 from pathlib import Path
 
 from tracks_dsp_controller import __version__
-from tracks_dsp_controller.protocol import config_map as cm
 from tracks_dsp_controller.protocol.profile import ProtocolProfile, load_profile
 from tracks_dsp_controller.simulator.console import Console
-from tracks_dsp_controller.simulator.device import DEFAULT_IDENTITY, SimulatedDevice
+from tracks_dsp_controller.simulator.device import SimulatedDevice
 from tracks_dsp_controller.simulator.faults import Faults
+from tracks_dsp_controller.simulator.models import DEFAULT_MODEL, SIM_MODELS
 from tracks_dsp_controller.simulator.scenarios import SCENARIOS, apply_scenario
 from tracks_dsp_controller.simulator.server import DEFAULT_PORT, SecondClient, SimulatorServer
 from tracks_dsp_controller.simulator.storage import PresetStore, read_config
 
 
 def _env(name: str, default: str | None = None) -> str | None:
-    return os.environ.get(f"DSP408_SIM_{name}", default)
+    return os.environ.get(f"TRACKS_DSP_SIM_{name}", default)
 
 
 def _env_float(name: str, default: float) -> float:
@@ -50,13 +50,19 @@ def _preset_arg(value: str) -> tuple[int, Path]:
 
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
-        prog="dsp408-sim",
-        description="Simulated t.racks DSP 408 on TCP, for testing tracks-dsp-controller without a "
-        "device.",
-        epilog="Example: dsp408-sim --state-dir sim-state   then   "
+        prog="tracks-dsp-sim",
+        description="Simulated t.racks DSP (408, 206 or 204) on TCP, for testing "
+        "tracks-dsp-controller without a device.",
+        epilog="Example: tracks-dsp-sim --state-dir sim-state   then   "
         "tracks-dsp-controller --dsp-host 127.0.0.1",
     )
     p.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
+    p.add_argument(
+        "--model",
+        default=_env("MODEL", DEFAULT_MODEL),
+        choices=list(SIM_MODELS),
+        help="DSP model to simulate (default 408)",
+    )
     p.add_argument(
         "--host",
         default=_env("HOST", "0.0.0.0"),
@@ -75,7 +81,8 @@ def build_parser() -> argparse.ArgumentParser:
         action="append",
         default=[],
         metavar="SLOT=FILE",
-        help="load a config dump (probe dump-config) into user preset SLOT (1-20); repeatable",
+        help="load a config dump (probe dump-config, same model) into user preset SLOT (1-20); "
+        "repeatable",
     )
     p.add_argument("--active", type=int, help="active preset at start-up (0 = F00)")
     p.add_argument(
@@ -84,12 +91,12 @@ def build_parser() -> argparse.ArgumentParser:
         default=_env("STATE_DIR"),
         help="keep stored presets and the active slot in this directory across restarts",
     )
-    p.add_argument("--identity", default=_env("IDENTITY", DEFAULT_IDENTITY))
+    p.add_argument("--identity", default=_env("IDENTITY"), help="0x13 reply (default: the model's)")
     p.add_argument(
         "--fast",
         action="store_true",
         default=_env_flag("FAST"),
-        help="answer recall and store at once (the DSP 408 takes 3.2 s and 7.4 s)",
+        help="answer recall and store at once (a DSP 408 takes 3.2 s and 7.4 s)",
     )
     faults = p.add_argument_group("fault injection (also adjustable from the console)")
     faults.add_argument("--latency-ms", type=float, default=_env_float("LATENCY_MS", 0.0))
@@ -114,14 +121,24 @@ def build_parser() -> argparse.ArgumentParser:
         default=_env("LOG_LEVEL", "info"),
         choices=["debug", "info", "warning", "error"],
     )
-    p.add_argument("--profile", type=Path, default=_env("PROFILE"), help="protocol profile TOML")
+    p.add_argument(
+        "--profile",
+        type=Path,
+        default=_env("PROFILE"),
+        help="protocol profile TOML overriding the model's built-in profile",
+    )
     return p
 
 
 def build_device(
     args: argparse.Namespace, profile: ProtocolProfile
 ) -> tuple[SimulatedDevice, Faults, PresetStore | None]:
-    device = SimulatedDevice(profile, identity=args.identity)
+    model = SIM_MODELS[args.model]
+    device = SimulatedDevice(profile, model=model, identity=args.identity or "")
+    if not model.replies_observed:
+        logging.getLogger(__name__).info(
+            "DSP %s: the bytes of the init replies are copied from the 206", model.key
+        )
     if args.fast:
         device.timing.recall_s = device.timing.store_s = 0.0
     faults = Faults(
@@ -140,8 +157,8 @@ def build_device(
         if not 1 <= slot <= profile.preset_count:
             raise ValueError(f"--preset slot must be within 1..{profile.preset_count}")
         try:
-            device.set_preset(slot, read_config(path))
-        except (OSError, cm.ConfigError) as exc:
+            device.set_preset(slot, read_config(path, device.layout))
+        except (OSError, ValueError) as exc:
             raise ValueError(f"cannot load {path}: {exc}") from exc
     if args.active is not None:
         if not 0 <= args.active <= profile.preset_count:
@@ -176,7 +193,7 @@ async def run(args: argparse.Namespace, profile: ProtocolProfile) -> int:
     await server.start()
     slot = "F00" if device.active_slot == 0 else f"U{device.active_slot:02d}"
     print(
-        f"dsp408-sim {__version__}: simulated DSP 408 '{device.identity}' on "
+        f"tracks-dsp-sim {__version__}: simulated DSP {device.model.key} '{device.identity}' on "
         f"{args.host}:{server.bound_port}, preset {slot} {device.live.preset_name!r}",
         flush=True,
     )
@@ -201,7 +218,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         format="%(asctime)s %(levelname)-7s %(name)s: %(message)s",
     )
     try:
-        profile = load_profile(args.profile)
+        profile = load_profile(args.profile, model=args.model)
     except (OSError, ValueError) as exc:
         print(f"error: cannot load profile: {exc}", file=sys.stderr)
         return 2

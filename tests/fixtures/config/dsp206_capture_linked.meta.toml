@@ -1,0 +1,8 @@
+# Live configuration blob of a real DSP 206 (firmware V0104P), 19 x 0x24 pages concatenated.
+device = "DSP 206"
+size = 928
+source = "https://github.com/FlexiFlizz/t.racks-DSP-control (capture_full.pcapng), GPL-3.0, (c) FlexiFlizz"
+notes = """
+Third config read of capture_full.pcapng: dsp206_capture.bin after the editor sent "2a 02 04"
+(copy the settings of Out1, protocol index 2, to Out3, index 4). Only Out3's record changes.
+"""

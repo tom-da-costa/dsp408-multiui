@@ -54,21 +54,22 @@ def format_meters(data: bytes, profile: ProtocolProfile) -> str:
         level = reading.levels_db[i]
         db = "   n/a" if level is None else f"{level:6.1f}"
         clip = "  CLIP" if reading.clip[i] else ""
-        lines.append(f"{name:<6}  {data[3 * i : 3 * i + 3].hex(' ')}  {db}{clip}")
+        slot = profile.meter_slot(i)
+        lines.append(f"{name:<6}  {data[3 * slot : 3 * slot + 3].hex(' ')}  {db}{clip}")
 
     def outputs(flags: tuple[bool, ...] | None) -> str:
         if flags is None:
             return "n/a"
         return " ".join(f"Out{i + 1}" for i, on in enumerate(flags) if on) or "-"
 
-    lines.append(f"tail    {data[3 * len(names) :].hex(' ')}")
+    lines.append(f"tail    {data[3 * profile.meter_slot_count :].hex(' ')}")
     lines.append(f"comp    {outputs(reading.comp)}")
     lines.append(f"limit   {outputs(reading.limit)}")
     return "\n".join(lines)
 
 
-def format_diff(before: bytes, after: bytes) -> str:
-    changes = cm.diff_blobs(before, after)
+def format_diff(before: bytes, after: bytes, layout: cm.ConfigLayout = cm.LAYOUT_408) -> str:
+    changes = cm.diff_blobs(before, after, layout)
     if not changes:
         return "no difference"
     return "\n".join(

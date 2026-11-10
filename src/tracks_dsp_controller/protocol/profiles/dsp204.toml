@@ -1,0 +1,32 @@
+# Protocol profile of the t.racks DSP 204 (2 inputs, 4 outputs), layered on top of default.toml
+# (the DSP 408): only the differences are listed.
+#
+# Tags (docs/PROTOCOL.md): 204 = documented by Givou/BetterDSPControl (MIT), an app tested on a
+# real DSP 204 (firmware V0104P; over USB, whose frames are the same as on TCP); HYP = our
+# hypothesis, copied from the DSP 206 (dsp206.toml). The 204's config blob is the 408 layout with
+# 2 inputs and 4 outputs (docs/PROTOCOL.md §10).
+
+name = "dsp204"
+
+[device]
+model = "DSP204"           # 204: identity starts with "DSP204"; "DSP204 V0104P" is HYP
+
+[frame]
+host_dst = 0x01            # 204: addressed as 0x01, like the 408 (the 206 is 0x02)
+
+[topology]
+input_count = 2            # 204: protocol indices 0x00-0x01 (In A-B)
+output_count = 4           # 204: protocol indices 0x02-0x05 (Out 1-4)
+preset_count = 20          # 204
+peq_bands_input = 8        # 204 (config records as the 408)
+peq_bands_output = 9       # 204
+geq_bands = 31             # 204
+
+[config]
+page_count = 15            # 204: chunks 0-14, 724 bytes
+page_size = 50             # 204
+last_page_size = 24        # 204
+
+[meters]
+input_slots = 4            # 204: the 408's 4 + 8 frame; the 204 fills slots 0-1 (In A-B) and
+output_slots = 8           # 4-7 (Out 1-4); byte 1 of the tail = limiter-active mask (bit 0 = Out 1)

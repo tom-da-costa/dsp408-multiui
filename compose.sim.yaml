@@ -1,40 +1,40 @@
 # Test bench without a DSP: the web app connected over TCP to a separate simulated DSP 408.
-#   docker compose -f compose.sim.yaml up -d      then open http://localhost:8080 (code 0000)
-#   docker attach dsp408-sim                      simulator console (type help; detach: Ctrl-P Ctrl-Q)
-# The simulator keeps stored presets in the dsp408-sim-state volume. Its port 9761 is also
+#   docker compose -f compose.sim.yaml up -d   then open http://localhost:8080 (code 0000)
+#   docker attach tracks-dsp-sim               simulator console (type help; detach: Ctrl-P Ctrl-Q)
+# The simulator keeps stored presets in the tracks-dsp-sim-state volume. Its port 9761 is also
 # published, so probe, a second app instance or the official editor can connect to it.
 services:
-  dsp408-sim:
+  tracks-dsp-sim:
     image: ${DSP408_IMAGE:-tracks-dsp-controller:latest}
     build: .
-    container_name: dsp408-sim
-    entrypoint: ["dsp408-sim"]
+    container_name: tracks-dsp-sim
+    entrypoint: ["tracks-dsp-sim"]
     command: ["--state-dir", "/app/state"]
-    stdin_open: true   # with tty: `docker attach dsp408-sim` opens the console
+    stdin_open: true   # with tty: `docker attach tracks-dsp-sim` opens the console
     tty: true
     healthcheck:
       disable: true    # a TCP probe would be one more DSP client
     ports:
-      - "${DSP408_SIM_PORT:-9761}:9761"
+      - "${TRACKS_DSP_SIM_PORT:-9761}:9761"
     volumes:
-      - dsp408-sim-state:/app/state
+      - tracks-dsp-sim-state:/app/state
     environment:
-      DSP408_SIM_SCENARIO: ${DSP408_SIM_SCENARIO:-demo}
-      DSP408_SIM_FAST: ${DSP408_SIM_FAST:-false}
-      DSP408_SIM_SECOND_CLIENT: ${DSP408_SIM_SECOND_CLIENT:-accept}
-      DSP408_SIM_LOG_LEVEL: ${DSP408_LOG_LEVEL:-info}
+      TRACKS_DSP_SIM_SCENARIO: ${TRACKS_DSP_SIM_SCENARIO:-demo}
+      TRACKS_DSP_SIM_FAST: ${TRACKS_DSP_SIM_FAST:-false}
+      TRACKS_DSP_SIM_SECOND_CLIENT: ${TRACKS_DSP_SIM_SECOND_CLIENT:-accept}
+      TRACKS_DSP_SIM_LOG_LEVEL: ${DSP408_LOG_LEVEL:-info}
 
   dsp408:
     image: ${DSP408_IMAGE:-tracks-dsp-controller:latest}
     build: .
     container_name: tracks-dsp-controller-sim
-    depends_on: [dsp408-sim]
+    depends_on: [tracks-dsp-sim]
     ports:
       - "${DSP408_LISTEN_PORT:-8080}:8080"
     environment:
-      DSP408_HOST: dsp408-sim
+      DSP408_HOST: tracks-dsp-sim
       DSP408_PIN: ${DSP408_PIN:-0000}
       DSP408_LOG_LEVEL: ${DSP408_LOG_LEVEL:-info}
 
 volumes:
-  dsp408-sim-state:
+  tracks-dsp-sim-state:

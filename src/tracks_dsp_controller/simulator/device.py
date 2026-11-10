@@ -1,4 +1,4 @@
-"""Simulated DSP 408 state machine (no I/O).
+"""Simulated DSP state machine (no I/O): a DSP 408, 206 or 204 (``simulator.models``).
 
 ``SimulatedDevice.handle`` takes one request payload and returns what the device answers, how
 long it takes, and whether it "crashes" (closes the connection). The TCP server in
@@ -21,10 +21,11 @@ from tracks_dsp_controller.protocol import responses as rsp
 from tracks_dsp_controller.protocol.codecs import PRESET_NAME_LENGTH, encode_stored_name
 from tracks_dsp_controller.protocol.profile import ProtocolProfile
 from tracks_dsp_controller.simulator.meters import MeterSimulator
+from tracks_dsp_controller.simulator.models import DEFAULT_MODEL, SIM_MODELS, SimModel
 
 log = logging.getLogger(__name__)
 
-DEFAULT_IDENTITY = "DSP408 V0104P"  # 408: identity string of firmware V0104P
+DEFAULT_IDENTITY = SIM_MODELS[DEFAULT_MODEL].identity  # "DSP408 V0104P"
 EMPTY_PRESET_NAME = "Default Preset"
 
 
@@ -56,7 +57,8 @@ class Link:
 @dataclass
 class SimulatedDevice:
     profile: ProtocolProfile
-    identity: str = DEFAULT_IDENTITY
+    model: SimModel = SIM_MODELS[DEFAULT_MODEL]
+    identity: str = ""  # 0x13 reply; empty = the model's
     timing: Timing = field(default_factory=Timing)
     clock: Callable[[], float] | None = None  # for meters; defaults to time.monotonic
     # Called after a preset recall or store (the standalone simulator persists presets with it).
@@ -71,9 +73,12 @@ class SimulatedDevice:
     meters: MeterSimulator = field(init=False)
     requests_handled: int = field(init=False, default=0)
 
+    layout: cm.ConfigLayout = field(init=False)
+
     def __post_init__(self) -> None:
-        cm.check_layout(self.profile)
-        factory = cm.default_config(EMPTY_PRESET_NAME)
+        self.layout = cm.check_layout(self.profile)
+        self.identity = self.identity or self.model.identity
+        factory = cm.default_config(EMPTY_PRESET_NAME, self.layout)
         self.presets = [factory] * (self.profile.preset_count + 1)
         self.live = factory
         self.meters = MeterSimulator(self.profile, clock=self.clock)
@@ -82,6 +87,11 @@ class SimulatedDevice:
     def set_preset(self, slot: int, config: cm.RawConfig) -> None:
         if not 0 <= slot <= self.profile.preset_count:
             raise ValueError(f"slot out of range: {slot}")
+        if cm.config_layout(config) != self.layout:
+            raise ValueError(
+                f"a {len(config.inputs)}x{len(config.outputs)} config does not fit a "
+                f"{self.layout.inputs}x{self.layout.outputs} device"
+            )
         self.presets[slot] = config
 
     def load(self, slot: int) -> None:
@@ -124,13 +134,13 @@ class SimulatedDevice:
         match r:
             case cmd.Handshake():
                 link.ready = True
-                return self._reply(rsp.HandshakeReply(bytes((self.profile.preset_count,))))
+                return self._reply(rsp.HandshakeReply(self.model.handshake))
             case cmd.GetDeviceInfo():
                 return self._reply(rsp.DeviceInfo(self.identity))
             case cmd.GetStatus():
-                return self._reply(rsp.Status(bytes.fromhex("00 27 0f 00 00 00")))
+                return self._reply(rsp.Status(self.model.status))
             case cmd.GetPresetHeader():
-                return self._reply(rsp.PresetHeader(b"\xff\xff" + bytes(28)))
+                return self._reply(rsp.PresetHeader(self.model.preset_header))
             case cmd.GetActivePreset():
                 return self._reply(rsp.ActivePreset(self.active_slot))
             case cmd.GetPresetName(index=index):
@@ -149,8 +159,8 @@ class SimulatedDevice:
                 return self._ack(self.timing.recall_s)
             case cmd.SetPresetName(name=name):
                 self.pending_name = name
-                # 408: the ACK echoes the name
-                echo = b"\x01" + encode_stored_name(name, PRESET_NAME_LENGTH, b" ")
+                # 408 / 206: the ACK echoes the name
+                echo = self.model.name_ack + encode_stored_name(name, PRESET_NAME_LENGTH, b" ")
                 return Reply(rsp.Ack(echo), self.timing.default_s)
             case cmd.StorePreset(slot=slot):
                 stored = replace(

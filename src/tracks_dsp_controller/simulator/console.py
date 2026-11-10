@@ -28,7 +28,7 @@ drop RATE | corrupt RATE        share of responses dropped / sent with a bad che
 nan RATE                        share of meter frames without data (0-1)
 disconnect-after N | off        close each connection after N requests
 second-client accept|refuse|kick
-signal CH|all SHAPE [DB]        input signal: CH = A-D, SHAPE = music|steady|noise|silence
+signal CH|all SHAPE [DB]        input CH (A-D, or A-B on a 206/204): music|steady|noise|silence
 help | quit"""
 
 SIGNAL_CHANNELS = "ABCD"
@@ -94,7 +94,7 @@ class Console:
         )
         return "\n".join(
             (
-                f"identity        {d.identity}",
+                f"model           DSP {d.model.key}, identity {d.identity}",
                 f"network         {'online' if s.running else 'OFFLINE'}"
                 + (f" on {s.host}:{s.bound_port}" if s.running else ""),
                 f"clients         {peers} (second client: {s.second_client})",
@@ -184,7 +184,8 @@ class Console:
         elif len(channel) == 1 and channel.upper() in SIGNAL_CHANNELS[: len(sources)]:
             indices = [SIGNAL_CHANNELS.index(channel.upper())]
         else:
-            raise ConsoleError("channel must be A-D or all")
+            last = SIGNAL_CHANNELS[len(sources) - 1]
+            raise ConsoleError(f"channel must be A-{last} or all")
         new_shape = Shape(shape.lower())
         for i in indices:
             old = sources[i]

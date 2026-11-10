@@ -4,18 +4,20 @@ This document cross-references the reverse-engineering work of the projects list
 the [README](../README.md#sources-and-credits) and condenses it into a single, actionable reference for
 this project. Every item carries a confidence tag. A hardware verification session verified most
 of it on a real DSP 408 (firmware V0104P, 2026-11-08): items tagged **HW** below. What is still
-open is listed in §9.
+open is listed in §9. The DSP 206 and 204, which the simulator can also play, are in §10.
 
 ## 0. Sources and how much to trust them
 
 | Project | Device | Transport | Language | Method | Trust |
 |---|---|---|---|---|---|
 | [Aeternitaas/dsp-408-ui](https://github.com/Aeternitaas/dsp-408-ui) (`juli303/t-dsp-ui` is an identical fork) | **DSP 408** | TCP 9761 | Dart/Flutter | Wireshark captures of the official editor, working app | **Only source tested on a DSP 408.** Reliable for what the app ships (gain, mute, matrix, GEQ, presets, meter poll). PEQ / crossover are marked "in development" there and contain errors (see §4). |
-| [FlexiFlizz/t.racks-DSP-control](https://github.com/FlexiFlizz/t.racks-DSP-control) | DSP 206 (2×6) | TCP 9761 + USB HID | Python | Wireshark captures, hardware tests on a 206 | Good for opcodes the 408 project lacks (delay, phase, compressor, limiter, gate, slopes). 408 support is "untested" in that repo. |
+| [FlexiFlizz/t.racks-DSP-control](https://github.com/FlexiFlizz/t.racks-DSP-control) | DSP 206 (2×6) | TCP 9761 + USB HID | Python | Wireshark captures, hardware tests on a 206 | Good for opcodes the 408 project lacks (delay, phase, compressor, limiter, gate, slopes). 408 support is "untested" in that repo. Its Wireshark captures (`*.pcapng`) of the official editor and a real 206 are the source of §10; its own 206 simulator invents its config data and is not used. |
+| [Givou/BetterDSPControl](https://git.thiemoo.at/Givou/BetterDSPControl) (MIT) | **DSP 204**, DSP 408 | TCP 9761 + USB HID | Python | Control app, tested on a real 204 (V0104P, over USB); the 408 "briefly tried" | Source for the 204 (§10). Its protocol notes agree with our 408 verification (frame, checksum, layout, meters, links, encodings). |
 | [IMBArator/miniDSP-Linux](https://github.com/IMBArator/miniDSP-Linux) | DSP 4x4 Mini | USB HID | Python | Very rigorous: every claim backed by a capture, plus a Ghidra pass on the editor | Best documentation of the *protocol family*: framing, ACKs, presets, link, lock, test tone, meter tail. Values and ranges differ per model. |
 
-All three are **GPL-3.0**. This project is **AGPL-3.0**; GPLv3 §13 / AGPLv3 §13 explicitly
-allow combining the two, so code may be reused **with attribution** (keep copyright
+The first three are **GPL-3.0**, BetterDSPControl is **MIT**. This project is **AGPL-3.0**;
+GPLv3 §13 / AGPLv3 §13 allow combining GPL code, and MIT code can be included with its notice, so
+code may be reused **with attribution** (keep copyright
 headers, list the origin in the README's attribution table).
 
 Confidence tags used below:
@@ -24,6 +26,9 @@ Confidence tags used below:
   request and a config read showed exactly the expected bytes, or the value was compared with
   the official editor. The recorded writes are in `tests/fixtures/hardware/write_diffs.json`.
 - **408**: observed on a DSP 408 over TCP (dsp-408-ui).
+- **206**: observed on a real DSP 206 (firmware V0104P) in the Wireshark captures of
+  t.racks-DSP-control, decoded by this project (§10).
+- **204**: documented by BetterDSPControl from a real DSP 204 (firmware V0104P) (§10).
 - **SIB**: verified on a sibling model only (206 or 4x4 Mini); very likely the same on the 408.
 - **CONFLICT**: sources disagree; the value we will use first is marked ▶.
 - **UNKNOWN**: not documented anywhere; must be captured.
@@ -53,22 +58,22 @@ Confidence tags used below:
 | Field | Size | Host → DSP | DSP → host |
 |---|---|---|---|
 | STX | 2 | `10 02` | `10 02` |
-| SRC | 1 | `00` | `01` |
-| DST | 1 | `01` | `00` |
+| SRC | 1 | `00` | device address: `01` (408), `02` (206) |
+| DST | 1 | device address | `00` |
 | LEN | 1 | length of PAYLOAD | idem |
 | PAYLOAD | LEN | opcode + arguments | opcode + data, or `01` (ACK) |
 | ETX | 2 | `10 03` | `10 03` |
-| CHK | 1 | `LEN ^ payload[0] ^ … ^ payload[LEN-1]` | idem |
+| CHK | 1 | `1 ^ SRC ^ DST ^ LEN ^ payload[0] ^ … ^ payload[LEN-1]` | idem |
 
-- **Checksum**: some sources describe it as "XOR of everything between STX and ETX, seeded
-  with 1". The two definitions are equivalent because `SRC ^ DST == 1`. Use the LEN+payload
-  form. (408 + SIB)
+- **Checksum**: the XOR of everything between STX and ETX, seeded with 1. On the 408
+  (`SRC ^ DST == 1`) it reduces to `LEN ^ payload`, the form dsp-408-ui uses; on the 206
+  (address `02`) only the full form is right: it checks on all 8303 captured frames. (408 + 206)
 - **No byte stuffing** has been observed (a `0x10` inside the payload is sent as-is).
   The parser **must** therefore frame on `LEN` and then check `10 03 CHK`; it must **not**
   search for the first `10 03` like dsp-408-ui does, because a payload can legitimately
   contain those bytes (e.g. a gain or frequency value). (SIB)
-- **CONFLICT on DST**: t.racks-DSP-control claims the editor sends `DST = 02` on the 206. That
-  changes the checksum, and nothing else confirms it. ▶ Use `00 01` (what works on the 408).
+- **Device address**: the 408 is `01` (HW). The editor addresses the 206 as `02`; the 206 also
+  answers requests sent to `01`, replying from `01` (206). The profile sets it (`host_dst`).
 - Generic **ACK** from the DSP: payload `01`, i.e. `10 02 01 00 01 01 10 03 00`. (SIB; dsp-408-ui
   treats "any response" as an ACK, which is compatible.)
 - TCP is a byte stream: one `recv()` can return several frames, or part of one. Buffer and resync on
@@ -85,8 +90,8 @@ Confidence tags used below:
 | `0x02` | In C | | |
 | `0x03` | In D | | |
 
-(408) Note that the 206 uses contiguous indexes (outputs from `0x02`). The 408 does not, so do not
-reuse the 206 tables.
+(408) The outputs start at `0x04`, right after the 4 inputs. On the 206 they also follow the
+inputs, so they start at `0x02` (§10): output `n` is always `input_count + n`.
 
 Bitmasks:
 
@@ -352,7 +357,7 @@ with the ▶ choice as default. The hardware session of 2026-11-08 (firmware V01
 | Q4 | Compressor `0x30` and limiter `0x3f` layouts | **Answered (HW)**: 206 layout |
 | Q5 | Slope table on the 408 and bypass | **Partly**: slope 0 = bypass and raw slopes are stored as sent (HW); the names of the 21 entries are still to compare with the editor |
 | Q6 | Gate, phase, names, link on the 408 | **Answered (HW)**, link included (2026-11-10): see `2a` / `3b` in §5.3 |
-| Q7 | Matrix crosspoint gain opcode | Open |
+| Q7 | Matrix crosspoint gain opcode | **Partly (204)**: `41 ch input u16 level` on a DSP 204 (§10); not tried on a 408 |
 | Q8 | `0x2c` and `0x10` responses; DSP PIN lock | **Answered (HW)** for the responses (§5.1); PIN lock not tested |
 | Q9 | Write ACK format; unsolicited frames | **Answered (HW)**: ACK = `01` (the `26` ACK echoes the name); no unsolicited frames seen |
 | Q10 | Second TCP client: refused, accepted, or kicks the first one? Idle timeout? | Open |
@@ -363,3 +368,70 @@ with the ▶ choice as default. The hardware session of 2026-11-08 (firmware V01
 Capture method: Wireshark on the PC that runs the official editor (`tcp.port == 9761`), the
 built-in `proxy` sub-command, or a write + `probe dump-config` + `probe diff-config` cycle on a
 test preset (what the hardware session did).
+
+---
+
+## 10. Other models: DSP 206 and DSP 204
+
+The simulator can play a DSP 206 or 204 (`tracks-dsp-sim --model 206|204`). Their protocol
+profiles are `protocol/profiles/dsp206.toml` and `dsp204.toml`, layered on top of the 408's.
+
+**DSP 206 (2 inputs, 6 outputs).** Everything below comes from the Wireshark captures published
+by t.racks-DSP-control (official editor and a real 206, firmware V0104P), decoded with this
+project's frame decoder (206). The fixtures are `tests/fixtures/config/dsp206_capture*.bin` and
+`tests/fixtures/dsp206/frames.txt`; `tests/unit/test_dsp206.py` checks them.
+
+| Item | DSP 206 | Same as the 408? |
+|---|---|---|
+| Device address | `02` (also answers on `01`) | no: `01` |
+| Checksum | full form of §2 | yes (same formula) |
+| Identity (`13`) | `DSP206 V0104P` | no: `DSP408 V0104P` |
+| Handshake (`10`) | `10 19` | no: `10 13` |
+| `22` reply | `22` + 20 zero bytes | no: `22 ff ff` + 28 zero bytes |
+| `2c` reply | `2c 00 27 0f 00 00 0x`, last byte = PIN lock (1 after the editor set a PIN with `2f`) | yes, with the lock flag seen set |
+| `26` ACK | `01 00` + name | no: `01 01` + name |
+| Presets | 20 (`29 00` … `29 13`) | yes |
+| Channel indices | In A–B = `00`–`01`, Out 1–6 = `02`–`07` | outputs follow the inputs in both |
+| Parameter writes | same opcodes and payloads (`30`, `31`, `32`, `33`, `34`, `35`, `36`, `38`, `3a`, `3b`, `3d`, `3e`, `3f`, `48`, `2a`), ACK `01` | yes |
+| Config | 19 pages (18 × 50 + 28) = **928 bytes** | same records: 2 × 140-byte inputs, 6 × 100-byte outputs, 32-byte trailer |
+| Meters (`40`) | `LEN = 0x27`: the 408's 12 slots; In A–B in slots 0–1, Out 1–6 in slots 4–9, the other slots zero | same frame |
+
+The config blob is the 408 layout of §7 with fewer channels (`ConfigLayout` in
+`protocol/config_map.py`): an output record holds one crosspoint gain per input (96 + 2 × inputs
+bytes: 104 on the 408, 100 on the 206) and the trailer has one PEQ band bypass mask per channel
+(16 + 2 × channels bytes: 40 on the 408, 32 on the 206). Checked on the captured blob: every
+field decodes to the values the editor wrote just before (Out 1 renamed "TEST", −6 dB, 10 ms,
+crossover, PEQ band 1, compressor, limiter, Out 1 + Out 2 linked), and the link `2a 02 04`
+changes only Out 3's record, exactly as the 408 does. The trailer's PEQ bypass mask offsets are
+inferred from the 408 (no captured write toggles them).
+
+The captured meter frames read about −86 dBu on every channel (no signal), which is the 408's
+float32 encoding at the ADC noise floor. t.racks-DSP-control reads them as float16, which would
+show a constant −7.6 dBFS on an idle device.
+
+**DSP 204 (2 inputs, 4 outputs).** From [Givou/BetterDSPControl](https://git.thiemoo.at/Givou/BetterDSPControl)
+(MIT), a control app tested on a real DSP 204, firmware V0104P, over USB (whose HID reports carry
+the same frames as TCP) (204). It agrees with everything we know of the 408 and the 206:
+
+| Item | DSP 204 | Conf. |
+|---|---|---|
+| Device address | `01`, like the 408 (the 206 uses `02`) | 204 |
+| Checksum | full form of §2 | 204 |
+| Identity (`13`) | starts with `DSP204`; the full string `DSP204 V0104P` is our guess | 204 / HYP |
+| Init sequence, presets | the 408's, 20 presets | 204 |
+| Channel indices | In A–B = `00`–`01`, Out 1–4 = `02`–`05` | 204 |
+| Config | chunks 0–14 = **724 bytes**: the 408 records with 2 inputs and 4 outputs, as computed by `ConfigLayout` | 204 |
+| Meters | the 4 + 8 slot frame; the 204 fills slots 0–1 and 4–7; tail byte 1 = limiter-active mask (`00 03` while Out 1+2 limit, `00 0C` for Out 3+4) | 204 |
+| Links | same masks and behaviour as the 408 (read on a 204: `3 0` on the inputs, `3 0 12 0` on the outputs for In A+B, Out 1+2, Out 3+4); a write to a member changes the group, except name, routing and mix levels | 204 |
+| Handshake, `22` and `26` reply bytes | not documented; the simulator copies the 206's | HYP |
+
+`tests/unit/test_dsp204.py` checks the 204 profile against these observations.
+
+BetterDSPControl also documents, from the 204 (204, not verified on a 408 by this project):
+
+- `41 ch input u16` sets a **mix level** (matrix crosspoint gain, Q7), `49 ch 0/1` bypasses an
+  input's GEQ, `15 unit` sets the delay display unit, and the editor sends `11` after a new PIN.
+- The config trailer's 6 unknown bytes after the band bypass masks are the test-signal source,
+  the test-signal frequency index and one unknown u16; after the two PEQ bypass masks, the u16 at
+  `14 + 2C` is the input GEQ bypass mask.
+- `2c` reply: byte 0 and bytes 1–4 belong to a time-based lock, byte 5 is the PIN lock flag.

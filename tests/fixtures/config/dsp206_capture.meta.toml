@@ -1,0 +1,9 @@
+# Live configuration blob of a real DSP 206 (firmware V0104P), 19 x 0x24 pages concatenated.
+device = "DSP 206"
+size = 928
+source = "https://github.com/FlexiFlizz/t.racks-DSP-control (capture_full.pcapng), GPL-3.0, (c) FlexiFlizz"
+notes = """
+Second of the three config reads of the official editor in capture_full.pcapng (the first one
+is identical). Before the read, the editor renamed Out1 to "TEST", set Out1's compressor and
+limiter, linked Out1 + Out2 and set their crossover, PEQ band 1, gain (-6 dB) and delay (10 ms).
+"""
