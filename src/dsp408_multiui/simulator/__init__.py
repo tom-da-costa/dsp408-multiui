@@ -1,4 +1,4 @@
-"""Protocol-accurate simulated DSP 408 (docs/SPEC.md §4.5)."""
+"""Protocol-accurate simulated DSP 408 (docs/ARCHITECTURE.md §5)."""
 
 from dsp408_multiui.simulator.device import SimulatedDevice
 from dsp408_multiui.simulator.faults import Faults

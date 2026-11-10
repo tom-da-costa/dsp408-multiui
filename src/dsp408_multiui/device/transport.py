@@ -1,6 +1,6 @@
 """Minimal asyncio TCP transport to the DSP: one request in flight.
 
-Phase 3 builds the command pipeline and the device session on top of this.
+The command pipeline and the device session are built on top of this.
 """
 
 from __future__ import annotations

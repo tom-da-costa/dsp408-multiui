@@ -1,6 +1,6 @@
 # Default protocol profile for the t.racks DSP 408.
 #
-# Every value that is not verified on a DSP 408 lives here (docs/SPEC.md §4.6). The comments give
+# Every value that is not verified on a DSP 408 lives here (docs/ARCHITECTURE.md §6). The comments give
 # the confidence tag from docs/PROTOCOL.md: 408 = seen on a DSP 408, SIB = sibling model only,
 # CONFLICT = sources disagree (the chosen value is the ▶ choice), HYP = our own hypothesis.
 # Override with `--profile my.toml`: any subset of keys, same sections.

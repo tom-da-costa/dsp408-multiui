@@ -8,13 +8,16 @@ A web app that controls one t.racks DSP 408 over TCP (port 9761). Several browse
 first) control it at the same time with live meters. A single Python process owns the DSP
 connection and serves the API, the WebSocket and the static UI.
 
-**Current status: see `docs/PROGRESS.md`** (keep it updated with every change). Read these before
-doing anything substantial:
+Read these before doing anything substantial:
 
-- `docs/SPEC.md`: requirements (IDs such as F-P-1), architecture, WebSocket API, decisions D1–D13
-- `docs/PLAN.md`: phases and their exit criteria. Work phase by phase.
-- `docs/PROTOCOL.md`: protocol synthesis. Every item is tagged 408 / SIB / CONFLICT / UNKNOWN.
-- `docs/SOURCES.md`: upstream projects (all GPL-3.0) and the attribution table
+- `README.md`: features, compatibility, usage, sources and the attribution table
+- `CONTRIBUTING.md`: development setup, checks, code rules, device safety
+- `docs/ARCHITECTURE.md`: components, state model, command pipeline, simulator, WebSocket API,
+  security, design choices (keep it in sync with the code)
+- `docs/PROTOCOL.md`: protocol synthesis. Every item is tagged HW / 408 / SIB / CONFLICT / UNKNOWN.
+
+The repository is public: do not commit private details (the owner's LAN addresses, host names,
+credentials). Release notes come from the merged PRs (`gh release create --generate-notes`).
 
 ## Language
 
@@ -32,7 +35,7 @@ doing anything substantial:
 - **Develop and test against the simulator.** It reproduces the DSP 408's recorded behaviour
   (`tests/hardware/`). `dsp408-sim` is a separate program that the backend reaches over TCP
   like the real device; `serve --demo` runs the same simulated device in-process. Never assume
-  an unverified protocol detail is true: put it in the `ProtocolProfile` (SPEC §4.6).
+  an unverified protocol detail is true: put it in the `ProtocolProfile` (ARCHITECTURE §6).
 - **The owner's real DSP 408 is in production use.** Read-only commands (`probe info`, `probe
   meters`, `probe dump-config`, `serve` without clients writing) are fine. **Never write to it,
   recall or store a preset without the owner's explicit approval in the current session**, and
@@ -86,8 +89,8 @@ make web-test                             # svelte-check + vitest
   GitHub Actions (`.github/workflows/`) on GitHub-hosted runners: native arm64 runner for the
   linux-arm64 executable, Windows runner for the Windows executable, images on `ghcr.io`.
 - Conventional Commits (`feat:`, `fix:`, `docs:` …).
-- Upstream projects (`docs/SOURCES.md`) can be cloned for reference **outside the repo**, in a
+- Upstream projects (README, "Sources and credits") can be cloned for reference **outside the repo**, in a
   scratch directory. Never vendor them. Copied code or test vectors keep their copyright notice
-  and get a row in the `docs/SOURCES.md` attribution table.
+  and get a row in the README attribution table.
 - When a protocol question is answered, update `docs/PROTOCOL.md` (confidence tag), the profile
   defaults and the fixtures together.

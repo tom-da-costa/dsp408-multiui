@@ -1,6 +1,6 @@
 # Distribution and releases
 
-The four launch modes of [SPEC §7.1](SPEC.md) and how each is produced.
+The launch modes of the [README](../README.md#usage) and how each is produced.
 
 | Mode | Built by | Output |
 |---|---|---|
@@ -29,7 +29,7 @@ sources. The `web` CI job rebuilds the UI and fails if the committed build diffe
 
 ## Making a release
 
-1. Set `version = "X.Y.Z"` in `pyproject.toml`, run `uv lock`, update `docs/PROGRESS.md`, merge to
+1. Set `version = "X.Y.Z"` in `pyproject.toml`, run `uv lock`, merge to
    `main`.
 2. Tag and push: `git tag vX.Y.Z && git push origin vX.Y.Z`.
 3. `.github/workflows/release.yml` (the same workflow builds the rolling "main" release):
@@ -45,7 +45,7 @@ Everything runs on GitHub-hosted runners with the automatic Actions token: no se
 
 | Job | Runner | How |
 |---|---|---|
-| `exe-linux` amd64 | `ubuntu-24.04` | `packaging/exe.Dockerfile` (Debian bookworm, so the executable runs on glibc ≥ 2.36: Debian 12, Raspberry Pi OS bookworm, Ubuntu 22.04+) |
+| `exe-linux` amd64 | `ubuntu-24.04` | `packaging/exe.Dockerfile` (Debian bookworm, so the executable runs on glibc ≥ 2.36: Debian 12, Raspberry Pi OS bookworm, Ubuntu 24.04) |
 | `exe-linux` arm64 | `ubuntu-24.04-arm` | same Dockerfile, built natively on the arm64 runner (no emulation) |
 | `exe-windows` | `windows-latest` | `packaging/build_exe.sh` under Git Bash, Python 3.12 from `actions/setup-python` |
 | `docker` | `ubuntu-latest` | `docker/build-push-action`, amd64 + arm64 (arm64 through QEMU), layer cache in the Actions cache |

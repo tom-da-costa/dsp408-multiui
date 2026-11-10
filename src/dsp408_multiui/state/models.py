@@ -1,4 +1,4 @@
-"""Device state in physical units, as sent to clients (docs/SPEC.md §4.2).
+"""Device state in physical units, as sent to clients (docs/ARCHITECTURE.md §3).
 
 Every parameter has a **path**: the dotted JSON location of the value in this model, e.g.
 ``outputs.2.gain_db``, ``inputs.0.peq.3`` (a whole band) or ``outputs.5.crossover.hpf``.

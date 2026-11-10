@@ -193,7 +193,7 @@ async def test_survives_a_stressed_link() -> None:
         await s.stop()
 
 
-# Every channel-detail parameter (PLAN phase 7), as (path, value) pairs.
+# Every channel-detail parameter, as (path, value) pairs.
 DETAIL_WRITES: list[tuple[str, Any]] = [
     ("inputs.1.phase", True),
     ("inputs.1.peq_bypass", True),
