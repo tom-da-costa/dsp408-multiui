@@ -74,7 +74,7 @@
         <button disabled={app.readOnly || busy} onclick={() => recall(0, "Factory default")}
           >Recall</button
         >
-        <span></span>
+        <span class="spacer"></span>
       </li>
       {#each device.presets as preset (preset.slot)}
         <li class:active={device.active_slot === preset.slot}>
@@ -111,24 +111,66 @@
 {/if}
 
 <style>
+  /* Buttons stay next to the name (no wide gap on a desktop) and rows are separated, so it is
+     clear which preset a Recall / Store button belongs to. */
   ul {
     list-style: none;
     margin: 0;
     padding: 0;
     display: grid;
-    gap: 6px;
+    max-width: 560px;
   }
   li {
     display: grid;
-    grid-template-columns: 3.2em 1fr auto auto;
+    /* fixed button columns: every row lines up, F00 (no Store) included */
+    grid-template-columns: 3.2em minmax(0, 1fr) 5.4em 5.4em;
     gap: 8px;
     align-items: center;
-    padding: 4px 6px;
-    border-radius: var(--radius);
+    padding: 6px;
+    border-bottom: 1px solid var(--line);
+  }
+  li:last-child {
+    border-bottom: none;
+  }
+  li > button {
+    padding: 0 8px;
+  }
+  /* Narrow (phone): the full name on the first line, the buttons right under it. */
+  ul {
+    container-type: inline-size;
+  }
+  @container (max-width: 380px) {
+    li {
+      grid-template-columns: 3.2em 1fr 5.4em 5.4em;
+      grid-template-areas: "slot name name name" ". . recall store";
+      row-gap: 4px;
+    }
+    li > .slot {
+      grid-area: slot;
+    }
+    li > .name {
+      grid-area: name;
+      white-space: normal;
+    }
+    li > button:nth-of-type(1) {
+      grid-area: recall;
+    }
+    li > button:nth-of-type(2),
+    li > .spacer {
+      grid-area: store;
+    }
+  }
+  li:nth-child(even):not(.active) {
+    background: rgba(255, 255, 255, 0.025);
+  }
+  li:hover:not(.active) {
+    background: rgba(255, 255, 255, 0.06);
   }
   li.active {
     background: rgba(61, 220, 151, 0.12);
     outline: 1px solid var(--accent);
+    outline-offset: -1px;
+    border-radius: 6px;
   }
   .slot {
     font-variant-numeric: tabular-nums;
