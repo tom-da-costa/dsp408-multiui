@@ -93,6 +93,9 @@ make web-test                                      # svelte-check + vitest
   GitHub Actions (`.github/workflows/`) on GitHub-hosted runners: native arm64 runner for the
   linux-arm64 executable, Windows runner for the Windows executable, images on `ghcr.io`.
 - Conventional Commits (`feat:`, `fix:`, `docs:` …).
+- **Releases: no PR.** The version bump (`pyproject.toml` + `uv lock`) is committed as
+  `chore: release X.Y.Z` directly on `main` and pushed, then the `vX.Y.Z` tag is pushed
+  (`docs/release.md`). Other changes still go through a PR.
 - Upstream projects (README, "Sources and credits") can be cloned for reference **outside the repo**, in a
   scratch directory. Never vendor them. Copied code or test vectors keep their copyright notice
   and get a row in the README attribution table.

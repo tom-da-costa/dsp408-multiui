@@ -29,8 +29,8 @@ sources. The `web` CI job rebuilds the UI and fails if the committed build diffe
 
 ## Making a release
 
-1. Set `version = "X.Y.Z"` in `pyproject.toml`, run `uv lock`, merge to
-   `main`.
+1. Set `version = "X.Y.Z"` in `pyproject.toml`, run `uv lock`, commit
+   `chore: release X.Y.Z` directly on `main` (no pull request) and push.
 2. Tag and push: `git tag vX.Y.Z && git push origin vX.Y.Z`.
 3. `.github/workflows/release.yml` (the same workflow builds the rolling "main" release):
    1. checks that the tag matches the version and runs the tests;
