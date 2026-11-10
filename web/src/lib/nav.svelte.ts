@@ -1,6 +1,8 @@
 // Navigation: main tab plus the sub-tab of "Params" (a setting) and "Channels" (a channel),
 // mirrored in the URL hash (#params/gain, #channels/outputs.3, #aio …) so that reloads and the
-// browser's back button (or a phone's back gesture) work.
+// browser's back button (or a phone's back gesture) work. The screen lock freezes it.
+
+import { app } from "./app.svelte";
 
 export const TABS = [
   ["live", "Live", "🎛"],
@@ -90,7 +92,16 @@ class Nav {
     return this.tab;
   }
 
+  /** Locked screen: the view stays as it is (tabs, sub-tabs, channel shown). */
+  private get frozen(): boolean {
+    return app.screenLocked;
+  }
+
   fromHash(): void {
+    if (this.frozen) {
+      this.go(false); // back / forward while locked: put the current view's URL back
+      return;
+    }
     const [head = "", sub = ""] = location.hash.slice(1).split("/");
     if (isTab(head)) {
       this.tab = head;
@@ -113,17 +124,20 @@ class Nav {
   }
 
   select(tab: Tab): void {
+    if (this.frozen) return;
     this.tab = tab;
     this.go(false);
   }
 
   selectParam(param: Param): void {
+    if (this.frozen) return;
     this.tab = "params";
     this.param = param;
     this.go(false);
   }
 
   selectChannel(path: string): void {
+    if (this.frozen) return;
     this.tab = "channels";
     this.channel = path;
     this.go(false);
@@ -131,6 +145,7 @@ class Nav {
 
   /** Jump to a channel from another view; "back" returns to that view. */
   open(path: string): void {
+    if (this.frozen) return;
     this.tab = "channels";
     this.channel = path;
     this.go(true);

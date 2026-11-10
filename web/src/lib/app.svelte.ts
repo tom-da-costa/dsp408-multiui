@@ -37,9 +37,13 @@ class App {
   hello = $state<Hello | null>(null);
   device = $state<DeviceState | null>(null);
   status = $state<DeviceMessage | null>(null);
+  /** Control: the client that alone may write, if any (the `lock` messages). */
   lock = $state<LockMessage | null>(null);
-  /** performance.now() deadline of the lock's idle release (null when free). */
+  /** performance.now() deadline of the control's idle release (null when free). */
   lockDeadline = $state<number | null>(null);
+  /** Screen lock: this browser is read-only (the screen stays readable) until the access code
+   * is typed (kept by the server on the session, so a reload stays locked). */
+  screenLocked = $state(false);
   meters = $state.raw<Meters | null>(null);
   clients = $state<{ id: string; name: string }[]>([]);
   settings = $state<Settings | null>(null);
@@ -72,7 +76,7 @@ class App {
   }
 
   get readOnly(): boolean {
-    return this.lockedByOther || this.status?.status !== "online";
+    return this.lockedByOther || this.screenLocked || this.status?.status !== "online";
   }
 
   /** True when the parameter kind has been verified on a real DSP 408. */
@@ -117,6 +121,7 @@ class App {
     this.device = null;
     this.status = null;
     this.lock = null;
+    this.screenLocked = false;
     this.meters = null;
     this.connected = false;
     this.rev = 0;
@@ -161,6 +166,7 @@ class App {
       case "hello":
         this.hello = msg as unknown as Hello;
         this.settings = this.hello.settings;
+        this.screenLocked = this.hello.screen_locked;
         break;
       case "snapshot":
         this.device = msg.state as DeviceState;
@@ -190,6 +196,9 @@ class App {
           this.lock.idle_remaining_s === null
             ? null
             : performance.now() + this.lock.idle_remaining_s * 1000;
+        break;
+      case "screen_lock":
+        this.screenLocked = msg.locked as boolean;
         break;
       case "clients":
         this.clients = msg.clients as { id: string; name: string }[];
@@ -242,8 +251,19 @@ class App {
     return this.run({ type: "set", path, value });
   }
 
+  lockScreen(): Promise<boolean> {
+    return this.run({ type: "screen.lock" });
+  }
+
+  /** Unlock the screen with the access code; returns the error message, or null on success. */
+  async unlockScreen(pin: string): Promise<string | null> {
+    const result = await this.request({ type: "screen.unlock", pin });
+    return result.ok ? null : (result.message ?? result.error ?? "error");
+  }
+
   /** Report a user interaction (throttled). Resets the local lock countdown when we own it. */
   activity(force = false): void {
+    if (this.screenLocked) return; // taps on a locked screen are not activity
     const now = Date.now();
     if (this.iOwnLock && this.lock) {
       this.lockDeadline = performance.now() + this.lock.idle_timeout_s * 1000;

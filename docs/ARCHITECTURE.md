@@ -124,10 +124,19 @@ with exponential backoff (1 s → 30 s) and re-reads the full state after reconn
 - Each client has a display name, chosen at login; it cannot be changed during the session.
 - Any number of clients see the same state. By default the **last writer wins**: writes are
   applied in arrival order and the result goes to every client, the sender included.
-- A client can take an **exclusive lock**; every other client is then read-only (meters keep
-  working). The owner keeps it while active: any write, preset or lock action, or UI interaction
-  (reported with a throttled `activity` message). It is released on request, on logout, or after
-  120 s without activity (`--lock-idle-timeout`).
+- A client can take **control** (the `lock.*` messages and `LockManager`, a name kept from
+  before); every other client is then read-only (meters keep working). The holder keeps it while
+  active: any write, preset or control action, or UI interaction (reported with a throttled
+  `activity` message). It is released on request, on logout, or after 120 s without activity
+  (`--lock-idle-timeout`).
+- The **screen lock** is another thing: it makes one browser session (all its tabs) read-only,
+  the screen staying readable, until *Unlock screen* and the access code, for a device left
+  unattended. The UI also freezes the view: tabs, sub-tabs, the channels shown and the browser's
+  back button do nothing (`nav`, `ChipBar`, `ChannelSelection`). The server keeps it on
+  the session (`ClientSession.screen_locked`), so a reload stays locked, and refuses every
+  request of that session except `screen.unlock` meanwhile (`screen_locked` error); the code is
+  checked with the login's rate limit. Interactions on a locked screen are not activity, so
+  a control held by that client still expires.
 
 ## 5. Simulator
 
@@ -169,7 +178,7 @@ HTTP (JSON):
 | Method | Path | Body / result |
 |---|---|---|
 | `POST` | `/api/login` | `{pin, name?}` → sets the `session` cookie (HttpOnly, SameSite=Strict); 401 on a wrong code |
-| `POST` | `/api/logout` | Clears the session and releases any lock it held |
+| `POST` | `/api/logout` | Clears the session and releases the control it held |
 | `GET` | `/api/session` | `{authenticated, client_id, name}`; 401 when not logged in |
 | `GET` | `/api/health` | `{status, device_status, version}`, no auth (Docker healthcheck) |
 | `GET` | `/` and assets | The single-page app; static files need no auth, all data goes through the authenticated WebSocket |
@@ -178,20 +187,22 @@ WebSocket `/ws` (cookie auth plus an `Origin` check). JSON messages `{type, ...}
 
 | Direction | Type | Payload |
 |---|---|---|
-| S→C | `hello` | `client_id`, `name`, `server_version`, `demo`, `experimental`, `verified_kinds`, `profile` (channel counts, PEQ types, slopes, ratios, frequency/Q/delay ranges), `limits`, `settings` |
+| S→C | `hello` | `client_id`, `name`, `screen_locked`, `server_version`, `demo`, `experimental`, `verified_kinds`, `profile` (channel counts, PEQ types, slopes, ratios, frequency/Q/delay ranges), `limits`, `settings` |
 | S→C | `snapshot` | `rev`, full `state` (device info, presets, channels, `modified`: the live setup changed since the last recall or store, `null` when unknown) |
 | S→C | `patch` | `rev`, `changes: [{path, value}]`, `origin` (client_id or `device`) |
 | S→C | `meters` | `seq`, `levels` (12 values in dB or `null`; the whole field is `null` when the poll failed), `clip` (12 bools), `limit` (8 bools or `null`), `comp` (8 bools or `null`), `input_clip` |
 | S→C | `device` | `status`, `error?`, `model`, `firmware`, `identity`, `model_tested` |
-| S→C | `lock` | `owner_id?`, `owner_name?`, `idle_remaining_s?`, `idle_timeout_s` |
+| S→C | `lock` | control: `owner_id?`, `owner_name?`, `idle_remaining_s?`, `idle_timeout_s` |
+| S→C | `screen_lock` | `locked` (to every tab of the session) |
 | S→C | `settings` | `meter_rate_hz`, `lock_idle_timeout_s` (sent on change) |
 | S→C | `clients` | list of `{id, name}` |
-| S→C | `result` | `req`, `ok`, `error?` (`locked`, `invalid`, `experimental`, `device_offline`, `device_timeout`), `message?` |
+| S→C | `result` | `req`, `ok`, `error?` (`locked`: another client has control, `screen_locked`, `wrong_code`, `rate_limited`, `invalid`, `experimental`, `device_offline`, `device_timeout`), `message?` |
 | S→C | `pong` | `req` |
 | C→S | `set` | `req`, `path`, `value` |
 | C→S | `preset.recall` | `req`, `slot` |
 | C→S | `preset.store` | `req`, `slot` (1–20), `name` |
-| C→S | `lock.acquire` / `lock.release` | `req` |
+| C→S | `lock.acquire` / `lock.release` | `req`; take or release control |
+| C→S | `screen.lock` / `screen.unlock` | `req`; `pin` (the access code) to unlock |
 | C→S | `activity` | no payload; user interaction, throttled to one every 10 s |
 | C→S | `settings.set` | `req`, `meter_rate_hz` (clamped to 1–10) |
 | C→S | `resync` | `req` |
@@ -207,7 +218,7 @@ The threat model is a trusted private LAN; the goal is to stop casual or acciden
 - One shared code (`--pin`, or `DSP408_PIN` so that it does not show in `ps` or
   `docker inspect`); a warning is logged while the default `0000` is in use.
 - Sessions are random 256-bit tokens kept in memory; they end on logout or server restart.
-- Login rate limit: 5 failures per IP, then a 30 s cool-down.
+- Login rate limit: 5 failures per IP, then a 30 s cool-down; the screen unlock shares it.
 - The WebSocket `Origin` must match the `Host` header (no cross-site WebSocket hijacking).
 - The server validates, clamps and quantises every value; it never trusts client ranges or name
   lengths (a preset name over 14 characters can crash the DSP firmware).

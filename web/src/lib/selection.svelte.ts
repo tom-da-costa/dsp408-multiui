@@ -58,6 +58,7 @@ export class ChannelSelection {
   }
 
   private save(next: string[]): void {
+    if (app.screenLocked) return; // the locked screen keeps the channels shown
     this.hidden = next;
     try {
       localStorage.setItem(this.storageKey, JSON.stringify(next));
