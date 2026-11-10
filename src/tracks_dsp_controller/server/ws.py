@@ -90,6 +90,7 @@ class Hub:
         store.subscribe(self._on_store)
         session.on_meters(self._on_meters)
         session.on_status(self._on_status)
+        session.on_profile(self._on_profile)
         lock.on_change(self._on_lock)
 
     # --- outgoing ---------------------------------------------------------------------------------
@@ -140,10 +141,16 @@ class Hub:
             "model": info.model,
             "firmware": info.firmware,
             "identity": info.identity,
+            "model_tested": self.session.model_tested,
         }
 
     def _on_status(self, status: DeviceStatus, error: str | None) -> None:
         self.broadcast(self.device_message())
+
+    def _on_profile(self, profile: object) -> None:
+        """Another model was detected: every client gets the new channel counts and ranges."""
+        for client in list(self.clients):
+            self._send(client, self.hello_message(client))
 
     def lock_message(self, state: LockState | None = None) -> dict[str, Any]:
         state = state or self.lock.state()

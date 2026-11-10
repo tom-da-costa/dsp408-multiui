@@ -173,6 +173,8 @@ class App {
         break;
       case "device":
         this.status = msg as unknown as DeviceMessage;
+        // "DSP206" -> "DSP 206": the tab / home-screen title follows the detected model
+        if (this.status.model) document.title = this.status.model.replace(/^DSP\s*/, "DSP ");
         break;
       case "lock":
         this.lock = msg as unknown as LockMessage;

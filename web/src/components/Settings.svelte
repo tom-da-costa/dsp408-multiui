@@ -53,7 +53,12 @@
       <dt>Status</dt>
       <dd>{app.status?.status ?? "—"}{app.status?.error ? ` (${app.status.error})` : ""}</dd>
       <dt>Model</dt>
-      <dd>{app.status?.model || "—"}</dd>
+      <dd>
+        {app.status?.model || "—"}
+        {#if app.status?.model && app.status.model_tested === false}
+          <span class="muted">(not tested by this project yet: reports welcome)</span>
+        {/if}
+      </dd>
       <dt>Firmware</dt>
       <dd>{app.status?.firmware || "—"}</dd>
       <dt>Server</dt>

@@ -2,6 +2,10 @@
 
 Lifecycle: ``connecting → initialising → online ↔ offline`` (docs/ARCHITECTURE.md §4). This is
 the only module that talks to the transport.
+
+With ``model="auto"`` the session reads the device's identity first and switches to the
+protocol profile of the model it reports (DSP 408, 206 or 204); with a model key it refuses a
+device that reports another model.
 """
 
 from __future__ import annotations
@@ -26,7 +30,13 @@ from tracks_dsp_controller.protocol import responses as rsp
 from tracks_dsp_controller.protocol.codecs import PRESET_NAME_LENGTH, validate_name
 from tracks_dsp_controller.protocol.links import LinkError, link_requests, masks_for, normalise
 from tracks_dsp_controller.protocol.meters import MeterError, MeterReading, decode_meters
-from tracks_dsp_controller.protocol.profile import ProtocolProfile
+from tracks_dsp_controller.protocol.profile import (
+    MODELS,
+    TESTED_MODELS,
+    ProtocolProfile,
+    detect_model,
+    load_profile,
+)
 from tracks_dsp_controller.state.convert import build_state
 from tracks_dsp_controller.state.models import DeviceInfo, DeviceState
 from tracks_dsp_controller.state.registry import ParamError, Write, resolve
@@ -50,7 +60,15 @@ class DeviceUnavailableError(RuntimeError):
     """The device is not online."""
 
 
+class ModelError(RuntimeError):
+    """The device is not a model this session can drive."""
+
+
+AUTO = "auto"
+
 type StatusListener = Callable[[DeviceStatus, str | None], None]
+type ProfileListener = Callable[[ProtocolProfile], None]
+type ProfileFactory = Callable[[str], ProtocolProfile]
 type MeterListener = Callable[[MeterReading | None], None]
 type ConnectionFactory = Callable[[], DspConnection]
 
@@ -71,10 +89,20 @@ class DeviceSession:
         reconnect_min_s: float = 1.0,
         reconnect_max_s: float = 30.0,
         connection_factory: ConnectionFactory | None = None,
+        model: str | None = None,
+        profile_for: ProfileFactory | None = None,
     ) -> None:
+        """``model``: None = use ``profile`` as is (no identity check), "auto" = detect the
+        model, or a model key ("408", "206", "204") the device must report.
+        ``profile_for`` builds the profile of a model key (default: the built-in one)."""
+        if model is not None and model != AUTO and model not in MODELS:
+            raise ValueError(f"unknown model {model!r}; choose from auto, {', '.join(MODELS)}")
         self.host = host
         self.port = port
         self.profile = profile
+        self.model = model
+        self._profile_for = profile_for or (lambda key: load_profile(model=key))
+        self._profile_listeners: list[ProfileListener] = []
         self.store = store
         self._meter_rate_hz = clamp_meter_rate(meter_rate_hz)
         self.reconnect_min_s = reconnect_min_s
@@ -106,6 +134,21 @@ class DeviceSession:
     def on_meters(self, listener: MeterListener) -> Callable[[], None]:
         self._meter_listeners.append(listener)
         return lambda: self._meter_listeners.remove(listener)
+
+    def on_profile(self, listener: ProfileListener) -> Callable[[], None]:
+        """Called when the session switches to another model's profile (before the snapshot)."""
+        self._profile_listeners.append(listener)
+        return lambda: self._profile_listeners.remove(listener)
+
+    @property
+    def model_key(self) -> str | None:
+        """Model of the current profile ("408", "206", "204"), from its model name."""
+        return detect_model(self.profile.model)
+
+    @property
+    def model_tested(self) -> bool:
+        """Whether this project verified the current model on real hardware."""
+        return self.model_key in TESTED_MODELS
 
     def _set_status(self, status: DeviceStatus, error: str | None = None) -> None:
         self.status = status
@@ -179,9 +222,10 @@ class DeviceSession:
                 await conn.connect()
                 self._conn = conn
                 self._set_status(DeviceStatus.INITIALISING)
+                await self._identify(conn)
                 state = await self._read_state(conn, previous=None)
             except (TransportError, TransportTimeoutError, reader.UnexpectedResponseError,
-                    cm.ConfigError) as exc:  # fmt: skip
+                    cm.ConfigError, ModelError) as exc:  # fmt: skip
                 await self._teardown()
                 self._set_status(DeviceStatus.OFFLINE, str(exc) or type(exc).__name__)
                 await asyncio.sleep(delay)
@@ -199,6 +243,41 @@ class DeviceSession:
             await self._teardown()
             self._set_status(DeviceStatus.OFFLINE, str(reason) or type(reason).__name__)
             await asyncio.sleep(delay)
+
+    async def _identify(self, conn: reader.Requester) -> None:
+        """Check the device's model and switch to its profile (``model`` "auto" or a key)."""
+        if self.model is None:
+            return
+        identity = await reader.read_identity(conn)
+        detected = detect_model(identity)
+        if self.model == AUTO:
+            if detected is None:
+                raise ModelError(
+                    f"unknown device {identity!r}: only the DSP 408, 206 and 204 are supported"
+                )
+            key = detected
+        else:
+            if detected is not None and detected != self.model:
+                raise ModelError(
+                    f"the device is a DSP {detected} ({identity}), not a DSP {self.model}: "
+                    "start with --model auto"
+                )
+            key = self.model
+        if key != self.model_key:
+            self.profile = self._profile_for(key)
+            log.info("device %r: using the DSP %s profile", identity, key)
+            if key not in TESTED_MODELS:
+                log.warning(
+                    "the DSP %s has not been tested by this project: its protocol was checked "
+                    "against captures and other projects only",
+                    key,
+                )
+            for listener in list(self._profile_listeners):
+                try:
+                    listener(self.profile)
+                except Exception:
+                    log.exception("profile listener failed")
+        conn.profile = self.profile
 
     async def _read_state(
         self, conn: reader.Requester, previous: DeviceState | None
@@ -231,6 +310,8 @@ class DeviceSession:
         previous = self.store.state if self.store.rev else None
         if previous is None or previous.active_slot != state.active_slot:
             return state  # first connection, or another preset: unknown
+        if (len(previous.inputs), len(previous.outputs)) != (len(state.inputs), len(state.outputs)):
+            return state  # another model
         same = self._same_config(previous, state)
         return state.model_copy(update={"modified": previous.modified if same else True})
 

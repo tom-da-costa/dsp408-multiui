@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import asyncio
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from typing import Protocol
 
 from tracks_dsp_controller.device.transport import TransportTimeoutError
@@ -63,6 +63,29 @@ async def read_preset_names(conn: Requester) -> list[str]:
 
 async def read_active_slot(conn: Requester) -> int:
     return expect(await ask(conn, cmd.GetActivePreset()), rsp.ActivePreset).slot
+
+
+# Device addresses tried by ``read_identity`` after the profile's own: the 408 and 204 answer on
+# 0x01, the 206 on 0x02 (and on 0x01).
+KNOWN_ADDRESSES = (0x01, 0x02)
+
+
+async def read_identity(conn: Requester) -> str:
+    """Handshake and 0x13 identity, on the profile's address, then on the other known ones.
+
+    Leaves ``conn.profile`` on the address that answered."""
+    base = conn.profile
+    error: TransportTimeoutError | None = None
+    for address in dict.fromkeys((base.host_dst, *KNOWN_ADDRESSES)):
+        conn.profile = replace(base, host_dst=address)
+        try:
+            expect(await ask(conn, cmd.Handshake(), retries=0), rsp.HandshakeReply)
+            return expect(await ask(conn, cmd.GetDeviceInfo()), rsp.DeviceInfo).text
+        except TransportTimeoutError as exc:
+            error = exc
+    conn.profile = base
+    assert error is not None
+    raise error
 
 
 async def read_info(conn: Requester) -> DeviceSummary:

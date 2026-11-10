@@ -152,6 +152,8 @@ export interface DeviceMessage {
   model: string;
   firmware: string;
   identity: string;
+  /** False for a model this project has not verified on real hardware (DSP 206, 204). */
+  model_tested: boolean;
 }
 
 export interface LockMessage {

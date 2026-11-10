@@ -9,6 +9,7 @@ from tracks_dsp_controller.device.reader import (
     UnexpectedResponseError,
     expect,
     read_config_blob,
+    read_identity,
     read_info,
 )
 from tracks_dsp_controller.device.transport import DspConnection
@@ -97,6 +98,7 @@ __all__ = [
     "format_info",
     "format_meters",
     "read_config_blob",
+    "read_identity",
     "read_info",
     "read_meters",
     "send_raw",

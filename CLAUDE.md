@@ -4,7 +4,8 @@ Guidance for Claude Code working in this repository.
 
 ## Project
 
-A web app that controls one t.racks DSP 408 over TCP (port 9761). Several browsers (phones
+A web app that controls one t.racks DSP 408, 206 or 204 over TCP (port 9761); the model is detected
+from the device's identity (`--model auto`). Several browsers (phones
 first) control it at the same time with live meters. A single Python process owns the DSP
 connection and serves the API, the WebSocket and the static UI.
 
@@ -63,7 +64,9 @@ credentials). Release notes come from the merged PRs (`gh release create --gener
 - Never store to preset slot 0 (F00).
 - Preset names: at most 14 printable ASCII characters. Longer names can crash the firmware.
 - Do not implement the test-tone generator (`0x39`) or the device-PIN setter (`0x2f`).
-- On a real DSP, parameters not yet hardware-verified stay behind `--experimental`.
+- On a real DSP, parameters not yet hardware-verified stay behind `--experimental`. The owner
+  chose (2026-11-10) to apply the 408's verified list to the 206 and 204 too (same commands and
+  records); the app flags those models as not tested by the project.
 
 ## Tooling
 
