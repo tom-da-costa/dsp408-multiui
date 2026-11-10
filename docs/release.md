@@ -6,7 +6,7 @@ The four launch modes of [SPEC §7.1](SPEC.md) and how each is produced.
 |---|---|---|
 | `uv run` from a clone | nothing to build: the UI build is committed in `src/dsp408_multiui/web/` | — |
 | Standalone executable | `packaging/exe.Dockerfile` (Linux, any arch) and `packaging/build_exe.sh` (Windows runner) | `dsp408-multiui-vX.Y.Z-linux-amd64`, `…-linux-arm64`, `…-windows-amd64.exe`, plus the simulator `dsp408-sim-vX.Y.Z-…` for each, attached to the GitHub release |
-| `docker run` / `docker compose` | `Dockerfile` (multi-arch with buildx) | `ghcr.io/OWNER/dsp408-multiui:X.Y.Z` and `:latest` (`:main` for the rolling build) |
+| `docker run` / `docker compose` | `Dockerfile` (multi-arch with buildx) | `ghcr.io/tom-da-costa/dsp408-multiui:X.Y.Z` and `:latest` (`:main` for the rolling build) |
 
 ## The rolling "main" release
 
@@ -15,8 +15,8 @@ the branch's name). It is rebuilt from scratch on each push. The release and its
 on the new commit, so it only ever holds the latest build. Its files keep fixed names, so links stay valid:
 
 ```
-https://github.com/OWNER/dsp408-multiui/releases/download/main-latest/dsp408-multiui-main-linux-amd64
-https://github.com/OWNER/dsp408-multiui/releases/download/main-latest/dsp408-sim-main-windows-amd64.exe
+https://github.com/tom-da-costa/dsp408-multiui/releases/download/main-latest/dsp408-multiui-main-linux-amd64
+https://github.com/tom-da-costa/dsp408-multiui/releases/download/main-latest/dsp408-sim-main-windows-amd64.exe
 ```
 
 Nothing is published unless the unit and end-to-end tests pass on that commit. The Docker image is

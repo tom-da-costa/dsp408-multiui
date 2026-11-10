@@ -36,7 +36,7 @@ uv run dsp408-multiui --dsp-host 192.168.1.50 --pin 1234
 uv run dsp408-multiui --demo
 
 # Docker
-docker run -d -p 8080:8080 -e DSP408_PIN=1234 ghcr.io/OWNER/dsp408-multiui --dsp-host 192.168.1.50
+docker run -d -p 8080:8080 -e DSP408_PIN=1234 ghcr.io/tom-da-costa/dsp408-multiui --dsp-host 192.168.1.50
 
 # Docker Compose
 cp .env.example .env   # set DSP408_HOST, DSP408_PIN …
@@ -44,9 +44,9 @@ docker compose up -d
 ```
 
 The latest build of `main` is always available as the
-[**main** pre-release](https://github.com/OWNER/dsp408-multiui/releases/tag/main-latest) (fixed
+[**main** pre-release](https://github.com/tom-da-costa/dsp408-multiui/releases/tag/main-latest) (fixed
 file names, rebuilt on every push). Standalone executables (linux-amd64, linux-arm64,
-windows-amd64) are attached to each [release](https://github.com/OWNER/dsp408-multiui/releases): download one and run `./dsp408-multiui-<version>-linux-amd64 --dsp-host 192.168.1.50`.
+windows-amd64) are attached to each [release](https://github.com/tom-da-costa/dsp408-multiui/releases): download one and run `./dsp408-multiui-<version>-linux-amd64 --dsp-host 192.168.1.50`.
 Then open `http://<server-ip>:8080` from any device on the LAN. See
 [docs/release.md](docs/release.md) for how releases are built.
 

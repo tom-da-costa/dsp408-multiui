@@ -82,7 +82,7 @@ make web-test                             # svelte-check + vitest
 
 ## Repository conventions
 
-- Hosted on **GitHub** (public): https://github.com/OWNER/dsp408-multiui. CI and releases use
+- Hosted on **GitHub** (public): https://github.com/tom-da-costa/dsp408-multiui. CI and releases use
   GitHub Actions (`.github/workflows/`) on GitHub-hosted runners: native arm64 runner for the
   linux-arm64 executable, Windows runner for the Windows executable, images on `ghcr.io`.
 - Conventional Commits (`feat:`, `fix:`, `docs:` …).

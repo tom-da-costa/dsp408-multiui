@@ -305,7 +305,7 @@ with live changes kept in memory. There is **no database** and no data volume.
 |---|---|---|
 | From a git clone | `git clone … && cd dsp408-multiui && uv run dsp408-multiui --dsp-host IP` | git, uv. **No Node**: the built UI is committed (see D9). |
 | Standalone executable | Download `dsp408-multiui-<version>-<os>-<arch>` from the GitHub release page, then `./dsp408-multiui --dsp-host IP` | Nothing (Python is bundled). Targets: linux-amd64, linux-arm64, windows-amd64. |
-| Docker | `docker run -d -p 8080:8080 -e DSP408_PIN=1234 ghcr.io/OWNER/dsp408-multiui --dsp-host IP` | Docker |
+| Docker | `docker run -d -p 8080:8080 -e DSP408_PIN=1234 ghcr.io/tom-da-costa/dsp408-multiui --dsp-host IP` | Docker |
 | Docker Compose | `docker compose up -d` with the provided `compose.yaml` (settings through environment variables) | Docker Compose |
 | Demo without a DSP | any of the above with `--demo` | — |
 | Test bench without a DSP | `dsp408-sim` (executable, `uv run dsp408-sim`, or `docker compose -f compose.sim.yaml up`), then the app with `--dsp-host` pointing at it | — |
