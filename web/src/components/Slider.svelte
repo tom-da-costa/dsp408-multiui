@@ -16,7 +16,7 @@
     quantize?: (value: number) => number;
     /** Keyboard arrows: called with +1 / -1 (PageUp/PageDown: +10 / -10). */
     onstep?: (direction: number) => void;
-    /** Called while dragging with the local value, then with null on release. */
+    /** Called while dragging with the local value, then with null once the device has it. */
     onpreview?: (value: number | null) => void;
     onchange: (value: number) => void;
   }
@@ -39,13 +39,31 @@
   let track: HTMLDivElement | undefined = $state();
   let dragging = $state(false);
   let local = $state(0);
+  // After release, the value let go of, until the device reports it: the server answers the
+  // values sent during the drag one by one, and following them would replay the movement.
+  let held = $state<number | null>(null);
+  let settle: ReturnType<typeof setTimeout> | undefined;
 
-  const shown = $derived(dragging ? local : value);
+  const shown = $derived(dragging ? local : (held ?? value));
   const pos = $derived(toPos(shown, min, max, scale));
   const originPos = $derived(toPos(origin ?? min, min, max, scale));
   const fillStart = $derived(Math.min(pos, originPos) * 100);
   const fillSize = $derived(Math.abs(pos - originPos) * 100);
   const sender = throttleLatest((v: number) => onchange(v), 50);
+
+  /** Same place on the track (the server may round differently, e.g. Hz to 2 decimals). */
+  const reached = (a: number, b: number) =>
+    Math.abs(toPos(a, min, max, scale) - toPos(b, min, max, scale)) < 0.002;
+
+  function letGo() {
+    clearTimeout(settle);
+    held = null;
+    onpreview?.(null);
+  }
+
+  $effect(() => {
+    if (held !== null && reached(value, held)) letGo();
+  });
 
   function fromPointer(event: PointerEvent): number {
     if (!track) return value;
@@ -60,8 +78,10 @@
     if (disabled) return;
     event.preventDefault();
     (event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
+    clearTimeout(settle);
+    local = held ?? value;
+    held = null;
     dragging = true;
-    local = value;
   }
 
   function move(event: PointerEvent) {
@@ -78,7 +98,12 @@
     if (!dragging) return;
     sender.flush();
     dragging = false;
-    onpreview?.(null);
+    if (reached(value, local)) {
+      letGo();
+      return;
+    }
+    held = local;
+    settle = setTimeout(letGo, 2000); // never stay stuck on a refused value
   }
 
   function key(event: KeyboardEvent) {

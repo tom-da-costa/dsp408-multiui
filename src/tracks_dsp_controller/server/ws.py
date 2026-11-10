@@ -65,6 +65,8 @@ class Client:
         default_factory=lambda: asyncio.Queue(maxsize=QUEUE_SIZE)
     )
     sender: asyncio.Task[None] | None = None
+    # Writes still waiting for the device (strong references: the loop only keeps weak ones).
+    writes: set[asyncio.Task[None]] = field(default_factory=set)
 
     @property
     def id(self) -> str:
@@ -240,7 +242,16 @@ class Hub:
                 if self.auth.get(session.token) is None:  # logged out from another tab
                     await websocket.close(code=4401)
                     break
-                await self._dispatch(client, message)
+                if message.get("type") == "set":
+                    # Do not wait for the DSP: the next values of a dragged control must reach
+                    # the pipeline while this one is in flight, so that it coalesces them
+                    # instead of replaying every step. Order is kept: up to the pipeline's
+                    # queue, a write runs without yielding, and tasks start in creation order.
+                    task = asyncio.create_task(self._dispatch(client, message))
+                    client.writes.add(task)
+                    task.add_done_callback(client.writes.discard)
+                else:
+                    await self._dispatch(client, message)
         except (WebSocketDisconnect, RuntimeError):
             pass
         finally:

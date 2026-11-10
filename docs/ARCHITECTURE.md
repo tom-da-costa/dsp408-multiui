@@ -80,7 +80,10 @@ through a single queue (`device/pipeline.py`):
 
 1. **Coalescing.** A pending write for an existing key replaces the queued value in place. A
    fader dragged by three clients therefore produces at most one frame in flight and one pending
-   frame per key.
+   frame per key. For this to work, the WebSocket handler does not wait for a `set` to be
+   acknowledged before reading the client's next message: each `set` runs as its own task (in
+   order, since a write reaches the queue without yielding), so the values of a drag reach the
+   queue while the previous one is in flight.
 2. **Priorities.** Writes come before meter polls, but when the meter period has elapsed the next
    free slot goes to a poll, which guarantees the configured rate (and at least 1 Hz).
 3. **Barriers.** Preset recall/store, link changes and resync are exclusive sequences with long
@@ -105,7 +108,9 @@ with exponential backoff (1 s → 30 s) and re-reads the full state after reconn
 
 - **Optimistic UI.** Controls move immediately and send values throttled to ~20 Hz while being
   dragged. While the user drags, server patches for that control are ignored; on release, the
-  control snaps to the last server value.
+  control keeps the released value until the server reports it (or 2 s pass), then follows the
+  server again. Following the patches of the values sent during the drag would replay the
+  movement.
 - **Rejected writes** (lock, validation, device error) restore the server value and show a toast.
 - The client reconnects its WebSocket automatically and gets a fresh snapshot. If the session is
   gone (server restart), it shows the login screen.

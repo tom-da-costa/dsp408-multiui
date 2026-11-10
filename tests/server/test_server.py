@@ -226,6 +226,39 @@ def test_hello_snapshot_and_write(client: TestClient) -> None:
         assert patch["rev"] > snapshot["rev"]
 
 
+def test_fast_writes_from_one_client_coalesce(web_dir: Path) -> None:
+    """A dragged control: values sent faster than the DSP answers are not replayed one by one."""
+    app, device = make_app(web_dir)
+    device.timing.default_s = 0.05
+    with TestClient(app) as test_client:
+        ctx: AppContext = app.state.ctx
+        deadline = time.monotonic() + 5
+        while ctx.session.status.value != "online" and time.monotonic() < deadline:
+            time.sleep(0.02)
+        login(test_client)
+        with test_client.websocket_connect("/ws") as ws:
+            receive_until(ws, "snapshot")
+            values = [-1.0 * n for n in range(1, 11)]
+            for req, value in enumerate(values, start=1):
+                ws.send_json(
+                    {"type": "set", "req": req, "path": "outputs.0.gain_db", "value": value}
+                )
+            results: list[dict[str, Any]] = []
+            gains: list[float] = []
+            while len(results) < len(values):
+                message = ws.receive_json()
+                if message["type"] == "result":
+                    results.append(message)
+                elif message["type"] == "patch":
+                    gains += [
+                        c["value"] for c in message["changes"] if c["path"] == "outputs.0.gain_db"
+                    ]
+    assert all(r["ok"] for r in results)
+    assert sorted(r["req"] for r in results) == list(range(1, 11))
+    assert gains[-1] == values[-1]
+    assert len(gains) <= 3  # one in flight, the rest coalesced into the newest
+
+
 def test_channel_detail_writes(client: TestClient) -> None:
     login(client)
     with client.websocket_connect("/ws") as ws:
