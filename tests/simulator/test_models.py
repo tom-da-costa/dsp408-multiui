@@ -48,8 +48,8 @@ def read_config(device: SimulatedDevice) -> cm.RawConfig:
 
 def test_every_profile_model_has_a_simulator_model() -> None:
     assert SIM_MODELS.keys() == MODELS.keys()
-    assert not SIM_MODELS["204"].verified
-    assert SIM_MODELS["206"].verified
+    assert not SIM_MODELS["204"].replies_observed
+    assert SIM_MODELS["206"].replies_observed
 
 
 @pytest.mark.parametrize(("model", "inputs", "outputs"), [("206", 2, 6), ("204", 2, 4)])

@@ -33,7 +33,7 @@ credentials). Release notes come from the merged PRs (`gh release create --gener
   built UI in `src/tracks_dsp_controller/web/` is committed), standalone PyInstaller executable,
   `docker run`, `docker compose up`.
 - **Develop and test against the simulator.** It reproduces the DSP 408's recorded behaviour
-  (`tests/hardware/`), and plays a DSP 206 (from captures) or 204 (extrapolated) with `--model`.
+  (`tests/hardware/`), and plays a DSP 206 or 204 with `--model` (docs/PROTOCOL.md §10).
   `tracks-dsp-sim` is a separate program that the backend reaches over TCP
   like the real device; `serve --demo` runs the same simulated device in-process. Never assume
   an unverified protocol detail is true: put it in the `ProtocolProfile` (ARCHITECTURE §6).

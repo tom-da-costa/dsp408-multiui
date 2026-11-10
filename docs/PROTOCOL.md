@@ -12,10 +12,12 @@ open is listed in §9. The DSP 206 and 204, which the simulator can also play, a
 |---|---|---|---|---|---|
 | [Aeternitaas/dsp-408-ui](https://github.com/Aeternitaas/dsp-408-ui) (`juli303/t-dsp-ui` is an identical fork) | **DSP 408** | TCP 9761 | Dart/Flutter | Wireshark captures of the official editor, working app | **Only source tested on a DSP 408.** Reliable for what the app ships (gain, mute, matrix, GEQ, presets, meter poll). PEQ / crossover are marked "in development" there and contain errors (see §4). |
 | [FlexiFlizz/t.racks-DSP-control](https://github.com/FlexiFlizz/t.racks-DSP-control) | DSP 206 (2×6) | TCP 9761 + USB HID | Python | Wireshark captures, hardware tests on a 206 | Good for opcodes the 408 project lacks (delay, phase, compressor, limiter, gate, slopes). 408 support is "untested" in that repo. Its Wireshark captures (`*.pcapng`) of the official editor and a real 206 are the source of §10; its own 206 simulator invents its config data and is not used. |
+| [Givou/BetterDSPControl](https://git.thiemoo.at/Givou/BetterDSPControl) (MIT) | **DSP 204**, DSP 408 | TCP 9761 + USB HID | Python | Control app, tested on a real 204 (V0104P, over USB); the 408 "briefly tried" | Source for the 204 (§10). Its protocol notes agree with our 408 verification (frame, checksum, layout, meters, links, encodings). |
 | [IMBArator/miniDSP-Linux](https://github.com/IMBArator/miniDSP-Linux) | DSP 4x4 Mini | USB HID | Python | Very rigorous: every claim backed by a capture, plus a Ghidra pass on the editor | Best documentation of the *protocol family*: framing, ACKs, presets, link, lock, test tone, meter tail. Values and ranges differ per model. |
 
-All three are **GPL-3.0**. This project is **AGPL-3.0**; GPLv3 §13 / AGPLv3 §13 explicitly
-allow combining the two, so code may be reused **with attribution** (keep copyright
+The first three are **GPL-3.0**, BetterDSPControl is **MIT**. This project is **AGPL-3.0**;
+GPLv3 §13 / AGPLv3 §13 allow combining GPL code, and MIT code can be included with its notice, so
+code may be reused **with attribution** (keep copyright
 headers, list the origin in the README's attribution table).
 
 Confidence tags used below:
@@ -26,6 +28,7 @@ Confidence tags used below:
 - **408**: observed on a DSP 408 over TCP (dsp-408-ui).
 - **206**: observed on a real DSP 206 (firmware V0104P) in the Wireshark captures of
   t.racks-DSP-control, decoded by this project (§10).
+- **204**: documented by BetterDSPControl from a real DSP 204 (firmware V0104P) (§10).
 - **SIB**: verified on a sibling model only (206 or 4x4 Mini); very likely the same on the 408.
 - **CONFLICT**: sources disagree; the value we will use first is marked ▶.
 - **UNKNOWN**: not documented anywhere; must be captured.
@@ -354,7 +357,7 @@ with the ▶ choice as default. The hardware session of 2026-11-08 (firmware V01
 | Q4 | Compressor `0x30` and limiter `0x3f` layouts | **Answered (HW)**: 206 layout |
 | Q5 | Slope table on the 408 and bypass | **Partly**: slope 0 = bypass and raw slopes are stored as sent (HW); the names of the 21 entries are still to compare with the editor |
 | Q6 | Gate, phase, names, link on the 408 | **Answered (HW)**, link included (2026-11-10): see `2a` / `3b` in §5.3 |
-| Q7 | Matrix crosspoint gain opcode | Open |
+| Q7 | Matrix crosspoint gain opcode | **Partly (204)**: `41 ch input u16 level` on a DSP 204 (§10); not tried on a 408 |
 | Q8 | `0x2c` and `0x10` responses; DSP PIN lock | **Answered (HW)** for the responses (§5.1); PIN lock not tested |
 | Q9 | Write ACK format; unsolicited frames | **Answered (HW)**: ACK = `01` (the `26` ACK echoes the name); no unsolicited frames seen |
 | Q10 | Second TCP client: refused, accepted, or kicks the first one? Idle timeout? | Open |
@@ -406,7 +409,29 @@ The captured meter frames read about −86 dBu on every channel (no signal), whi
 float32 encoding at the ADC noise floor. t.racks-DSP-control reads them as float16, which would
 show a constant −7.6 dBFS on an idle device.
 
-**DSP 204 (2 inputs, 4 outputs).** No capture, no documentation: every value of `dsp204.toml` is
-extrapolated from the 206 (UNKNOWN). With the same records, the config would be 724 bytes in 15
-pages. Captures of a real 204 (`proxy` sub-command, §9) would settle it.
+**DSP 204 (2 inputs, 4 outputs).** From [Givou/BetterDSPControl](https://git.thiemoo.at/Givou/BetterDSPControl)
+(MIT), a control app tested on a real DSP 204, firmware V0104P, over USB (whose HID reports carry
+the same frames as TCP) (204). It agrees with everything we know of the 408 and the 206:
 
+| Item | DSP 204 | Conf. |
+|---|---|---|
+| Device address | `01`, like the 408 (the 206 uses `02`) | 204 |
+| Checksum | full form of §2 | 204 |
+| Identity (`13`) | starts with `DSP204`; the full string `DSP204 V0104P` is our guess | 204 / HYP |
+| Init sequence, presets | the 408's, 20 presets | 204 |
+| Channel indices | In A–B = `00`–`01`, Out 1–4 = `02`–`05` | 204 |
+| Config | chunks 0–14 = **724 bytes**: the 408 records with 2 inputs and 4 outputs, as computed by `ConfigLayout` | 204 |
+| Meters | the 4 + 8 slot frame; the 204 fills slots 0–1 and 4–7; tail byte 1 = limiter-active mask (`00 03` while Out 1+2 limit, `00 0C` for Out 3+4) | 204 |
+| Links | same masks and behaviour as the 408 (read on a 204: `3 0` on the inputs, `3 0 12 0` on the outputs for In A+B, Out 1+2, Out 3+4); a write to a member changes the group, except name, routing and mix levels | 204 |
+| Handshake, `22` and `26` reply bytes | not documented; the simulator copies the 206's | HYP |
+
+`tests/unit/test_dsp204.py` checks the 204 profile against these observations.
+
+BetterDSPControl also documents, from the 204 (204, not verified on a 408 by this project):
+
+- `41 ch input u16` sets a **mix level** (matrix crosspoint gain, Q7), `49 ch 0/1` bypasses an
+  input's GEQ, `15 unit` sets the delay display unit, and the editor sends `11` after a new PIN.
+- The config trailer's 6 unknown bytes after the band bypass masks are the test-signal source,
+  the test-signal frequency index and one unknown u16; after the two PEQ bypass masks, the u16 at
+  `14 + 2C` is the input GEQ bypass mask.
+- `2c` reply: byte 0 and bytes 1–4 belong to a time-based lock, byte 5 is the PIN lock flag.

@@ -119,7 +119,7 @@ with exponential backoff (1 s → 30 s) and re-reads the full state after reconn
 A fake DSP that the backend cannot tell apart from the device, as far as the protocol is known.
 It plays a DSP 408 by default, or a 206 or 204 (`--model`, `simulator/models.py`): the model
 selects a built-in protocol profile (§6) and the bytes of the init replies. The 206 follows
-captures of a real device; the 204 is extrapolated from it ([PROTOCOL.md §10](PROTOCOL.md)).
+captures of a real device, the 204 the notes of an app tested on one ([PROTOCOL.md §10](PROTOCOL.md)).
 
 - An asyncio TCP server (default port 9761). It reuses `protocol/` to decode requests and encode
   responses.

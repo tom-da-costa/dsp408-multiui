@@ -61,7 +61,7 @@ def build_parser() -> argparse.ArgumentParser:
         "--model",
         default=_env("MODEL", DEFAULT_MODEL),
         choices=list(SIM_MODELS),
-        help="DSP model to simulate (default 408; the 204 is extrapolated from the 206)",
+        help="DSP model to simulate (default 408)",
     )
     p.add_argument(
         "--host",
@@ -135,10 +135,9 @@ def build_device(
 ) -> tuple[SimulatedDevice, Faults, PresetStore | None]:
     model = SIM_MODELS[args.model]
     device = SimulatedDevice(profile, model=model, identity=args.identity or "")
-    if not model.verified:
-        logging.getLogger(__name__).warning(
-            "the DSP %s has never been observed: this simulation is extrapolated from the 206",
-            model.key,
+    if not model.replies_observed:
+        logging.getLogger(__name__).info(
+            "DSP %s: the bytes of the init replies are copied from the 206", model.key
         )
     if args.fast:
         device.timing.recall_s = device.timing.store_s = 0.0

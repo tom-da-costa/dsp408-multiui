@@ -6,7 +6,8 @@ the backend reads but does not interpret.
 
 Sources (docs/PROTOCOL.md): the 408 replies were recorded on a real DSP 408 (firmware V0104P);
 the 206 replies come from Wireshark captures of a real DSP 206 (firmware V0104P) published by
-FlexiFlizz/t.racks-DSP-control; nothing is known about the 204, whose replies copy the 206's.
+FlexiFlizz/t.racks-DSP-control. The 204's protocol is documented by Givou/BetterDSPControl
+(tested on a real 204), but not the exact bytes of these replies: they copy the 206's.
 """
 
 from __future__ import annotations
@@ -24,7 +25,7 @@ class SimModel:
     status: bytes  # 0x2c reply data (the last byte is 1 when the device is PIN-locked)
     preset_header: bytes  # 0x22 reply data
     name_ack: bytes  # 0x26 reply data before the echoed name
-    verified: bool  # False: extrapolated, never observed on the real device
+    replies_observed: bool  # False: the init reply bytes are copied from a sibling model
 
     def profile(self, path: str | None = None) -> ProtocolProfile:
         """The built-in protocol profile of this model, optionally overridden by a file."""
@@ -39,7 +40,7 @@ SIM_MODELS: dict[str, SimModel] = {
         status=bytes.fromhex("00 27 0f 00 00 00"),
         preset_header=b"\xff\xff" + bytes(28),
         name_ack=b"\x01",
-        verified=True,
+        replies_observed=True,
     ),
     "206": SimModel(
         key="206",
@@ -48,7 +49,7 @@ SIM_MODELS: dict[str, SimModel] = {
         status=bytes.fromhex("00 27 0f 00 00 00"),
         preset_header=bytes(20),
         name_ack=b"\x00",
-        verified=True,
+        replies_observed=True,
     ),
     "204": SimModel(
         key="204",
@@ -57,7 +58,7 @@ SIM_MODELS: dict[str, SimModel] = {
         status=bytes.fromhex("00 27 0f 00 00 00"),
         preset_header=bytes(20),
         name_ack=b"\x00",
-        verified=False,
+        replies_observed=False,
     ),
 }
 DEFAULT_MODEL = "408"
