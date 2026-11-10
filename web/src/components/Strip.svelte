@@ -26,7 +26,7 @@
   const floor = $derived(app.hello?.profile.meter_floor_db ?? -90);
 </script>
 
-<section class="strip" class:muted={channel.mute}>
+<section class="strip" class:muted={channel.mute} style:--ch={app.color(path)}>
   <button
     class="name"
     title={`${slotLabel(path)} ${channel.name}: open the channel settings`}
@@ -82,6 +82,8 @@
     border-radius: var(--radius);
   }
   .name {
+    border: 2px solid var(--ch);
+    color: var(--ch);
     display: grid;
     min-height: 40px;
     padding: 2px 4px;
@@ -96,7 +98,7 @@
   }
   .slot {
     font-size: 0.7rem;
-    color: var(--muted);
+    color: inherit;
   }
   .link {
     margin-left: 2px;
@@ -132,7 +134,13 @@
     border-color: var(--info);
     color: #000;
   }
-  .strip.muted .label {
-    color: var(--danger);
+  .strip.muted {
+    /* Muted: red diagonal hatching (the name keeps its channel colour, which can itself be
+       red). */
+    background-image: repeating-linear-gradient(
+      -45deg,
+      rgb(255 77 94 / 0.3) 0 4px, /* --danger at 30 % */
+      transparent 4px 16px
+    );
   }
 </style>

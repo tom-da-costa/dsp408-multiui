@@ -3,7 +3,7 @@
   // the total curves of other channels picked in the "Compare with" row.
   import { app } from "../lib/app.svelte";
   import { slotLabel } from "../lib/nav.svelte";
-  import { overlayColor, overlays } from "../lib/overlays.svelte";
+  import { overlays } from "../lib/overlays.svelte";
   import { channelResponse, F_MAX, F_MIN } from "../lib/response";
   import type { Channel, InputChannel, OutputChannel } from "../lib/types";
   import ChipBar from "./ChipBar.svelte";
@@ -31,7 +31,6 @@
     ...(app.device?.inputs ?? []).map((c, i) => [`inputs.${i}`, c] as [string, Channel]),
     ...(app.device?.outputs ?? []).map((c, i) => [`outputs.${i}`, c] as [string, Channel]),
   ]);
-  const inputCount = $derived(app.hello?.profile.input_count ?? 4);
   const others = $derived(
     profile
       ? allChannels
@@ -39,7 +38,7 @@
           .map(([p, c]) => ({
             path: p,
             name: `${slotLabel(p)} ${c.name}`.trim(),
-            color: overlayColor(p, inputCount),
+            color: app.color(p),
             total: channelResponse(c, profile.peq_types, profile.slopes).total,
           }))
       : [],
@@ -98,7 +97,7 @@
       <span class="key xo"></span>HPF / LPF
       <span class="key band"></span>EQ bands
       {#if response?.geq}<span class="key geq"></span>GEQ{/if}
-      {#each others as o (o.path)}<span class="key" style:background={o.color}></span>{o.name}{/each}
+      {#each others as o (o.path)}<span class="key" style:background={o.color}></span><span style:color={o.color}>{o.name}</span>{/each}
     </span>
   </header>
   <div class="compare">
@@ -106,7 +105,7 @@
     <ChipBar
       items={allChannels
         .filter(([p]) => p !== path)
-        .map(([p]) => ({ key: p, label: slotLabel(p) }))}
+        .map(([p]) => ({ key: p, label: slotLabel(p), color: app.color(p) }))}
       selected={overlays.paths.filter((p) => p !== path)}
       onselect={(p) => overlays.toggle(p)}
       label="Channels to overlay"

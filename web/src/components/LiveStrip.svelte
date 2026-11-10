@@ -47,7 +47,7 @@
 </script>
 
 {#if channel}
-  <section class="strip" class:muted={channel.mute}>
+  <section class="strip" class:muted={channel.mute} style:--ch={app.color(path)}>
     <button class="name" onclick={() => nav.open(path)} title="Open this channel">
       <span class="slot">{slotLabel(path)}{channel.linked.length ? " 🔗" : ""}</span>
       <strong>{channel.name || "—"}</strong>
@@ -99,6 +99,8 @@
     min-height: 0;
   }
   .name {
+    border: 2px solid var(--ch);
+    color: var(--ch);
     display: grid;
     min-height: 40px;
     padding: 2px 4px;
@@ -113,10 +115,16 @@
   }
   .slot {
     font-size: 0.7rem;
-    color: var(--muted);
+    color: inherit;
   }
-  .strip.muted strong {
-    color: var(--danger);
+  .strip.muted {
+    /* Muted: red diagonal hatching (the name keeps its channel colour, which can itself be
+       red). */
+    background-image: repeating-linear-gradient(
+      -45deg,
+      rgb(255 77 94 / 0.3) 0 4px, /* --danger at 30 % */
+      transparent 4px 16px
+    );
   }
   .leds {
     display: grid;

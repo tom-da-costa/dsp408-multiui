@@ -61,7 +61,8 @@
     <span class="sep"></span>
     {#each all as c (c.path)}
       <button
-        class="chan"
+        class="chan ch-bar"
+        style:--ch={app.color(c.path)}
         class:on={!hidden.includes(c.path)}
         aria-pressed={!hidden.includes(c.path)}
         title={`${slotLabel(c.path)} ${c.name}`}
@@ -131,6 +132,13 @@
     text-overflow: ellipsis;
     white-space: nowrap;
     font-size: 0.65rem;
+  }
+  .picker .chan:not(.on) {
+    border-color: color-mix(in srgb, var(--ch) 60%, var(--line));
+  }
+  .picker .chan:not(.on) span,
+  .picker .chan:not(.on) small {
+    color: var(--ch);
   }
   .picker .on {
     background: var(--accent);

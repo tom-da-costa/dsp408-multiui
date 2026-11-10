@@ -18,13 +18,15 @@
       <thead>
         <tr>
           <th></th>
-          {#each device.inputs as input (input.index)}<th>{input.name}</th>{/each}
+          {#each device.inputs as input, i (input.index)}<th style:color={app.color(`inputs.${i}`)}
+              >{input.name}</th
+            >{/each}
         </tr>
       </thead>
       <tbody>
         {#each device.outputs as output, o (output.index)}
           <tr>
-            <th scope="row">{output.name}</th>
+            <th scope="row" style:color={app.color(`outputs.${o}`)}>{output.name}</th>
             {#each output.matrix as on, i (i)}
               <td>
                 <button

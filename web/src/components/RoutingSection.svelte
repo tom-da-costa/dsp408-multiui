@@ -26,6 +26,8 @@
   <div class="row" role="group" aria-label="Inputs routed to this output">
     {#each channel.matrix as on, i (i)}
       <button
+        class="ch-bar"
+        style:--ch={app.color(`inputs.${i}`)}
         class:on
         aria-pressed={on}
         disabled={!app.editable("matrix")}
@@ -60,6 +62,13 @@
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+  }
+  button:not(.on) {
+    border-color: color-mix(in srgb, var(--ch) 60%, var(--line));
+  }
+  button:not(.on) span,
+  button:not(.on) small {
+    color: var(--ch);
   }
   .on {
     background: var(--accent);

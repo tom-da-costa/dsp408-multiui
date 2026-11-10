@@ -122,3 +122,8 @@ button.switch.danger.on {
   border-color: var(--danger);
   color: #fff;
 }
+
+/* Channel colour (lib/colors.ts), passed as --ch: a bar under a chip or button. */
+.ch-bar {
+  box-shadow: inset 0 -3px 0 var(--ch);
+}

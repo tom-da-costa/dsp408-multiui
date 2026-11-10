@@ -1,6 +1,7 @@
 // Application state (Svelte 5 runes) and the WebSocket connection to the server.
 
 import * as api from "./api";
+import { channelColor } from "./colors";
 import { setPath } from "./paths";
 import type {
   Change,
@@ -61,6 +62,13 @@ class App {
 
   get iOwnLock(): boolean {
     return !!this.lock?.owner_id && this.lock.owner_id === this.hello?.client_id;
+  }
+
+  /** Colour of a channel ("inputs.0" / "outputs.3"); linked channels share their group's. */
+  color(path: string): string {
+    const [side, n] = path.split(".");
+    const channels = side === "outputs" ? this.device?.outputs : this.device?.inputs;
+    return channelColor(path, channels?.[Number(n)]?.linked);
   }
 
   get readOnly(): boolean {
