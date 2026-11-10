@@ -10,13 +10,13 @@ from fastapi.testclient import TestClient
 from starlette.testclient import WebSocketTestSession
 from starlette.websockets import WebSocketDisconnect
 
-from dsp408_multiui.protocol.profile import DEFAULT_PROFILE
-from dsp408_multiui.server.app import AppContext, create_app
-from dsp408_multiui.server.auth import AuthManager, LoginError, RateLimitedError, clean_name
-from dsp408_multiui.server.lock import LockManager
-from dsp408_multiui.server.settings import ServerConfig
-from dsp408_multiui.simulator import Faults, SimulatedDevice, apply_scenario
-from dsp408_multiui.state import registry
+from tracks_dsp_controller.protocol.profile import DEFAULT_PROFILE
+from tracks_dsp_controller.server.app import AppContext, create_app
+from tracks_dsp_controller.server.auth import AuthManager, LoginError, RateLimitedError, clean_name
+from tracks_dsp_controller.server.lock import LockManager
+from tracks_dsp_controller.server.settings import ServerConfig
+from tracks_dsp_controller.simulator import Faults, SimulatedDevice, apply_scenario
+from tracks_dsp_controller.state import registry
 
 P = DEFAULT_PROFILE.with_overrides({"timing": {"command_timeout_s": 0.3}})
 

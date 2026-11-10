@@ -7,7 +7,7 @@ export default defineConfig({
   plugins: [svelte()],
   build: {
     // The built UI is committed inside the Python package (docs/ARCHITECTURE.md §2).
-    outDir: "../src/dsp408_multiui/web",
+    outDir: "../src/tracks_dsp_controller/web",
     emptyOutDir: true,
     target: "es2022",
     assetsInlineLimit: 0,

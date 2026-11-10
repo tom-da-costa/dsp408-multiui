@@ -1,6 +1,6 @@
 import pytest
 
-from dsp408_multiui.protocol import responses as r
+from tracks_dsp_controller.protocol import responses as r
 
 H = bytes.fromhex
 

@@ -30,7 +30,7 @@ credentials). Release notes come from the merged PRs (`gh release create --gener
 - **Fully offline.** No CDN, web fonts, telemetry or other external requests, at runtime or in
   the built UI.
 - **One-command launch** in every mode: `uv run` from a clone (works without Node, because the
-  built UI in `src/dsp408_multiui/web/` is committed), standalone PyInstaller executable,
+  built UI in `src/tracks_dsp_controller/web/` is committed), standalone PyInstaller executable,
   `docker run`, `docker compose up`.
 - **Develop and test against the simulator.** It reproduces the DSP 408's recorded behaviour
   (`tests/hardware/`). `dsp408-sim` is a separate program that the backend reaches over TCP
@@ -67,16 +67,16 @@ credentials). Release notes come from the merged PRs (`gh release create --gener
 ## Tooling
 
 ```bash
-uv sync                                   # install
-uv run dsp408-multiui --demo              # demo: backend + in-process simulated DSP on :8080
-uv run dsp408-sim --host 127.0.0.1        # separate simulated DSP 408 on :9761, with a console
-uv run dsp408-multiui --dsp-host 127.0.0.1  # backend connected to it like to a real DSP
-uv run pytest                             # tests
-make e2e                                  # dsp408-sim + dsp408-multiui as two programs (pytest -m e2e)
+uv sync                                            # install
+uv run tracks-dsp-controller --demo                # demo: backend + in-process simulated DSP on :8080
+uv run dsp408-sim --host 127.0.0.1                 # separate simulated DSP 408 on :9761, with a console
+uv run tracks-dsp-controller --dsp-host 127.0.0.1  # backend connected to it like to a real DSP
+uv run pytest                                      # tests
+make e2e                                           # dsp408-sim + tracks-dsp-controller as two programs
 uv run ruff check . && uv run ruff format --check . && uv run mypy
-make dev                                  # UI hot reload on :5173 + backend --demo on :8080 (Node or Docker)
-make web                                  # rebuild the committed UI (Node or Docker; CI fails if stale)
-make web-test                             # svelte-check + vitest
+make dev                                           # UI hot reload on :5173 + backend --demo on :8080
+make web                                           # rebuild the committed UI (CI fails if stale)
+make web-test                                      # svelte-check + vitest
 ```
 
 - Python ≥ 3.12, uv, hatchling. FastAPI + uvicorn, Pydantic v2.
@@ -85,7 +85,7 @@ make web-test                             # svelte-check + vitest
 
 ## Repository conventions
 
-- Hosted on **GitHub** (public): https://github.com/tom-da-costa/dsp408-multiui. CI and releases use
+- Hosted on **GitHub** (public): https://github.com/tom-da-costa/tracks-dsp-controller. CI and releases use
   GitHub Actions (`.github/workflows/`) on GitHub-hosted runners: native arm64 runner for the
   linux-arm64 executable, Windows runner for the Windows executable, images on `ghcr.io`.
 - Conventional Commits (`feat:`, `fix:`, `docs:` …).

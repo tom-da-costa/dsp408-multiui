@@ -11,19 +11,19 @@ from pathlib import Path
 
 import pytest
 
-from dsp408_multiui.device.session import DeviceSession, DeviceStatus
-from dsp408_multiui.device.transport import DspConnection
-from dsp408_multiui.protocol import commands as c
-from dsp408_multiui.protocol import config_map as cm
-from dsp408_multiui.protocol import responses as r
-from dsp408_multiui.protocol.profile import DEFAULT_PROFILE as P
-from dsp408_multiui.simulator import Faults, SimulatedDevice, SimulatorServer, apply_scenario
-from dsp408_multiui.simulator import cli as sim_cli
-from dsp408_multiui.simulator.console import Console
-from dsp408_multiui.simulator.meters import Shape
-from dsp408_multiui.simulator.server import SecondClient
-from dsp408_multiui.simulator.storage import PresetStore, preset_file
-from dsp408_multiui.state.store import StateStore
+from tracks_dsp_controller.device.session import DeviceSession, DeviceStatus
+from tracks_dsp_controller.device.transport import DspConnection
+from tracks_dsp_controller.protocol import commands as c
+from tracks_dsp_controller.protocol import config_map as cm
+from tracks_dsp_controller.protocol import responses as r
+from tracks_dsp_controller.protocol.profile import DEFAULT_PROFILE as P
+from tracks_dsp_controller.simulator import Faults, SimulatedDevice, SimulatorServer, apply_scenario
+from tracks_dsp_controller.simulator import cli as sim_cli
+from tracks_dsp_controller.simulator.console import Console
+from tracks_dsp_controller.simulator.meters import Shape
+from tracks_dsp_controller.simulator.server import SecondClient
+from tracks_dsp_controller.simulator.storage import PresetStore, preset_file
+from tracks_dsp_controller.state.store import StateStore
 
 FIXTURES = Path(__file__).parents[1] / "fixtures"
 U08 = FIXTURES / "config" / "dsp408_u08.bin"
@@ -238,7 +238,7 @@ async def test_backend_session_against_the_program(tmp_path: Path) -> None:
 def test_the_program_runs_and_stops_on_sigterm() -> None:
     port = free_port()
     proc = subprocess.Popen(
-        [sys.executable, "-m", "dsp408_multiui.simulator", "--host", "127.0.0.1", "--port",
+        [sys.executable, "-m", "tracks_dsp_controller.simulator", "--host", "127.0.0.1", "--port",
          str(port), "--console", "off", "--fast"],
         stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
     )  # fmt: skip
@@ -263,7 +263,7 @@ def test_the_program_runs_and_stops_on_sigterm() -> None:
 
 def test_the_program_console_on_stdin() -> None:
     proc = subprocess.run(
-        [sys.executable, "-m", "dsp408_multiui.simulator", "--host", "127.0.0.1", "--port",
+        [sys.executable, "-m", "tracks_dsp_controller.simulator", "--host", "127.0.0.1", "--port",
          str(free_port()), "--console", "on", "--log-level", "warning"],
         input="status\nlatency 5\nquit\n", capture_output=True, text=True, timeout=20,
     )  # fmt: skip

@@ -5,7 +5,7 @@
 # published, so probe, a second app instance or the official editor can connect to it.
 services:
   dsp408-sim:
-    image: ${DSP408_IMAGE:-dsp408-multiui:latest}
+    image: ${DSP408_IMAGE:-tracks-dsp-controller:latest}
     build: .
     container_name: dsp408-sim
     entrypoint: ["dsp408-sim"]
@@ -25,9 +25,9 @@ services:
       DSP408_SIM_LOG_LEVEL: ${DSP408_LOG_LEVEL:-info}
 
   dsp408:
-    image: ${DSP408_IMAGE:-dsp408-multiui:latest}
+    image: ${DSP408_IMAGE:-tracks-dsp-controller:latest}
     build: .
-    container_name: dsp408-multiui-sim
+    container_name: tracks-dsp-controller-sim
     depends_on: [dsp408-sim]
     ports:
       - "${DSP408_LISTEN_PORT:-8080}:8080"

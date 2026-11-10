@@ -2,14 +2,14 @@ from dataclasses import replace
 
 import pytest
 
-from dsp408_multiui.protocol import commands as c
-from dsp408_multiui.protocol import config_map as cm
-from dsp408_multiui.protocol import responses as r
-from dsp408_multiui.protocol.meters import decode_meters
-from dsp408_multiui.protocol.profile import DEFAULT_PROFILE as P
-from dsp408_multiui.simulator import Faults, SimulatedDevice, apply_scenario
-from dsp408_multiui.simulator.device import Link
-from dsp408_multiui.simulator.meters import Shape, Source
+from tracks_dsp_controller.protocol import commands as c
+from tracks_dsp_controller.protocol import config_map as cm
+from tracks_dsp_controller.protocol import responses as r
+from tracks_dsp_controller.protocol.meters import decode_meters
+from tracks_dsp_controller.protocol.profile import DEFAULT_PROFILE as P
+from tracks_dsp_controller.simulator import Faults, SimulatedDevice, apply_scenario
+from tracks_dsp_controller.simulator.device import Link
+from tracks_dsp_controller.simulator.meters import Shape, Source
 
 
 @pytest.fixture

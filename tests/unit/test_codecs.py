@@ -2,8 +2,8 @@ import math
 
 import pytest
 
-from dsp408_multiui.protocol import codecs as c
-from dsp408_multiui.protocol.profile import DEFAULT_PROFILE
+from tracks_dsp_controller.protocol import codecs as c
+from tracks_dsp_controller.protocol.profile import DEFAULT_PROFILE
 
 
 # --- gain (two segments, verified on the 4x4 Mini and dsp-408-ui) ---------------------------

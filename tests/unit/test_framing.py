@@ -6,7 +6,7 @@ IMBArator/miniDSP-Linux (GPL-3.0). See the attribution table in README.md.
 
 import pytest
 
-from dsp408_multiui.protocol.framing import (
+from tracks_dsp_controller.protocol.framing import (
     DEVICE,
     HOST,
     Frame,

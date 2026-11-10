@@ -5,8 +5,8 @@ from pathlib import Path
 
 import pytest
 
-from dsp408_multiui.protocol import config_map as cm
-from dsp408_multiui.protocol.profile import DEFAULT_PROFILE as P
+from tracks_dsp_controller.protocol import config_map as cm
+from tracks_dsp_controller.protocol.profile import DEFAULT_PROFILE as P
 
 FIXTURE = Path(__file__).parent.parent / "fixtures" / "config" / "forest_408.bin"
 

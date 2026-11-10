@@ -1,4 +1,4 @@
-"""End to end: ``dsp408-sim`` and ``dsp408-multiui`` run as two separate programs.
+"""End to end: ``dsp408-sim`` and ``tracks-dsp-controller`` run as two separate programs.
 
 The simulator listens on TCP like a DSP 408; the app connects to it with ``--dsp-host``. The
 tests then drive the app as the browser does (HTTP login, WebSocket) and check the effect on the
@@ -28,11 +28,11 @@ import httpx
 import pytest
 from websockets.asyncio.client import ClientConnection, connect
 
-from dsp408_multiui.device.transport import DspConnection
-from dsp408_multiui.protocol import config_map as cm
-from dsp408_multiui.protocol.profile import DEFAULT_PROFILE as P
-from dsp408_multiui.simulator.storage import preset_file
-from dsp408_multiui.tools import probe
+from tracks_dsp_controller.device.transport import DspConnection
+from tracks_dsp_controller.protocol import config_map as cm
+from tracks_dsp_controller.protocol.profile import DEFAULT_PROFILE as P
+from tracks_dsp_controller.simulator.storage import preset_file
+from tracks_dsp_controller.tools import probe
 
 pytestmark = pytest.mark.e2e
 
@@ -81,7 +81,7 @@ class Stack:
         self.sim = self._spawn(
             "dsp408-sim",
             [
-                *command("DSP408_E2E_SIM_CMD", "dsp408_multiui.simulator"),
+                *command("DSP408_E2E_SIM_CMD", "tracks_dsp_controller.simulator"),
                 "--host", "127.0.0.1", "--port", str(self.sim_port),
                 "--state-dir", str(self.state_dir), "--fast", "--console", "off",
                 *(["--preset", f"8={U08}"] if self.starts == 0 else []),
@@ -90,9 +90,9 @@ class Stack:
 
     def start_app(self) -> None:
         self.app = self._spawn(
-            "dsp408-multiui",
+            "tracks-dsp-controller",
             [
-                *command("DSP408_E2E_APP_CMD", "dsp408_multiui"),
+                *command("DSP408_E2E_APP_CMD", "tracks_dsp_controller"),
                 "--dsp-host", "127.0.0.1", "--dsp-port", str(self.sim_port),
                 "--host", "127.0.0.1", "--port", str(self.app_port), "--pin", PIN,
                 "--meter-rate", "10",

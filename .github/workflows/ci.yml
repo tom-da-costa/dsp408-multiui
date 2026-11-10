@@ -39,7 +39,7 @@ jobs:
         run: uv run pytest --cov --cov-report=term-missing
 
   e2e:
-    # dsp408-sim and dsp408-multiui started side by side as two programs; the app reaches the
+    # dsp408-sim and tracks-dsp-controller started side by side as two programs; the app reaches the
     # simulated DSP over TCP like a real one (tests/e2e/test_stack.py).
     runs-on: ubuntu-latest
     steps:
@@ -92,8 +92,8 @@ jobs:
       - name: The committed build is up to date
         run: |
           npm run build
-          if [ -n "$(git status --porcelain -- ../src/dsp408_multiui/web)" ]; then
-            git status --short -- ../src/dsp408_multiui/web
-            echo "::error::src/dsp408_multiui/web is stale: run 'make web' and commit the result"
+          if [ -n "$(git status --porcelain -- ../src/tracks_dsp_controller/web)" ]; then
+            git status --short -- ../src/tracks_dsp_controller/web
+            echo "::error::src/tracks_dsp_controller/web is stale: run 'make web' and commit the result"
             exit 1
           fi

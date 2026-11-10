@@ -4,9 +4,9 @@ The launch modes of the [README](../README.md#usage) and how each is produced.
 
 | Mode | Built by | Output |
 |---|---|---|
-| `uv run` from a clone | nothing to build: the UI build is committed in `src/dsp408_multiui/web/` | — |
-| Standalone executable | `packaging/exe.Dockerfile` (Linux, any arch) and `packaging/build_exe.sh` (Windows runner) | `dsp408-multiui-vX.Y.Z-linux-amd64`, `…-linux-arm64`, `…-windows-amd64.exe`, plus the simulator `dsp408-sim-vX.Y.Z-…` for each, attached to the GitHub release |
-| `docker run` / `docker compose` | `Dockerfile` (multi-arch with buildx) | `ghcr.io/tom-da-costa/dsp408-multiui:X.Y.Z` and `:latest` (`:main` for the rolling build) |
+| `uv run` from a clone | nothing to build: the UI build is committed in `src/tracks_dsp_controller/web/` | — |
+| Standalone executable | `packaging/exe.Dockerfile` (Linux, any arch) and `packaging/build_exe.sh` (Windows runner) | `tracks-dsp-controller-vX.Y.Z-linux-amd64`, `…-linux-arm64`, `…-windows-amd64.exe`, plus the simulator `dsp408-sim-vX.Y.Z-…` for each, attached to the GitHub release |
+| `docker run` / `docker compose` | `Dockerfile` (multi-arch with buildx) | `ghcr.io/tom-da-costa/tracks-dsp-controller:X.Y.Z` and `:latest` (`:main` for the rolling build) |
 
 ## The rolling "main" release
 
@@ -15,8 +15,8 @@ the branch's name). It is rebuilt from scratch on each push. The release and its
 on the new commit, so it only ever holds the latest build. Its files keep fixed names, so links stay valid:
 
 ```
-https://github.com/tom-da-costa/dsp408-multiui/releases/download/main-latest/dsp408-multiui-main-linux-amd64
-https://github.com/tom-da-costa/dsp408-multiui/releases/download/main-latest/dsp408-sim-main-windows-amd64.exe
+https://github.com/tom-da-costa/tracks-dsp-controller/releases/download/main-latest/tracks-dsp-controller-main-linux-amd64
+https://github.com/tom-da-costa/tracks-dsp-controller/releases/download/main-latest/dsp408-sim-main-windows-amd64.exe
 ```
 
 Nothing is published unless the unit and end-to-end tests pass on that commit. The Docker image is
@@ -24,7 +24,7 @@ tagged `:main`. Being a pre-release, it never shows as the "latest release".
 
 ## Keeping the committed UI up to date
 
-After any change in `web/`, run `make web` and commit `src/dsp408_multiui/web/` together with the
+After any change in `web/`, run `make web` and commit `src/tracks_dsp_controller/web/` together with the
 sources. The `web` CI job rebuilds the UI and fails if the committed build differs.
 
 ## Making a release
@@ -50,7 +50,7 @@ Everything runs on GitHub-hosted runners with the automatic Actions token: no se
 | `exe-windows` | `windows-latest` | `packaging/build_exe.sh` under Git Bash, Python 3.12 from `actions/setup-python` |
 | `docker` | `ubuntu-latest` | `docker/build-push-action`, amd64 + arm64 (arm64 through QEMU), layer cache in the Actions cache |
 
-The first push creates the `dsp408-multiui` package on `ghcr.io`. GitHub makes a new package
+The first push creates the `tracks-dsp-controller` package on `ghcr.io`. GitHub makes a new package
 private: set it to **public** once, in the package settings (Package settings › Change
 visibility), so that `docker pull` works without logging in.
 
@@ -58,15 +58,15 @@ visibility), so that `docker pull` works without logging in.
 
 ```bash
 # Linux executable for this machine's architecture
-docker buildx build --build-arg NAME=dsp408-multiui-linux-amd64 -f packaging/exe.Dockerfile -o dist .
+docker buildx build --build-arg NAME=tracks-dsp-controller-linux-amd64 -f packaging/exe.Dockerfile -o dist .
 # Linux arm64 on an amd64 machine (needs QEMU binfmt:
 #   docker run --privileged --rm tonistiigi/binfmt --install arm64)
-docker buildx build --platform linux/arm64 --build-arg NAME=dsp408-multiui-linux-arm64 \
+docker buildx build --platform linux/arm64 --build-arg NAME=tracks-dsp-controller-linux-arm64 \
   -f packaging/exe.Dockerfile -o dist .
 # Windows, cross-built with Wine (the release uses a real Windows runner instead)
-docker buildx build --build-arg NAME=dsp408-multiui-windows-amd64 -f packaging/windows.Dockerfile -o dist .
+docker buildx build --build-arg NAME=tracks-dsp-controller-windows-amd64 -f packaging/windows.Dockerfile -o dist .
 # Docker image
-docker build -t dsp408-multiui .
+docker build -t tracks-dsp-controller .
 ```
 
 Without Docker, `packaging/build_exe.sh` builds the executables (app and simulator) for the

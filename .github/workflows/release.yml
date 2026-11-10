@@ -68,7 +68,7 @@ jobs:
         run: |
           eval "$(packaging/release.sh env)"
           docker buildx build \
-            --build-arg "NAME=dsp408-multiui-${ASSET_VERSION}-linux-${{ matrix.arch }}" \
+            --build-arg "NAME=tracks-dsp-controller-${ASSET_VERSION}-linux-${{ matrix.arch }}" \
             -f packaging/exe.Dockerfile -o dist .
 
       - name: Upload to the release
@@ -100,7 +100,7 @@ jobs:
       - name: Build
         run: |
           eval "$(packaging/release.sh env)"
-          packaging/build_exe.sh "dsp408-multiui-${ASSET_VERSION}-windows-amd64"
+          packaging/build_exe.sh "tracks-dsp-controller-${ASSET_VERSION}-windows-amd64"
           for exe in dist/*.exe; do "$exe" --version; done
 
       - name: Upload to the release
