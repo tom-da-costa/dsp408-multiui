@@ -66,10 +66,11 @@
   .block {
     break-inside: avoid;
   }
-  .block > :global(.card) {
-    border: 2px solid color-mix(in srgb, var(--ch) 70%, var(--line));
-  }
   .block > :global(.card .title) {
+    margin: 6px 0;
+    padding: 4px 10px;
+    border: 2px solid var(--ch);
+    border-radius: var(--radius);
     color: var(--ch);
   }
 </style>

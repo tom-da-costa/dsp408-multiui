@@ -95,7 +95,7 @@
     gap: 8px;
     padding: 8px;
     background: var(--panel);
-    border: 2px solid color-mix(in srgb, var(--ch) 70%, var(--line));
+    border: 1px solid var(--line);
     border-radius: var(--radius);
   }
   .strip :global(section.card) {
@@ -103,6 +103,7 @@
     background: var(--panel-2);
   }
   .head {
+    border: 2px solid var(--ch);
     color: var(--ch);
     display: grid;
     justify-items: start;

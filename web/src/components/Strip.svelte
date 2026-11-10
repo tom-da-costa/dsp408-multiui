@@ -78,10 +78,11 @@
     gap: 8px;
     padding: 8px 4px;
     background: var(--panel);
-    border: 2px solid color-mix(in srgb, var(--ch) 70%, var(--line));
+    border: 1px solid var(--line);
     border-radius: var(--radius);
   }
   .name {
+    border: 2px solid var(--ch);
     color: var(--ch);
     display: grid;
     min-height: 40px;

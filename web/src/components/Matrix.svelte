@@ -18,17 +18,15 @@
       <thead>
         <tr>
           <th></th>
-          {#each device.inputs as input, i (input.index)}<th
-              ><span class="ch-dot" style:--ch={app.color(`inputs.${i}`)}></span> {input.name}</th
+          {#each device.inputs as input, i (input.index)}<th style:color={app.color(`inputs.${i}`)}
+              >{input.name}</th
             >{/each}
         </tr>
       </thead>
       <tbody>
         {#each device.outputs as output, o (output.index)}
           <tr>
-            <th scope="row"
-              ><span class="ch-dot" style:--ch={app.color(`outputs.${o}`)}></span> {output.name}</th
-            >
+            <th scope="row" style:color={app.color(`outputs.${o}`)}>{output.name}</th>
             {#each output.matrix as on, i (i)}
               <td>
                 <button
