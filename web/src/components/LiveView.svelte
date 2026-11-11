@@ -29,7 +29,8 @@
     height: 100%;
     display: flex;
     flex-direction: column;
-    min-height: 420px;
+    /* Picker + a strip with its fader at its minimum height: below that, the page scrolls. */
+    min-height: 480px;
   }
   .strips {
     flex: 1;
