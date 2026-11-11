@@ -28,6 +28,7 @@ from tracks_dsp_controller.server.auth import (
     LoginError,
     RateLimitedError,
 )
+from tracks_dsp_controller.server.host import HostManager, HostState
 from tracks_dsp_controller.server.lock import LockManager, LockState
 from tracks_dsp_controller.server.settings import ServerConfig
 from tracks_dsp_controller.state.registry import HARDWARE_VERIFIED, ParamError, is_verified
@@ -89,12 +90,14 @@ class Hub:
         store: StateStore,
         auth: AuthManager,
         lock: LockManager,
+        host: HostManager,
     ) -> None:
         self.config = config
         self.session = session
         self.store = store
         self.auth = auth
         self.lock = lock
+        self.host = host
         self.clients: set[Client] = set()
         self._meter_seq = 0
         store.subscribe(self._on_store)
@@ -102,6 +105,7 @@ class Hub:
         session.on_status(self._on_status)
         session.on_profile(self._on_profile)
         lock.on_change(self._on_lock)
+        host.on_change(self._on_host)
 
     # --- outgoing ---------------------------------------------------------------------------------
     def _send(self, client: Client, message: dict[str, Any], *, droppable: bool = False) -> None:
@@ -180,6 +184,18 @@ class Hub:
     def _on_lock(self, state: LockState) -> None:
         self.broadcast(self.lock_message(state))
 
+    def host_message(self, state: HostState | None = None) -> dict[str, Any]:
+        state = state or self.host.state()
+        return {
+            "type": "host",
+            "owner_id": state.owner_id,
+            "owner_name": state.owner_name,
+            "logins_blocked": state.logins_blocked,
+        }
+
+    def _on_host(self, state: HostState) -> None:
+        self.broadcast(self.host_message(state))
+
     def clients_message(self) -> dict[str, Any]:
         unique = {cl.id: cl.session.name for cl in self.clients}
         return {
@@ -237,6 +253,8 @@ class Hub:
         self._send(client, {"type": "snapshot", "rev": snap.rev, "state": snap.state})
         self._send(client, self.device_message())
         self._send(client, self.lock_message())
+        self._send(client, self.host_message())
+        self.host.presence(client.id, True)
         self.broadcast(self.clients_message())
         try:
             while True:
@@ -267,6 +285,8 @@ class Hub:
             self.clients.discard(client)
             if client.sender is not None:
                 await cancel_and_wait(client.sender)
+            if not any(cl.id == client.id for cl in self.clients):
+                self.host.presence(client.id, False)
             self.broadcast(self.clients_message())
 
     async def _sender(self, client: Client) -> None:
@@ -365,6 +385,21 @@ class Hub:
             case "lock.release":
                 if not self.lock.release(client.id):
                     raise RequestError("invalid", "you do not have control")
+            case "host.acquire":
+                if not self.host.acquire(client.id, client.session.name):
+                    owner = self.host.state().owner_name or "another client"
+                    raise RequestError("host_taken", f"{owner} is the host")
+            case "host.release":
+                if not self.host.release(client.id):
+                    raise RequestError("not_host", "you are not the host")
+            case "logins.block":
+                blocked = message.get("blocked")
+                if not isinstance(blocked, bool):
+                    raise RequestError("invalid", "blocked must be true or false")
+                if not self.host.block_logins(client.id, blocked):
+                    raise RequestError("not_host", "only the host can block new connections")
+            case "client.kick":
+                await self.kick(client, message.get("client_id"))
             case "screen.lock":
                 self.set_screen_lock(client.session, True)
             case "screen.unlock":
@@ -391,10 +426,27 @@ class Hub:
             case _:
                 raise RequestError("invalid", f"unknown message type {kind!r}")
 
-    async def close_client_sessions(self, client_id: str) -> None:
+    async def kick(self, host: Client, target: object) -> None:
+        """The host disconnects a client: its session ends, it gets the login screen."""
+        if not self.host.is_host(host.id):
+            raise RequestError("not_host", "only the host can disconnect clients")
+        if not isinstance(target, str):
+            raise RequestError("invalid", "client_id must be a string")
+        if target == host.id:
+            raise RequestError("invalid", "you cannot disconnect yourself")
+        if self.auth.logout_client(target) is None:
+            raise RequestError("invalid", "no such client")
+        self.lock.release(target)
+        log.info("client %s disconnected by the host %s", target, host.session.name)
+        await self.close_client_sessions(target, reason=f"Disconnected by {host.session.name}")
+
+    async def close_client_sessions(self, client_id: str, reason: str = "") -> None:
         for client in [cl for cl in self.clients if cl.id == client_id]:
             with contextlib.suppress(Exception):
-                await client.websocket.close(code=4401)
+                # A close reason is at most 123 bytes.
+                await client.websocket.close(
+                    code=4401, reason=reason.encode()[:123].decode(errors="ignore")
+                )
 
 
 def _int(message: dict[str, Any], key: str) -> int:

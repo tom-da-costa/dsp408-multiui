@@ -191,6 +191,16 @@
       sie ist, aber nichts kann geändert oder gewechselt werden. <em>Unlock screen</em> fragt
       nach dem Zugangscode. Die Sperre bleibt auch nach einem Neuladen bestehen.
     </dd>
+    <dt>Host (Settings)</dt>
+    <dd>
+      Eine Person kann unter <em>Settings › Connected clients</em> mit <em>Become host</em> Host
+      werden. Der Host kann einen anderen Client mit <em>Disconnect</em> trennen (er landet
+      wieder auf der Anmeldeseite und muss den Zugangscode erneut eingeben) und mit <em>Block new
+      connections</em> neue Verbindungen sperren: Niemand kann sich mehr anmelden, bereits
+      verbundene Browser bleiben verbunden. Die Sperre endet, wenn der Host <em>Stop being
+      host</em> antippt, sich abmeldet oder die App seit 5 Minuten geschlossen hat. Um jemanden
+      auszuschließen: erst trennen, dann sperren.
+    </dd>
   </dl>
 </section>
 

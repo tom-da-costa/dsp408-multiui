@@ -60,6 +60,9 @@ On a phone, in landscape:
   adjustable from 1 to 10 Hz
 - Multi-client: last writer wins by default. A client can **take control**: the others become
   read-only while it is active (released after 120 s of inactivity)
+- **Host**: one client can become host (Settings) and then disconnect another client (back to
+  the login screen) and block new connections; browsers already connected stay connected. The
+  block ends with the role (released, logged out, or the app closed for 5 minutes)
 - **Lock screen**: this browser becomes read-only and stays on the current view (everything
   stays readable, meters included) until *Unlock screen* and the access code, for a computer or
   phone left unattended; a reload stays locked

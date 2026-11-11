@@ -12,6 +12,21 @@
     await app.run({ type: "settings.set", meter_rate_hz: rate });
   }
 
+  const otherHost = $derived(!!app.host?.owner_id && !app.iAmHost);
+
+  async function toggleHost() {
+    await app.run({ type: app.iAmHost ? "host.release" : "host.acquire" });
+  }
+
+  async function blockLogins(blocked: boolean) {
+    await app.run({ type: "logins.block", blocked });
+  }
+
+  async function kick(id: string, name: string) {
+    if (!confirm(`Disconnect ${name}? They go back to the login screen.`)) return;
+    if (await app.run({ type: "client.kick", client_id: id })) app.toast(`${name} disconnected`);
+  }
+
   async function refresh() {
     if (await app.run({ type: "resync" })) app.toast("Configuration re-read from the DSP");
   }
@@ -55,15 +70,58 @@
 
   <section class="card">
     <h2>Connected clients ({app.clients.length})</h2>
-    <ul>
+    <ul class="clients">
       {#each app.clients as client (client.id)}
         <li>
-          {client.name}
-          {#if client.id === app.hello?.client_id}<span class="muted">(you)</span>{/if}
-          {#if client.id === app.lock?.owner_id}<span class="badge">control</span>{/if}
+          <span class="who">
+            {client.name}
+            {#if client.id === app.hello?.client_id}<span class="muted">(you)</span>{/if}
+            {#if client.id === app.host?.owner_id}<span class="badge host">host</span>{/if}
+            {#if client.id === app.lock?.owner_id}<span class="badge">control</span>{/if}
+          </span>
+          {#if app.iAmHost && client.id !== app.hello?.client_id}
+            <button
+              class="danger small"
+              onclick={() => kick(client.id, client.name)}
+              disabled={app.screenLocked}>Disconnect</button
+            >
+          {/if}
         </li>
       {/each}
     </ul>
+    <h3>Host</h3>
+    <p class="muted">
+      {#if app.iAmHost}
+        You are the host: you can disconnect the other clients and block new connections.
+      {:else if otherHost}
+        {app.host?.owner_name} is the host{app.host?.logins_blocked
+          ? " and has blocked new connections"
+          : ""}.
+      {:else}
+        Nobody is the host. The host can disconnect the other clients and block new
+        connections.
+      {/if}
+    </p>
+    {#if app.iAmHost}
+      <label class="check">
+        <input
+          type="checkbox"
+          checked={app.host?.logins_blocked ?? false}
+          disabled={app.screenLocked}
+          onchange={(e) => blockLogins(e.currentTarget.checked)}
+        />
+        Block new connections
+      </label>
+      <p class="muted">
+        Browsers already connected stay connected (a reload or a Wi-Fi drop is fine). The
+        block ends with your host role, also when you have had the app closed for 5 minutes.
+      </p>
+    {/if}
+    <div class="actions">
+      <button onclick={toggleHost} disabled={otherHost || app.screenLocked || !app.connected}>
+        {app.iAmHost ? "Stop being host" : "Become host"}
+      </button>
+    </div>
   </section>
 
   <section class="card">
@@ -118,6 +176,37 @@
   ul {
     margin: 0;
     padding-left: 18px;
+  }
+  .clients {
+    list-style: none;
+    padding: 0;
+    display: grid;
+    gap: 4px;
+  }
+  .clients li {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    min-height: 36px;
+  }
+  .who {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+  }
+  button.small {
+    min-height: 32px;
+    padding: 0 10px;
+    font-size: 0.85rem;
+  }
+  h3 {
+    margin: 12px 0 4px;
+    font-size: 1rem;
+  }
+  .badge.host {
+    background: var(--info);
   }
   .badge {
     font-size: 0.7rem;

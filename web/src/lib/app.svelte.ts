@@ -8,6 +8,7 @@ import type {
   DeviceMessage,
   DeviceState,
   Hello,
+  HostMessage,
   LockMessage,
   Meters,
   ResultMessage,
@@ -50,6 +51,10 @@ class App {
   lock = $state<LockMessage | null>(null);
   /** performance.now() deadline of the control's idle release (null when free). */
   lockDeadline = $state<number | null>(null);
+  /** Host role (the `host` messages). */
+  host = $state<HostMessage | null>(null);
+  /** Why the login screen is shown, e.g. "Disconnected by Alice" (cleared on login). */
+  loginNotice = $state("");
   /** Screen lock: this browser is read-only (the screen stays readable) until the access code
    * is typed (kept by the server on the session, so a reload stays locked). */
   screenLocked = $state(false);
@@ -78,6 +83,10 @@ class App {
   // --- derived helpers ---------------------------------------------------------------------
   get lockedByOther(): boolean {
     return !!this.lock?.owner_id && this.lock.owner_id !== this.hello?.client_id;
+  }
+
+  get iAmHost(): boolean {
+    return !!this.host?.owner_id && this.host.owner_id === this.hello?.client_id;
   }
 
   get iOwnLock(): boolean {
@@ -122,6 +131,7 @@ class App {
 
   async login(pin: string, name: string): Promise<void> {
     this.me = await api.login(pin, name);
+    this.loginNotice = "";
     this.view = "app";
     this.stopped = false;
     this.connect();
@@ -140,6 +150,7 @@ class App {
     this.device = null;
     this.status = null;
     this.lock = null;
+    this.host = null;
     this.screenLocked = false;
     this.meters = null;
     this.connected = false;
@@ -170,6 +181,7 @@ class App {
     ws.onclose = (event) => {
       if (this.ws !== ws) return;
       if (event.code === 4401) {
+        this.loginNotice = event.reason;
         this.drop();
         this.reset();
         this.view = "login";
@@ -316,6 +328,9 @@ class App {
           this.lock.idle_remaining_s === null
             ? null
             : performance.now() + this.lock.idle_remaining_s * 1000;
+        break;
+      case "host":
+        this.host = msg as unknown as HostMessage;
         break;
       case "screen_lock":
         this.screenLocked = msg.locked as boolean;
