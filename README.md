@@ -125,6 +125,10 @@ environment variable.
   channel name (*Name*).
 - In Live, Params and All-in-one, a row picks the channels shown (all, inputs, outputs or any
   set); each view remembers its choice in the browser (Params: one choice for every setting).
+- **Too loud** view: one indicator that fills the screen, for whoever sets the volume. It lights
+  in the compressor's colour when at least one output's compressor acts, in the limiter's colour
+  (which prevails) when at least one limiter acts. Flashing now and then is fine; if it stays
+  lit, turn the volume down.
 - **Full screen:** the ⛶ button at the bottom of the tab bar (Android, desktop browsers).
 - **Install on the home screen:** iPhone: Safari › Share › *Add to Home Screen*; it then opens
   full screen without the browser bars. Android: Chrome installs web apps only over HTTPS (or
