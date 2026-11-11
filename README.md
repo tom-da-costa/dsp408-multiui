@@ -119,7 +119,8 @@ environment variable.
 - **Live** view (first tab): per channel, CLIP / CMP / LIM indicators, a meter graduated every
   10 dB with the compressor (C) and limiter (L) thresholds, the gain fader with − / + and MUTE.
 - **Params** view: one setting on the channels you pick. Gain, delay, filters, compressor,
-  limiter and gate are shown as one strip per channel, with vertical faders.
+  limiter and gate are shown as one strip per channel, with vertical faders; EQ as one frequency
+  response graph per channel, on which the bands are edited.
 - **All-in-one** view: one column per channel with the settings you pick, including the
   channel name (*Name*).
 - In Live, Params and All-in-one, a row picks the channels shown (all, inputs, outputs or any

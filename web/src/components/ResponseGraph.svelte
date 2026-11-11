@@ -14,9 +14,13 @@
 
   interface Props {
     path: string;
+    /** Params › EQ: one small graph per channel, titled with the channel, without the
+     * "Compare with" row and the note. */
+    compact?: boolean;
+    title?: string;
   }
 
-  let { path }: Props = $props();
+  let { path, compact = false, title = "Frequency response" }: Props = $props();
 
   const isOutput = $derived(path.startsWith("outputs."));
   const index = $derived(Number(path.split(".")[1]));
@@ -183,7 +187,7 @@
   const others = $derived(
     profile
       ? allChannels
-          .filter(([p]) => p !== path && overlays.paths.includes(p))
+          .filter(([p]) => !compact && p !== path && overlays.paths.includes(p))
           .map(([p, c]) => ({
             path: p,
             name: `${links.slot(p)} ${links.name(p)}`.trim(),
@@ -233,28 +237,27 @@
       .join("");
   }
 
-  /** Band markers, numbered like the list: every band that is on (even at 0 dB, so that it can
-   * be grabbed), at its frequency and gain (0 dB for the types without a gain). */
+  /** Band markers, numbered like the list, at the band's frequency and gain (0 dB for the types
+   * without a gain). Every band has one, so that it can be grabbed; it is greyed when the band
+   * does nothing: off, a peak or shelf at 0 dB, or the whole EQ bypassed. */
   const markers = $derived(
-    shown && !shown.peq_bypass
-      ? shown.peq.flatMap((b, band) =>
-          b.bypass
-            ? []
-            : [
-                {
-                  n: band + 1,
-                  cx: x(b.freq_hz),
-                  cy: y(usesGain(typeName(band)) ? b.gain_db : 0),
-                },
-              ],
-        )
+    shown
+      ? shown.peq.map((b, band) => {
+          const gain = usesGain(typeName(band));
+          return {
+            n: band + 1,
+            cx: x(b.freq_hz),
+            cy: y(gain ? b.gain_db : 0),
+            off: shown.peq_bypass || b.bypass || (gain && b.gain_db === 0),
+          };
+        })
       : [],
   );
 </script>
 
-<section class="card graph">
+<section class="card graph" class:compact>
   <header>
-    <h2>Frequency response</h2>
+    <h2>{title}</h2>
     <span class="legend">
       <span class="key total"></span>total
       <span class="key xo"></span>HPF / LPF
@@ -263,6 +266,7 @@
       {#each others as o (o.path)}<span class="key" style:background={o.color}></span><span style:color={o.color}>{o.name}</span>{/each}
     </span>
   </header>
+  {#if !compact}
   <div class="compare">
     <span class="muted">Compare with</span>
     <ChipBar
@@ -274,6 +278,7 @@
       label="Channels to overlay"
     />
   </div>
+  {/if}
   <div class="plot" bind:clientWidth={width}>
     {#if response}
       <svg
@@ -315,6 +320,7 @@
               class="marker"
               class:editable
               class:active={active === m.n - 1}
+              class:off={m.off}
               role="slider"
               tabindex="-1"
               aria-label={`EQ band ${m.n}: drag for frequency and gain, mouse wheel for Q`}
@@ -340,17 +346,22 @@
       </svg>
     {/if}
   </div>
+  {#if !compact}
   <p class="note muted">
     Computed from the settings with textbook filter shapes; the DSP's exact curves may differ
     slightly. Channel gain, dynamics and delay are not included. Drag a band's marker to set its
     frequency and gain; turn the mouse wheel over it for its Q.
   </p>
+  {/if}
 </section>
 
 <style>
   .graph {
     margin-bottom: 10px;
     padding: 10px 12px;
+  }
+  .graph.compact {
+    margin: 0;
   }
   header {
     display: flex;
@@ -470,6 +481,14 @@
   circle.hit {
     fill: transparent;
     stroke: none;
+  }
+  /* A band that does nothing (off, at 0 dB, EQ bypassed): greyed. */
+  .marker.off circle:not(.hit) {
+    stroke: var(--muted);
+    fill: #16181d;
+  }
+  .marker.off text.n {
+    fill: var(--muted);
   }
   .marker.editable {
     cursor: grab;

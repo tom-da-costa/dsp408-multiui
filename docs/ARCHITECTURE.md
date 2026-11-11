@@ -115,8 +115,9 @@ with exponential backoff (1 s → 30 s) and re-reads the full state after reconn
 - The client reconnects its WebSocket automatically and gets a fresh snapshot. If the session is
   gone (server restart), it shows the login screen.
 - A fader only moves on a drag that starts on its knob, so scrolling never moves a fader.
-- **PEQ on the response graph** (`ResponseGraph.svelte`): every band that is on has a marker
-  (even at 0 dB). A drag that starts on a marker sets the band's frequency (x, snapped to the
+- **PEQ on the response graph** (`ResponseGraph.svelte`, on the channel page and, one graph per
+  channel, in Params › EQ): every band has a marker, greyed when it does nothing (off, a peak or
+  shelf at 0 dB, or the whole EQ bypassed). A drag that starts on a marker sets the band's frequency (x, snapped to the
   device's log steps) and, for peak and shelf bands, its gain (y, 0.1 dB steps); the dB scale is
   frozen during the drag. The mouse wheel over a marker steps its Q (not passive there, so the
   page does not scroll; elsewhere the wheel scrolls). Same optimistic scheme as the faders: a

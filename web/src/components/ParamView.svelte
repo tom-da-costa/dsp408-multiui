@@ -13,8 +13,10 @@
   import Mixer from "./Mixer.svelte";
   import ParamBlock from "./ParamBlock.svelte";
   import ParamStrips from "./ParamStrips.svelte";
+  import ResponseGraph from "./ResponseGraph.svelte";
 
-  // Settings shown as one strip per channel, like the mixer; the others (EQ, GEQ) as cards.
+  // Settings shown as one strip per channel, like the mixer; EQ as one response graph per
+  // channel (bands edited on it); GEQ as cards.
   const STRIPS = new Set(["delay", "filters", "comp", "limit", "gate"]);
 
   const selection = new ChannelSelection("dsp408.params.hidden");
@@ -41,6 +43,17 @@
   <Matrix />
 {:else if nav.param === "link"}
   <LinkEditor />
+{:else if nav.param === "eq"}
+  <ChannelPicker {selection} />
+  <div class="graphs">
+    {#each paths as path (path)}
+      <div class="graph-block" style:--ch={app.color(path)}>
+        <ResponseGraph {path} compact title={title(path)} />
+      </div>
+    {:else}
+      <p class="muted">No channel selected: pick some above.</p>
+    {/each}
+  </div>
 {:else}
   {#if STRIPS.has(nav.param)}
     <ParamStrips param={nav.param} {paths} {selection} {side} />
@@ -59,6 +72,17 @@
 {/if}
 
 <style>
+  .graphs {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 460px), 1fr));
+    gap: 10px;
+  }
+  .graph-block > :global(.graph h2) {
+    padding: 2px 10px;
+    border: 2px solid var(--ch);
+    border-radius: var(--radius);
+    color: var(--ch);
+  }
   .cards {
     columns: 3 360px;
     column-gap: 10px;
