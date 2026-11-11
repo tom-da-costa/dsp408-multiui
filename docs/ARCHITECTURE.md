@@ -83,7 +83,10 @@ through a single queue (`device/pipeline.py`):
    frame per key. For this to work, the WebSocket handler does not wait for a `set` to be
    acknowledged before reading the client's next message: each `set` runs as its own task (in
    order, since a write reaches the queue without yielding), so the values of a drag reach the
-   queue while the previous one is in flight.
+   queue while the previous one is in flight. The long requests (preset recall, store, import
+   and export, link changes, resync) run as tasks too: a preset import with a store, or a recall
+   behind a slow link, lasts longer than the client's 12 s silence limit, and the client's
+   pings must still be answered meanwhile (meters stop during an exclusive sequence).
 2. **Priorities.** Writes come before meter polls, but when the meter period has elapsed the next
    free slot goes to a poll, which guarantees the configured rate (and at least 1 Hz). After a
    poll, a waiting write goes first: on a slow link a poll can outlast the meter period, and

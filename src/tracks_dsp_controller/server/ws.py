@@ -53,6 +53,16 @@ ACTIVITY_TYPES = {
     "activity",
     "resync",
 }
+# Requests handled in their own task, so that the client's next messages are read meanwhile.
+BACKGROUND_TYPES = {
+    "set",
+    "preset.recall",
+    "preset.store",
+    "preset.import",
+    "preset.export",
+    "link.set",
+    "resync",
+}
 PRESET_FILE_MAX_BYTES = 16 * 1024  # a DSP 408 preset file is 1452 bytes
 
 
@@ -88,7 +98,7 @@ class Client:
         default_factory=lambda: asyncio.Queue(maxsize=QUEUE_SIZE)
     )
     sender: asyncio.Task[None] | None = None
-    # Writes still waiting for the device (strong references: the loop only keeps weak ones).
+    # Requests still waiting for the device (strong references: the loop only keeps weak ones).
     writes: set[asyncio.Task[None]] = field(default_factory=set)
 
     @property
@@ -285,11 +295,13 @@ class Hub:
                 if self.auth.get(session.token) is None:  # logged out from another tab
                     await websocket.close(code=4401)
                     break
-                if message.get("type") == "set":
-                    # Do not wait for the DSP: the next values of a dragged control must reach
+                if message.get("type") in BACKGROUND_TYPES:
+                    # Do not wait for the DSP. The next values of a dragged control must reach
                     # the pipeline while this one is in flight, so that it coalesces them
                     # instead of replaying every step. Order is kept: up to the pipeline's
                     # queue, a write runs without yielding, and tasks start in creation order.
+                    # A long sequence (an import, a recall on a slow link) can last longer than
+                    # the client's silence limit (12 s): pings must still be answered meanwhile.
                     task = asyncio.create_task(self._dispatch(client, message))
                     client.writes.add(task)
                     task.add_done_callback(client.writes.discard)

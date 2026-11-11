@@ -24,6 +24,9 @@
   let importSlot = $state(0);
   let importName = $state("");
 
+  // Errors of a request refused before anything reached the DSP.
+  const REFUSED = new Set(["invalid", "locked", "screen_locked", "experimental"]);
+
   function checkName(value: string): string {
     return value.length === 0
       ? "a name is required"
@@ -102,7 +105,12 @@
       ...(importSlot > 0 ? { slot: importSlot, name: importName } : {}),
     });
     busy = false;
-    if (!result.ok) return;
+    if (!result.ok) {
+      // Refused before anything was sent: the dialog stays, to fix and retry. Otherwise the
+      // file may have been loaded (the toast says what happened): the DSP's state is shown.
+      if (!REFUSED.has(result.error ?? "")) importing = null;
+      return;
+    }
     app.toast(`"${importing.info.name}" loaded${where}`);
     for (const note of result.notes ?? []) app.toast(note, "error");
     importing = null;

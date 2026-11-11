@@ -672,3 +672,31 @@ def test_preset_export_and_import(client: TestClient) -> None:
         ]:
             result = request(ws, {"type": "preset.import", "req": req, **message})
             assert result["error"] == error, (req, result)
+
+
+def test_pings_are_answered_during_a_long_request(web_dir: Path) -> None:
+    """A preset import (or a recall on a slow link) can last longer than the client's 12 s
+    silence limit: the server keeps answering pings meanwhile, or the client drops the link."""
+    app, device = make_app(web_dir)
+    device.timing.store_s = 0.5
+    with TestClient(app) as test_client:
+        ctx: AppContext = app.state.ctx
+        deadline = time.monotonic() + 5
+        while ctx.session.status.value != "online" and time.monotonic() < deadline:
+            time.sleep(0.02)
+        login(test_client)
+        with test_client.websocket_connect("/ws") as ws:
+            receive_until(ws, "snapshot")
+            editor_file = (
+                Path(__file__).parent.parent / "fixtures" / "presets" / "dsp408_editor.prs"
+            )
+            upload = base64.b64encode(editor_file.read_bytes()).decode()
+            ws.send_json({"type": "preset.import", "req": 1, "data": upload, "slot": 2})
+            ws.send_json({"type": "ping", "req": 2})
+            order = []
+            while len(order) < 2:
+                message = ws.receive_json()
+                if message["type"] in ("pong", "result"):
+                    order.append((message["type"], message["req"]))
+            assert order == [("pong", 2), ("result", 1)]
+            assert device.presets[2].preset_name == "FSMXLmGDLsEq"
