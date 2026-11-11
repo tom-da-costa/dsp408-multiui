@@ -30,8 +30,8 @@ from tracks_dsp_controller.server.auth import (
     LoginError,
     RateLimitedError,
 )
-from tracks_dsp_controller.server.host import HostManager
 from tracks_dsp_controller.server.lock import LockManager
+from tracks_dsp_controller.server.master import MasterManager
 from tracks_dsp_controller.server.settings import DEFAULT_PIN, ServerConfig
 from tracks_dsp_controller.server.ws import Hub
 from tracks_dsp_controller.simulator import Faults, SimulatedDevice, SimulatorServer, apply_scenario
@@ -41,9 +41,9 @@ from tracks_dsp_controller.state.store import StateStore
 log = logging.getLogger(__name__)
 
 LOCK_TICK_S = 1.0
-# The host role ends when its holder has had no connection open for this long (a phone asleep,
+# The master role ends when its holder has had no connection open for this long (a phone asleep,
 # a closed tab), and with it the block on new logins.
-HOST_ABSENT_S = 300.0
+MASTER_ABSENT_S = 300.0
 
 PLACEHOLDER_HTML = """<!doctype html>
 <html lang="en"><head><meta charset="utf-8">
@@ -75,7 +75,7 @@ class AppContext:
     session: DeviceSession
     auth: AuthManager
     lock: LockManager
-    host: HostManager
+    master: MasterManager
     hub: Hub
     simulator: SimulatorServer | None = None
 
@@ -121,7 +121,7 @@ def create_app(
     store = StateStore()
     auth = AuthManager(config.pin)
     lock = LockManager(config.lock_idle_timeout_s)
-    host = HostManager(HOST_ABSENT_S)
+    master = MasterManager(MASTER_ABSENT_S)
     simulator: SimulatorServer | None = None
     if config.demo:
         # The simulated model: --model, or the profile's (408 by default) with --model auto.
@@ -144,8 +144,8 @@ def create_app(
         model=config.model,
         profile_for=model_profile,
     )
-    hub = Hub(config, session, store, auth, lock, host)
-    ctx = AppContext(config, profile, store, session, auth, lock, host, hub, simulator)
+    hub = Hub(config, session, store, auth, lock, master)
+    ctx = AppContext(config, profile, store, session, auth, lock, master, hub, simulator)
 
     @contextlib.asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:
@@ -156,7 +156,7 @@ def create_app(
         if config.pin == DEFAULT_PIN:
             log.warning("using the default access code %s: set --pin or DSP408_PIN", DEFAULT_PIN)
         await session.start()
-        tasks = [asyncio.create_task(_ticker(lock, host))]
+        tasks = [asyncio.create_task(_ticker(lock, master))]
         if config.resync_interval_s > 0:
             tasks.append(asyncio.create_task(_resync_loop(session, config.resync_interval_s)))
         try:
@@ -187,8 +187,8 @@ def create_app(
             return JSONResponse(  # type: ignore[return-value]
                 {"error": "wrong_code", "message": "wrong code"}, status_code=401
             )
-        if host.logins_blocked:
-            owner = host.state().owner_name or "the host"
+        if master.logins_blocked:
+            owner = master.state().owner_name or "the master"
             return JSONResponse(  # type: ignore[return-value]
                 {"error": "logins_blocked", "message": f"New connections are blocked by {owner}"},
                 status_code=403,
@@ -204,7 +204,7 @@ def create_app(
         client = auth.logout(request.cookies.get(SESSION_COOKIE))
         if client is not None:
             lock.release(client.client_id)
-            host.release(client.client_id)
+            master.release(client.client_id)
             await hub.close_client_sessions(client.client_id)
         response.delete_cookie(SESSION_COOKIE, path="/")
         return {"ok": True}
@@ -256,11 +256,11 @@ def create_app(
     return app
 
 
-async def _ticker(lock: LockManager, host: HostManager) -> None:
+async def _ticker(lock: LockManager, master: MasterManager) -> None:
     while True:
         await asyncio.sleep(LOCK_TICK_S)
         lock.expire()
-        host.expire()
+        master.expire()
 
 
 async def _resync_loop(session: DeviceSession, interval: float) -> None:

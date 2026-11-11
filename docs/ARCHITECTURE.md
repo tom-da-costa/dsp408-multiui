@@ -187,13 +187,13 @@ varies and can exceed the 0.5 s that a DSP on the LAN needs.
   request of that session except `screen.unlock` meanwhile (`screen_locked` error); the code is
   checked with the login's rate limit. Interactions on a locked screen are not activity, so
   a control held by that client still expires.
-- A client can take the **host** role (`host.*` messages, `server/host.py`), one at a time. The
-  host can disconnect another client (`client.kick`: its session ends, its sockets close with
-  4401 and the reason "Disconnected by <host>", which the login screen shows) and block new
+- A client can take the **master** role (`master.*` messages, `server/master.py`), one at a time. The
+  master can disconnect another client (`client.kick`: its session ends, its sockets close with
+  4401 and the reason "Disconnected by <master>", which the login screen shows) and block new
   logins (`logins.block`: `/api/login` checks the code, then answers 403 `logins_blocked`).
   Sessions already open stay valid (reloads and reconnections still work). The block belongs to
-  the host: it ends with the role, which ends on release, on logout, or after the host has had
-  no connection open for 5 minutes (`HOST_ABSENT_S`), so the server is never left blocked with
+  the master: it ends with the role, which ends on release, on logout, or after the master has had
+  no connection open for 5 minutes (`MASTER_ABSENT_S`), so the server is never left blocked with
   nobody to unblock it (a restart also clears it: everything is in memory).
 
 ## 5. Simulator
@@ -252,19 +252,19 @@ WebSocket `/ws` (cookie auth plus an `Origin` check). JSON messages `{type, ...}
 | S→C | `meters` | `seq`, `levels` (12 values in dB or `null`; the whole field is `null` when the poll failed), `clip` (12 bools), `limit` (8 bools or `null`), `comp` (8 bools or `null`), `input_clip` |
 | S→C | `device` | `status`, `error?`, `model`, `firmware`, `identity`, `model_tested` |
 | S→C | `lock` | control: `owner_id?`, `owner_name?`, `idle_remaining_s?`, `idle_timeout_s` |
-| S→C | `host` | host role: `owner_id?`, `owner_name?`, `logins_blocked` |
+| S→C | `master` | master role: `owner_id?`, `owner_name?`, `logins_blocked` |
 | S→C | `screen_lock` | `locked` (to every tab of the session) |
 | S→C | `settings` | `meter_rate_hz`, `lock_idle_timeout_s` (sent on change) |
 | S→C | `clients` | list of `{id, name}` |
-| S→C | `result` | `req`, `ok`, `error?` (`locked`: another client has control, `screen_locked`, `host_taken`, `not_host`, `wrong_code`, `rate_limited`, `invalid`, `experimental`, `device_offline`, `device_timeout`), `message?` |
+| S→C | `result` | `req`, `ok`, `error?` (`locked`: another client has control, `screen_locked`, `master_taken`, `not_master`, `wrong_code`, `rate_limited`, `invalid`, `experimental`, `device_offline`, `device_timeout`), `message?` |
 | S→C | `pong` | `req` |
 | C→S | `set` | `req`, `path`, `value` |
 | C→S | `preset.recall` | `req`, `slot` |
 | C→S | `preset.store` | `req`, `slot` (1–20), `name` |
 | C→S | `lock.acquire` / `lock.release` | `req`; take or release control |
-| C→S | `host.acquire` / `host.release` | `req`; take or give up the host role (giving it up allows new logins again) |
-| C→S | `client.kick` | `req`, `client_id`; host only: end that client's session |
-| C→S | `logins.block` | `req`, `blocked` (bool); host only |
+| C→S | `master.acquire` / `master.release` | `req`; take or give up the master role (giving it up allows new logins again) |
+| C→S | `client.kick` | `req`, `client_id`; master only: end that client's session |
+| C→S | `logins.block` | `req`, `blocked` (bool); master only |
 | C→S | `screen.lock` / `screen.unlock` | `req`; `pin` (the access code) to unlock |
 | C→S | `activity` | no payload; user interaction, throttled to one every 10 s |
 | C→S | `settings.set` | `req`, `meter_rate_hz` (clamped to 1–10) |

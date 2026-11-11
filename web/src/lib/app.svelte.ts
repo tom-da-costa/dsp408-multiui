@@ -8,7 +8,7 @@ import type {
   DeviceMessage,
   DeviceState,
   Hello,
-  HostMessage,
+  MasterMessage,
   LockMessage,
   Meters,
   ResultMessage,
@@ -51,8 +51,8 @@ class App {
   lock = $state<LockMessage | null>(null);
   /** performance.now() deadline of the control's idle release (null when free). */
   lockDeadline = $state<number | null>(null);
-  /** Host role (the `host` messages). */
-  host = $state<HostMessage | null>(null);
+  /** Master role (the `master` messages). */
+  master = $state<MasterMessage | null>(null);
   /** Why the login screen is shown, e.g. "Disconnected by Alice" (cleared on login). */
   loginNotice = $state("");
   /** Screen lock: this browser is read-only (the screen stays readable) until the access code
@@ -85,8 +85,8 @@ class App {
     return !!this.lock?.owner_id && this.lock.owner_id !== this.hello?.client_id;
   }
 
-  get iAmHost(): boolean {
-    return !!this.host?.owner_id && this.host.owner_id === this.hello?.client_id;
+  get iAmMaster(): boolean {
+    return !!this.master?.owner_id && this.master.owner_id === this.hello?.client_id;
   }
 
   get iOwnLock(): boolean {
@@ -150,7 +150,7 @@ class App {
     this.device = null;
     this.status = null;
     this.lock = null;
-    this.host = null;
+    this.master = null;
     this.screenLocked = false;
     this.meters = null;
     this.connected = false;
@@ -329,8 +329,8 @@ class App {
             ? null
             : performance.now() + this.lock.idle_remaining_s * 1000;
         break;
-      case "host":
-        this.host = msg as unknown as HostMessage;
+      case "master":
+        this.master = msg as unknown as MasterMessage;
         break;
       case "screen_lock":
         this.screenLocked = msg.locked as boolean;

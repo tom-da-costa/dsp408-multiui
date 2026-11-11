@@ -96,7 +96,7 @@ class AuthManager:
         return self._sessions.pop(token, None) if token else None
 
     def logout_client(self, client_id: str) -> ClientSession | None:
-        """End the session of ``client_id`` (disconnected by the host)."""
+        """End the session of ``client_id`` (disconnected by the master)."""
         for token, session in list(self._sessions.items()):
             if session.client_id == client_id:
                 return self._sessions.pop(token)

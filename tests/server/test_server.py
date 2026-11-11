@@ -13,8 +13,8 @@ from starlette.websockets import WebSocketDisconnect
 from tracks_dsp_controller.protocol.profile import DEFAULT_PROFILE
 from tracks_dsp_controller.server.app import AppContext, create_app
 from tracks_dsp_controller.server.auth import AuthManager, LoginError, RateLimitedError, clean_name
-from tracks_dsp_controller.server.host import HostManager, HostState
 from tracks_dsp_controller.server.lock import LockManager
+from tracks_dsp_controller.server.master import MasterManager, MasterState
 from tracks_dsp_controller.server.settings import ServerConfig
 from tracks_dsp_controller.simulator import Faults, SimulatedDevice, apply_scenario
 from tracks_dsp_controller.state import registry
@@ -72,37 +72,37 @@ def test_lock_activity_and_idle_expiry() -> None:
         LockManager(0)
 
 
-# --- unit: host role ----------------------------------------------------------------------------
-def test_host_role_block_and_absence() -> None:
+# --- unit: master role ----------------------------------------------------------------------------
+def test_master_role_block_and_absence() -> None:
     now = [0.0]
-    host = HostManager(300, clock=lambda: now[0])
+    master = MasterManager(300, clock=lambda: now[0])
     states: list[tuple[str | None, bool]] = []
-    host.on_change(lambda s: states.append((s.owner_id, s.logins_blocked)))
-    assert not host.block_logins("a", True)  # nobody is the host yet
-    assert host.acquire("a", "Alice")
-    assert host.acquire("a", "Alice")  # already the host: fine, no event
-    assert not host.acquire("b", "Bob")
-    assert not host.block_logins("b", True)
-    assert host.block_logins("a", True)
-    assert host.logins_blocked
+    master.on_change(lambda s: states.append((s.owner_id, s.logins_blocked)))
+    assert not master.block_logins("a", True)  # nobody is the master yet
+    assert master.acquire("a", "Alice")
+    assert master.acquire("a", "Alice")  # already the master: fine, no event
+    assert not master.acquire("b", "Bob")
+    assert not master.block_logins("b", True)
+    assert master.block_logins("a", True)
+    assert master.logins_blocked
     # away for a while: a reload or a short network loss keeps the role
-    host.presence("a", False)
+    master.presence("a", False)
     now[0] = 200.0
-    assert not host.expire()
-    host.presence("a", True)
+    assert not master.expire()
+    master.presence("a", True)
     now[0] = 1000.0
-    assert not host.expire()
+    assert not master.expire()
     # away for too long: the role ends, and the block with it
-    host.presence("a", False)
+    master.presence("a", False)
     now[0] = 1301.0
-    assert host.expire()
-    assert host.state() == HostState(None, None, False)
-    assert host.acquire("b", "Bob")
-    assert not host.release("a")
-    assert host.release("b")
+    assert master.expire()
+    assert master.state() == MasterState(None, None, False)
+    assert master.acquire("b", "Bob")
+    assert not master.release("a")
+    assert master.release("b")
     assert states == [("a", False), ("a", True), (None, False), ("b", False), (None, False)]
     with pytest.raises(ValueError, match="absent_timeout"):
-        HostManager(0)
+        MasterManager(0)
 
 
 def test_server_config_validation() -> None:
@@ -549,7 +549,7 @@ def test_logout_closes_websockets_and_releases_lock(client: TestClient) -> None:
             drain(ws)
 
 
-def test_host_disconnects_a_client_and_blocks_new_logins(client: TestClient) -> None:
+def test_master_disconnects_a_client_and_blocks_new_logins(client: TestClient) -> None:
     login(client, "Alice")
     alice_cookie = client.cookies.get("dsp408_session")
     with client.websocket_connect("/ws") as alice:
@@ -558,22 +558,22 @@ def test_host_disconnects_a_client_and_blocks_new_logins(client: TestClient) -> 
         with client.websocket_connect("/ws") as bob:
             receive_until(alice, "hello")
             bob_id = receive_until(bob, "hello")["client_id"]
-            assert receive_until(bob, "host")["owner_id"] is None
+            assert receive_until(bob, "master")["owner_id"] is None
 
-            # only the host may disconnect or block
+            # only the master may disconnect or block
             denied = request(bob, {"type": "client.kick", "req": 1, "client_id": bob_id})
-            assert denied["error"] == "not_host"
+            assert denied["error"] == "not_master"
             assert request(bob, {"type": "logins.block", "req": 2, "blocked": True})["error"] == (
-                "not_host"
+                "not_master"
             )
-            assert request(alice, {"type": "host.acquire", "req": 3})["ok"]
-            host = receive_until(bob, "host")
-            assert host["owner_name"] == "Alice"
-            assert request(bob, {"type": "host.acquire", "req": 4})["error"] == "host_taken"
+            assert request(alice, {"type": "master.acquire", "req": 3})["ok"]
+            master = receive_until(bob, "master")
+            assert master["owner_name"] == "Alice"
+            assert request(bob, {"type": "master.acquire", "req": 4})["error"] == "master_taken"
 
             # Alice blocks new logins: the code is checked, then the login refused
             assert request(alice, {"type": "logins.block", "req": 5, "blocked": True})["ok"]
-            assert receive_until(bob, "host")["logins_blocked"]
+            assert receive_until(bob, "master")["logins_blocked"]
             refused = client.post("/api/login", json={"pin": "4321", "name": "Carol"})
             assert refused.status_code == 403
             assert refused.json() == {
@@ -595,12 +595,12 @@ def test_host_disconnects_a_client_and_blocks_new_logins(client: TestClient) -> 
         )
 
         # the block ends with the role
-        assert request(alice, {"type": "host.release", "req": 8})["ok"]
-        assert not receive_until(alice, "host")["logins_blocked"]
+        assert request(alice, {"type": "master.release", "req": 8})["ok"]
+        assert not receive_until(alice, "master")["logins_blocked"]
         login(client, "Carol")
-        # a host logging out gives the role up
+        # a master logging out gives the role up
         client.cookies.set("dsp408_session", alice_cookie or "")
-        assert request(alice, {"type": "host.acquire", "req": 9})["ok"]
+        assert request(alice, {"type": "master.acquire", "req": 9})["ok"]
         client.post("/api/logout")
     ctx: AppContext = client.app.state.ctx  # type: ignore[attr-defined]
-    assert ctx.host.state().owner_id is None
+    assert ctx.master.state().owner_id is None
