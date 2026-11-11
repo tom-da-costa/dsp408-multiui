@@ -105,6 +105,11 @@ function crossoverDb(filter: Filter, kind: "hpf" | "lpf", slopes: string[], f: n
 
 // --- parametric and graphic EQ ------------------------------------------------------------------
 
+/** Whether a PEQ band type has a gain (peak and shelves; not the pass and all-pass filters). */
+export function usesGain(typeName: string): boolean {
+  return /peak|shelf/i.test(typeName);
+}
+
 /** Magnitude in dB of one PEQ band at f, by type name. */
 export function peqBandDb(band: PeqBand, typeName: string, f: number): number {
   if (band.bypass) return 0;

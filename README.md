@@ -51,7 +51,8 @@ On a phone, in landscape:
 - A colour per channel, the same in every view; linked channels share the colour of the
   lowest-numbered channel of their group
 - Frequency response graph on each channel page (filters, PEQ, GEQ), with other channels' curves
-  as an overlay
+  as an overlay. The PEQ bands are edited on it: drag a band's marker for its frequency
+  (horizontally) and gain (vertically), turn the mouse wheel over it for its Q
 - Limiter calculator: compressor and limiter thresholds from the amplifier gain and the speaker
   power, impedance and load
 - DSP presets U01–U20: recall, store, rename, with an "unsaved changes" indicator
@@ -118,7 +119,8 @@ environment variable.
 - **Live** view (first tab): per channel, CLIP / CMP / LIM indicators, a meter graduated every
   10 dB with the compressor (C) and limiter (L) thresholds, the gain fader with − / + and MUTE.
 - **Params** view: one setting on the channels you pick. Gain, delay, filters, compressor,
-  limiter and gate are shown as one strip per channel, with vertical faders.
+  limiter and gate are shown as one strip per channel, with vertical faders; EQ as one frequency
+  response graph per channel, on which the bands are edited.
 - **All-in-one** view: one column per channel with the settings you pick, including the
   channel name (*Name*).
 - In Live, Params and All-in-one, a row picks the channels shown (all, inputs, outputs or any

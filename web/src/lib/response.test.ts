@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { channelResponse, lowPassMagnitude, parseSlope, peqBandDb } from "./response";
+import { channelResponse, lowPassMagnitude, parseSlope, peqBandDb, usesGain } from "./response";
 import type { Channel } from "./types";
 
 const db = (m: number) => 20 * Math.log10(m);
@@ -89,5 +89,15 @@ describe("channel response", () => {
     const r = channelResponse({ ...channel, peq_bypass: true, geq }, TYPES, SLOPES, [1000]);
     expect(r.peq).toEqual([]);
     expect(r.geq![0]).toBeCloseTo(6, 1);
+  });
+});
+
+describe("usesGain", () => {
+  it("is true for peak and shelf bands only", () => {
+    expect(usesGain("Peak")).toBe(true);
+    expect(usesGain("Low shelf")).toBe(true);
+    expect(usesGain("High Shelf")).toBe(true);
+    expect(usesGain("LPF")).toBe(false);
+    expect(usesGain("Allpass")).toBe(false);
   });
 });
