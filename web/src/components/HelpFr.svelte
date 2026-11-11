@@ -32,7 +32,7 @@
     <dd>Déplie la barre pour afficher le nom des onglets ; touchez à nouveau pour la replier.</dd>
     <dt>État (point et preset)</dt>
     <dd>
-      Le point est vert quand le DSP est en ligne. Dessous, le preset actuellement dans le DSP
+      Le point est vert quand le DSP est en ligne, rouge quand le DSP ou le serveur est injoignable : un bandeau en haut indique lequel (<em>SERVER</em> ou <em>DSP</em>). Les valeurs affichées sont les dernières connues et les commandes sont désactivées jusqu'au retour de la liaison, qui se rétablit toute seule (<em>Retry now</em> réessaie tout de suite). Dessous, le preset actuellement dans le DSP
       (U01…U20, ou F00). Un petit point orange signale des <em>modifications non
       enregistrées</em> : les réglages diffèrent du preset enregistré. <em>DEMO</em> signifie
       qu'il n'y a pas de DSP (un DSP simulé). Touchez-le pour ouvrir <em>Presets</em>.

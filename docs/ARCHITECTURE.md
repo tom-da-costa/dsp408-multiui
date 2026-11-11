@@ -112,8 +112,21 @@ with exponential backoff (1 s → 30 s) and re-reads the full state after reconn
   server again. Following the patches of the values sent during the drag would replay the
   movement.
 - **Rejected writes** (lock, validation, device error) restore the server value and show a toast.
-- The client reconnects its WebSocket automatically and gets a fresh snapshot. If the session is
-  gone (server restart), it shows the login screen.
+- **Link to the server** (`app.svelte.ts`). The client sends a `ping` every 4 s; with nothing
+  received for 12 s (not even the `pong`), the link is presumed half-open (Wi-Fi lost, phone
+  asleep) and dropped at once instead of waiting for the browser's own timeout. A connection
+  attempt that hangs is given up after 8 s. It reconnects with a jittered backoff (0.5 s → 5 s),
+  at once when the page is shown again or the network comes back, and on the banner's
+  *Retry now*; it then gets a fresh snapshot. A hidden tab's timers are throttled, so its
+  silence is judged only when it is shown again (a ping, then 5 s for the answer).
+- If the session is gone (server restart), the server accepts the WebSocket and closes it with
+  4401 (a close before the handshake reaches the browser as a bare 1006), and the client shows
+  the login screen. Every third failed attempt it also asks `/api/session`, for proxies that
+  hide the code.
+- **Disconnected = read-only.** While the link to the server or the server's link to the DSP is
+  down, a banner says which one (`ConnectionBanner.svelte`, after a 1.5 s grace so that a quick
+  reconnection does not flash it), every control is disabled, the meters are cleared (no stale
+  levels or "fine" Too loud) and a request is refused at once instead of being lost.
 - A fader only moves on a drag that starts on its knob, so scrolling never moves a fader.
 - **PEQ on the response graph** (`ResponseGraph.svelte`, on the channel page and, one graph per
   channel, in Params › EQ): every band has a marker, greyed when it does nothing (off, a peak or
@@ -219,7 +232,7 @@ WebSocket `/ws` (cookie auth plus an `Origin` check). JSON messages `{type, ...}
 | C→S | `settings.set` | `req`, `meter_rate_hz` (clamped to 1–10) |
 | C→S | `resync` | `req` |
 | C→S | `link.set` | `req`, `side` (`inputs` / `outputs`), `groups` (lists of channel indices; channels in no group are unlinked) |
-| C→S | `ping` | keepalive |
+| C→S | `ping` | heartbeat every 4 s; answered by `pong` (any message proves the link alive) |
 
 `web/src/lib/types.ts` mirrors these messages and `state/models.py`.
 

@@ -32,7 +32,7 @@
     <dd>Klappt die Leiste auf, um die Namen der Tabs zu zeigen; nochmals tippen zum Einklappen.</dd>
     <dt>Status (Punkt und Preset)</dt>
     <dd>
-      Der Punkt ist grün, wenn der DSP online ist. Darunter das aktuell im DSP geladene Preset
+      Der Punkt ist grün, wenn der DSP online ist, und rot, wenn der DSP oder der Server nicht erreichbar ist: Ein Banner oben zeigt dann, welcher (<em>SERVER</em> oder <em>DSP</em>). Die angezeigten Werte sind die zuletzt bekannten, und die Bedienelemente sind gesperrt, bis die Verbindung von selbst zurückkommt (<em>Retry now</em> versucht es sofort). Darunter das aktuell im DSP geladene Preset
       (U01…U20 oder F00). Ein kleiner orangefarbener Punkt bedeutet <em>ungespeicherte
       Änderungen</em>: Die Einstellungen weichen vom gespeicherten Preset ab. <em>DEMO</em>
       bedeutet, dass kein DSP angeschlossen ist (ein simulierter). Antippen öffnet

@@ -41,7 +41,9 @@
 
   $effect(() => {
     const t = performance.now();
-    if (level !== null && (peak === null || level >= peak || t - peakAt > PEAK_HOLD_MS)) {
+    if (level === null) {
+      peak = null; // no live level (server or DSP unreachable): no stale peak either
+    } else if ((peak === null || level >= peak || t - peakAt > PEAK_HOLD_MS)) {
       peak = level;
       peakAt = t;
     }

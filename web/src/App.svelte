@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount } from "svelte";
   import AllInOne from "./components/AllInOne.svelte";
+  import ConnectionBanner from "./components/ConnectionBanner.svelte";
   import ChannelsView from "./components/ChannelsView.svelte";
   import Help from "./components/Help.svelte";
   import LimiterCalc from "./components/LimiterCalc.svelte";
@@ -127,10 +128,18 @@
       <button class="scrim" aria-label="Collapse the tab bar" onclick={toggleRail}></button>
     {/if}
     <div class="page">
+      {#if app.device}<ConnectionBanner />{/if}
       <main>
         {#if !app.device}
           <p class="muted center">
-            {app.connected ? "Waiting for the DSP…" : "Connecting to the server…"}
+            {#if !app.connected}
+              Connecting to the server…
+            {:else if app.status?.status === "offline"}
+              DSP unreachable{app.status.error ? ` (${app.status.error})` : ""}. The server keeps
+              trying…
+            {:else}
+              Waiting for the DSP…
+            {/if}
           </p>
         {:else if nav.tab === "live"}
           <LiveView />
@@ -230,10 +239,11 @@
     grid-column: 2; /* stays put when the expanded rail floats (phone) */
     min-width: 0;
     display: grid;
-    grid-template-rows: 1fr;
+    grid-template-rows: auto minmax(0, 1fr);
     min-height: 0;
   }
   main {
+    grid-row: 2;
     overflow: auto;
     padding: 12px;
     min-height: 0;

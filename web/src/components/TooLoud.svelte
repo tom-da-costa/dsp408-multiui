@@ -42,6 +42,8 @@
   /** The lit colour, mixed with the grey of the unlit panel below full brightness. */
   const litColor = $derived(`color-mix(in srgb, ${COMP_COLOR} ${brightness}%, var(--panel))`);
 
+  // Without live meters (server or DSP unreachable) it must not claim that all is fine.
+  const live = $derived(!!app.meters?.levels);
   const limiting = $derived(acting(app.meters?.limit));
   const compressing = $derived(acting(app.meters?.comp));
   const lit = $derived(limiting.length > 0 || compressing.length > 0);
@@ -63,11 +65,15 @@
     style:--glow={`${Math.round((40 * brightness) / 100)}px`}
     role="status"
     aria-live="polite"
-    aria-label={lit ? `Too loud. ${compLine}. ${limitLine}.` : "Level fine"}
+    aria-label={!live ? "No meter data" : lit ? `Too loud. ${compLine}. ${limitLine}.` : "Level fine"}
   >
     <strong>TOO LOUD</strong>
-    <span class="detail">{compLine}</span>
-    <span class="detail">{limitLine}</span>
+    {#if live}
+      <span class="detail">{compLine}</span>
+      <span class="detail">{limitLine}</span>
+    {:else}
+      <span class="detail">No meter data: the DSP or the server is not reachable</span>
+    {/if}
   </div>
   <p class="hint">
     Flashing now and then is fine. If it stays lit, turn the volume down.

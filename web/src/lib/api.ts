@@ -18,6 +18,17 @@ export async function currentSession(): Promise<Me | null> {
   return (await response.json()) as Me;
 }
 
+/** Whether the session cookie is still valid ("unreachable": no answer from the server). */
+export async function sessionState(): Promise<"valid" | "expired" | "unreachable"> {
+  try {
+    const response = await fetch("/api/session", { credentials: "same-origin" });
+    if (response.ok) return "valid";
+    return response.status === 401 ? "expired" : "unreachable";
+  } catch {
+    return "unreachable";
+  }
+}
+
 export async function login(pin: string, name: string): Promise<Me> {
   const response = await fetch("/api/login", {
     method: "POST",

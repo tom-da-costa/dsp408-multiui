@@ -63,6 +63,10 @@ On a phone, in landscape:
 - **Lock screen**: this browser becomes read-only and stays on the current view (everything
   stays readable, meters included) until *Unlock screen* and the access code, for a computer or
   phone left unattended; a reload stays locked
+- Survives an unstable network: a heartbeat detects a dead link within ~12 s, every browser
+  reconnects by itself (at once when a phone wakes up or the Wi-Fi comes back) and the server
+  reconnects to the DSP. A banner says which link is down (*SERVER* or *DSP*); meanwhile the
+  values shown are the last known and every control is disabled, so no change is silently lost
 - Access protected by a shared code (default `0000`, set with `--pin`)
 - No database, no internet access needed, no external assets
 - `tracks-dsp-sim`: a separate program that simulates a DSP 408, 206 or 204 on the network, to

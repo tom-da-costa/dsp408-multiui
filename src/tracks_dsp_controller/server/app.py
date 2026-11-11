@@ -216,6 +216,10 @@ def create_app(
             await websocket.close(code=4403)
             return
         if client is None:
+            # Accept first: a close before the handshake reaches the browser as a bare HTTP 403
+            # (close code 1006), and it would keep reconnecting instead of showing the login
+            # (a restarted server has forgotten every session).
+            await websocket.accept()
             await websocket.close(code=4401)
             return
         await websocket.accept()

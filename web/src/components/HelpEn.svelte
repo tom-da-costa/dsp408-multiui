@@ -30,7 +30,7 @@
     <dd>Unfolds the bar to show the names of the tabs; tap again to fold it.</dd>
     <dt>Status (dot and preset)</dt>
     <dd>
-      The dot is green when the DSP is online. Below it, the preset currently in the DSP
+      The dot is green when the DSP is online, red when the DSP or the server cannot be reached: a banner at the top then says which one (<em>SERVER</em> or <em>DSP</em>). The values shown are the last known and the controls are disabled until the link comes back, by itself (<em>Retry now</em> tries at once). Below it, the preset currently in the DSP
       (U01…U20, or F00). A small orange dot means <em>unsaved changes</em>: the settings
       differ from the stored preset. <em>DEMO</em> means there is no DSP (a simulated one).
       Tap it to open <em>Presets</em>.
