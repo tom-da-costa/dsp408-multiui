@@ -18,13 +18,12 @@
   const limiting = $derived(acting(app.meters?.limit));
   const compressing = $derived(acting(app.meters?.comp));
   const lit = $derived(limiting.length > 0 || compressing.length > 0);
-  const detail = $derived(
-    lit
-      ? [
-          ...(limiting.length ? [`Limiter: ${limiting.join(", ")}`] : []),
-          ...(compressing.length ? [`Compressor: ${compressing.join(", ")}`] : []),
-        ].join(" · ")
-      : "No compressor or limiter acting",
+  // One line for the compressors, one for the limiters.
+  const compLine = $derived(
+    compressing.length ? `Compressor: ${compressing.join(", ")}` : "No compressor acting",
+  );
+  const limitLine = $derived(
+    limiting.length ? `Limiter: ${limiting.join(", ")}` : "No limiter acting",
   );
 </script>
 
@@ -35,10 +34,11 @@
     style:--c={COMP_COLOR}
     role="status"
     aria-live="polite"
-    aria-label={lit ? `Too loud: ${detail}` : "Level fine"}
+    aria-label={lit ? `Too loud. ${compLine}. ${limitLine}.` : "Level fine"}
   >
     <strong>TOO LOUD</strong>
-    <span class="detail">{detail}</span>
+    <span class="detail">{compLine}</span>
+    <span class="detail">{limitLine}</span>
   </div>
   <p class="hint">
     Flashing now and then is fine. If it stays lit, turn the volume down.
