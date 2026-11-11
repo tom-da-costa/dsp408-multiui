@@ -63,6 +63,9 @@ On a phone, in landscape:
 - **Master**: one client can become master (Settings) and then disconnect another client (back to
   the login screen) and block new connections; browsers already connected stay connected. The
   block ends with the role (released, logged out, or the app closed for 5 minutes)
+- **Disconnect from DSP and shutdown** (Settings): frees the DSP cleanly (it accepts one program
+  at a time, e.g. before opening the t.racks editor) and stops the server, for everyone. With
+  Docker Compose the container then stays stopped (`restart: on-failure`)
 - **Lock screen**: this browser becomes read-only and stays on the current view (everything
   stays readable, meters included) until *Unlock screen* and the access code, for a computer or
   phone left unattended; a reload stays locked

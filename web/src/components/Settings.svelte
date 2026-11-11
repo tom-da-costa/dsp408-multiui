@@ -27,6 +27,20 @@
     if (await app.run({ type: "client.kick", client_id: id })) app.toast(`${name} disconnected`);
   }
 
+  // Same rule as the server: refused while another client has Control or is the master.
+  const canShutdown = $derived(
+    app.connected && !app.screenLocked && !app.lockedByOther && !otherMaster,
+  );
+
+  async function shutdown() {
+    const question =
+      "Disconnect from the DSP and shut the server down?\n\n" +
+      "Every connected client loses the app until the server is started again. " +
+      "The DSP keeps its current settings.";
+    if (!confirm(question)) return;
+    await app.run({ type: "server.shutdown" });
+  }
+
   async function refresh() {
     if (await app.run({ type: "resync" })) app.toast("Configuration re-read from the DSP");
   }
@@ -143,8 +157,25 @@
     </dl>
     <div class="actions">
       <button onclick={refresh} disabled={app.readOnly}>Refresh from device</button>
+      <button class="danger" onclick={shutdown} disabled={!canShutdown}>
+        Disconnect from DSP and shutdown
+      </button>
+    </div>
+    <p class="muted">
+      Shut the server down cleanly: it frees the DSP (which accepts one program at a time) and
+      stops the app for every client.
+      {#if app.lockedByOther}Only {app.lock?.owner_name}, who has control, can do it now.
+      {:else if otherMaster}Only {app.master?.owner_name}, the master, can do it now.{/if}
+    </p>
+  </section>
+
+  <section class="card">
+    <h2>This browser</h2>
+    <p>Connected as <strong>{app.hello?.name ?? app.me?.name ?? "—"}</strong>.</p>
+    <div class="actions">
       <button class="danger" onclick={() => app.logout()}>Log out</button>
     </div>
+    <p class="muted">Leaves the app on this browser only; the server and the DSP keep running.</p>
   </section>
 </div>
 

@@ -224,8 +224,13 @@
     <dt>Device</dt>
     <dd>
       The DSP's status, model and firmware, and the app's version. <em>Refresh from device</em>
-      re-reads every setting from the DSP. <em>Log out</em> leaves the app on this device.
+      re-reads every setting from the DSP. <em>Disconnect from DSP and shutdown</em> stops the
+      server cleanly: it lets go of the DSP (which accepts one program at a time, e.g. to use
+      the t.racks editor), then stops the app for everyone. The DSP keeps its settings. Not
+      possible while someone else has control or is the master.
     </dd>
+    <dt>This browser</dt>
+    <dd><em>Log out</em> leaves the app on this device only; the server keeps running.</dd>
   </dl>
 </section>
 

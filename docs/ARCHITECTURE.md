@@ -252,6 +252,7 @@ WebSocket `/ws` (cookie auth plus an `Origin` check). JSON messages `{type, ...}
 | S→C | `meters` | `seq`, `levels` (12 values in dB or `null`; the whole field is `null` when the poll failed), `clip` (12 bools), `limit` (8 bools or `null`), `comp` (8 bools or `null`), `input_clip` |
 | S→C | `device` | `status`, `error?`, `model`, `firmware`, `identity`, `model_tested` |
 | S→C | `lock` | control: `owner_id?`, `owner_name?`, `idle_remaining_s?`, `idle_timeout_s` |
+| S→C | `shutdown` | `by`: the server was shut down from Settings; the UI stops reconnecting and shows it |
 | S→C | `master` | master role: `owner_id?`, `owner_name?`, `logins_blocked` |
 | S→C | `screen_lock` | `locked` (to every tab of the session) |
 | S→C | `settings` | `meter_rate_hz`, `lock_idle_timeout_s` (sent on change) |
@@ -265,6 +266,7 @@ WebSocket `/ws` (cookie auth plus an `Origin` check). JSON messages `{type, ...}
 | C→S | `master.acquire` / `master.release` | `req`; take or give up the master role (giving it up allows new logins again) |
 | C→S | `client.kick` | `req`, `client_id`; master only: end that client's session |
 | C→S | `logins.block` | `req`, `blocked` (bool); master only |
+| C→S | `server.shutdown` | `req`; refused (`locked` / `not_master`) while another client has control or is the master. Every client gets `shutdown`, the session closes the DSP connection, then the process exits (code 0) |
 | C→S | `screen.lock` / `screen.unlock` | `req`; `pin` (the access code) to unlock |
 | C→S | `activity` | no payload; user interaction, throttled to one every 10 s |
 | C→S | `settings.set` | `req`, `meter_rate_hz` (clamped to 1–10) |

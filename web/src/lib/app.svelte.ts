@@ -42,7 +42,9 @@ const RETRY_MIN_MS = 500;
 const RETRY_MAX_MS = 5_000;
 
 class App {
-  view = $state<"loading" | "login" | "app">("loading");
+  view = $state<"loading" | "login" | "app" | "shutdown">("loading");
+  /** Who shut the server down (the "shutdown" view). */
+  shutdownBy = $state("");
   me = $state<api.Me | null>(null);
   hello = $state<Hello | null>(null);
   device = $state<DeviceState | null>(null);
@@ -328,6 +330,13 @@ class App {
           this.lock.idle_remaining_s === null
             ? null
             : performance.now() + this.lock.idle_remaining_s * 1000;
+        break;
+      case "shutdown":
+        // The server is going away for good: stop reconnecting.
+        this.shutdownBy = String(msg.by ?? "");
+        this.stopped = true;
+        this.drop();
+        this.view = "shutdown";
         break;
       case "master":
         this.master = msg as unknown as MasterMessage;

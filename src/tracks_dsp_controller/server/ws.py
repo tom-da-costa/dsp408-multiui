@@ -11,6 +11,7 @@ import asyncio
 import contextlib
 import json
 import logging
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from typing import Any, TypeGuard
 
@@ -37,6 +38,7 @@ from tracks_dsp_controller.state.store import Patch, Snapshot, StateStore, Store
 log = logging.getLogger(__name__)
 
 QUEUE_SIZE = 256
+SHUTDOWN_FLUSH_S = 0.3  # lets the clients get the "shutdown" message before the server stops
 # Accepted while the session's screen is locked.
 SCREEN_LOCK_TYPES = {"screen.lock", "screen.unlock"}
 ACTIVITY_TYPES = {"set", "preset.recall", "preset.store", "lock.acquire", "activity", "resync"}
@@ -99,6 +101,8 @@ class Hub:
         self.lock = lock
         self.master = master
         self.clients: set[Client] = set()
+        # Stops the server process (set by the CLI: uvicorn's should_exit).
+        self.request_exit: Callable[[], None] | None = None
         self._meter_seq = 0
         store.subscribe(self._on_store)
         session.on_meters(self._on_meters)
@@ -400,6 +404,8 @@ class Hub:
                     raise RequestError("not_master", "only the master can block new connections")
             case "client.kick":
                 await self.kick(client, message.get("client_id"))
+            case "server.shutdown":
+                await self.shutdown(client)
             case "screen.lock":
                 self.set_screen_lock(client.session, True)
             case "screen.unlock":
@@ -425,6 +431,20 @@ class Hub:
                 await self.session.resync()
             case _:
                 raise RequestError("invalid", f"unknown message type {kind!r}")
+
+    async def shutdown(self, client: Client) -> None:
+        """Disconnect from the DSP cleanly, then stop the server (every client is told)."""
+        if self.request_exit is None:
+            raise RequestError("unsupported", "this server cannot be shut down from the app")
+        self._require_lock(client)
+        master = self.master.state()
+        if master.owner_id is not None and master.owner_id != client.id:
+            raise RequestError("not_master", f"{master.owner_name} is the master")
+        log.warning("shutdown requested by %s", client.session.name)
+        self.broadcast({"type": "shutdown", "by": client.session.name})
+        await self.session.stop()  # closes the TCP connection: the DSP is free for another client
+        await asyncio.sleep(SHUTDOWN_FLUSH_S)
+        self.request_exit()
 
     async def kick(self, master: Client, target: object) -> None:
         """The master disconnects a client: its session ends, it gets the login screen."""

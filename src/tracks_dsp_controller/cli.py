@@ -235,6 +235,11 @@ async def _serve(args: argparse.Namespace, profile: ProtocolProfile) -> int:
         ws_ping_interval=20,
     )
     server = HttpsServer(uv_config, context) if context else uvicorn.Server(uv_config)
+
+    def request_exit() -> None:  # "Disconnect from DSP and shutdown" in the UI
+        server.should_exit = True
+
+    app.state.ctx.hub.request_exit = request_exit
     await server.serve()
     return 0
 
