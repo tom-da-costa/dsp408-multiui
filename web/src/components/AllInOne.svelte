@@ -86,7 +86,7 @@
         <span class="slot">{links.slot(path)}{links.mark(path)}</span>
         <strong>{links.name(path)}</strong>
       </button>
-      <LevelBar {path} compact />
+      <LevelBar {path} compact indicators />
       {#each shown.filter((item) => applies(item, path)) as item (item)}
         {@const members = links.members(path)}
         {#if item === "name"}

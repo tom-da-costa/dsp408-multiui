@@ -55,7 +55,7 @@
       <h2 style:--ch={app.color(path)}>
         {links.slot(path)} <span class="name">{links.name(path)}</span>
       </h2>
-      <LevelBar {path} />
+      <LevelBar {path} indicators />
     </div>
 
     {#if merged}

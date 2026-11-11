@@ -1,20 +1,32 @@
-<script lang="ts" module>
-  export const LIMIT_COLOR = "#d9480f"; // dark orange (CMP is orange, CLIP red)
-</script>
-
 <script lang="ts">
-  // Vertical meter of the Live view: linear dBu scale graduated every 10 dB, colour zones,
-  // peak hold, and markers at the compressor and limiter thresholds.
-  import { meterGradient, METER_COLORS } from "../lib/scale";
+  // Vertical meter of the Live view: linear dBu scale graduated every 10 dB, colour zones
+  // (dimmed behind the level), peak hold, and markers at the compressor and limiter thresholds.
+  // The level turns to the limiter's or the compressor's colour while it acts, red on clip.
+  import {
+    COMP_COLOR,
+    LIMIT_COLOR,
+    METER_BACKGROUND_OPACITY,
+    meterFill,
+    meterGradient,
+  } from "../lib/scale";
 
   interface Props {
     level: number | null; // dBu; null = no data
     clip: boolean;
+    comp?: boolean;
+    limit?: boolean;
     compThreshold?: number | null; // dBu
     limitThreshold?: number | null; // dBu
   }
 
-  let { level, clip, compThreshold = null, limitThreshold = null }: Props = $props();
+  let {
+    level,
+    clip,
+    comp = false,
+    limit = false,
+    compThreshold = null,
+    limitThreshold = null,
+  }: Props = $props();
 
   const BOTTOM = -60;
   const TOP = 20; // full scale, +20 dBu
@@ -46,10 +58,11 @@
   </div>
   <div class="bar" role="meter" aria-label="Level in dBu" aria-valuenow={level ?? BOTTOM}
     aria-valuemin={BOTTOM} aria-valuemax={TOP}>
+    <div class="zones" style:background={ZONES} style:opacity={METER_BACKGROUND_OPACITY}></div>
     <div
       class="fill"
       class:clipping={clip}
-      style:background={clip ? undefined : ZONES}
+      style:background={clip ? undefined : meterFill(ZONES, limit, comp)}
       style:clip-path={`inset(${((1 - fill) * 100).toFixed(2)}% 0 0 0)`}
     ></div>
     {#each TICKS as db (db)}
@@ -64,7 +77,7 @@
       <span
         class="mark"
         style:bottom={`${pos(compThreshold) * 100}%`}
-        style:--c={METER_COLORS.orange}
+        style:--c={COMP_COLOR}
         title={`Compressor threshold ${compThreshold} dBu`}>C</span
       >
     {/if}
@@ -105,9 +118,12 @@
     background: #0b0c0f;
     overflow: hidden;
   }
+  .zones,
   .fill {
     position: absolute;
     inset: 0;
+  }
+  .fill {
     transition: clip-path 120ms linear;
   }
   .fill.clipping {

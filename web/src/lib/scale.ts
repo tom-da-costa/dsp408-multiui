@@ -75,6 +75,22 @@ export const METER_COLORS = {
   red: "#ff4d5e",
 } as const;
 
+/** Compressor and limiter colours: those of the Live view's CMP and LIM indicators. */
+export const COMP_COLOR = METER_COLORS.orange;
+export const LIMIT_COLOR = "#d9480f"; // dark orange (CMP is orange, CLIP red)
+
+/** Opacity of the dimmed zone colours drawn behind the level. */
+export const METER_BACKGROUND_OPACITY = 0.2;
+
+/** Fill of a meter's level: the limiter's colour when it acts (it prevails over the
+ * compressor), then the compressor's, else the colour zones. CLIP (all red) is handled by the
+ * meters themselves and prevails over everything. */
+export function meterFill(zones: string, limit?: boolean | null, comp?: boolean | null): string {
+  if (limit) return LIMIT_COLOR;
+  if (comp) return COMP_COLOR;
+  return zones;
+}
+
 /** Hard-stop gradient of the meter zones, for a bar whose positions come from `pos`. */
 export function meterGradient(direction: string, pos: (db: number) => number): string {
   const [y, o, r] = [METER_ZONES.yellow, METER_ZONES.orange, METER_ZONES.red].map(

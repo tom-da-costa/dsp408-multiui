@@ -1,7 +1,13 @@
 <script lang="ts">
-  import { meterDbToPos as dbToPos, meterGradient } from "../lib/scale";
+  import {
+    METER_BACKGROUND_OPACITY,
+    meterDbToPos as dbToPos,
+    meterFill,
+    meterGradient,
+  } from "../lib/scale";
 
-  // Fixed colour zones; the fill reveals them up to the level, and turns all red on clip.
+  // Fixed colour zones, dimmed behind the level; the fill reveals them up to the level, turns to
+  // the limiter's or the compressor's colour while it acts, and all red on clip.
   const ZONES = meterGradient("to top", dbToPos);
 
   interface Props {
@@ -44,10 +50,11 @@
     {#if comp !== null}<span class="led comp" class:on={comp} title="Compressor">CMP</span>{/if}
   </div>
   <div class="bar">
+    <div class="zones" style:background={ZONES} style:opacity={METER_BACKGROUND_OPACITY}></div>
     <div
       class="fill"
       class:clipping={clip}
-      style:background={clip ? undefined : ZONES}
+      style:background={clip ? undefined : meterFill(ZONES, limit, comp)}
       style:clip-path={`inset(${((1 - pos) * 100).toFixed(2)}% 0 0 0)`}
     ></div>
     {#if peakPos > 0}<div class="peak" style:bottom={`${peakPos * 100}%`}></div>{/if}
@@ -100,9 +107,12 @@
     background: #0b0c0f;
     overflow: hidden;
   }
+  .zones,
   .fill {
     position: absolute;
     inset: 0;
+  }
+  .fill {
     transition: clip-path 120ms linear;
   }
   .fill.clipping {
