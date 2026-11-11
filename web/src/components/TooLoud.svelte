@@ -75,8 +75,13 @@
     font-size: clamp(1rem, 3vw, 1.6rem);
     font-weight: 700;
   }
+  /* All fine (green): white text, the warning faded like an unlit sign. */
+  .light:not(.lit) {
+    color: #fff;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
+  }
   .light:not(.lit) strong {
-    opacity: 0.35;
+    opacity: 0.45;
   }
   .hint {
     margin: 0;
