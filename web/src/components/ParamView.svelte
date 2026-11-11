@@ -16,7 +16,7 @@
   import ResponseGraph from "./ResponseGraph.svelte";
 
   // Settings shown as one strip per channel, like the mixer; EQ as one response graph per
-  // channel (bands edited on it); GEQ as cards.
+  // channel (bands dragged on it) with its band list (type, on / off, values); GEQ as cards.
   const STRIPS = new Set(["delay", "filters", "comp", "limit", "gate"]);
 
   const selection = new ChannelSelection("dsp408.params.hidden");
@@ -49,6 +49,7 @@
     {#each paths as path (path)}
       <div class="graph-block" style:--ch={app.color(path)}>
         <ResponseGraph {path} compact title={title(path)} />
+        <ParamBlock param="eq" {path} />
       </div>
     {:else}
       <p class="muted">No channel selected: pick some above.</p>
@@ -76,6 +77,18 @@
     /* one graph per row, the whole width */
     display: grid;
     gap: 10px;
+  }
+  .graph-block {
+    display: grid;
+    gap: 6px;
+  }
+  .graph-block > :global(.card) {
+    margin: 0;
+  }
+  /* The band list in columns: the graph above takes the whole width. */
+  .graph-block :global(ol.bands) {
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 340px), 1fr));
+    align-items: start;
   }
   .graph-block > :global(.graph h2) {
     padding: 2px 10px;
