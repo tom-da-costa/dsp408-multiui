@@ -30,6 +30,14 @@ const REQUEST_TIMEOUT_MS = 10_000;
 const SLOW_REQUEST_TIMEOUT_MS = 30_000;
 const SLOW_REQUESTS = new Set(["preset.recall", "preset.store", "resync", "link.set"]);
 const ACTIVITY_INTERVAL_MS = 10_000;
+// Link to the server: a ping every few seconds; with nothing received for a while (not even the
+// pong), the link is presumed dead (half-open: Wi-Fi lost, phone asleep) and is dropped at once
+// rather than waiting for the browser's own timeout, which can take minutes.
+const PING_INTERVAL_MS = 4_000;
+const SILENCE_TIMEOUT_MS = 12_000;
+const CONNECT_TIMEOUT_MS = 8_000;
+const RETRY_MIN_MS = 500;
+const RETRY_MAX_MS = 5_000;
 
 class App {
   view = $state<"loading" | "login" | "app">("loading");
@@ -48,16 +56,23 @@ class App {
   clients = $state<{ id: string; name: string }[]>([]);
   settings = $state<Settings | null>(null);
   connected = $state(false);
+  /** Number of failed attempts since the link to the server was lost (0 while connected). */
+  retries = $state(0);
   toasts = $state<Toast[]>([]);
 
   rev = 0;
   private ws: WebSocket | null = null;
   private nextReq = 1;
   private pending = new Map<number, Pending>();
-  private retryMs = 500;
+  private retryMs = RETRY_MIN_MS;
+  private retryTimer: ReturnType<typeof setTimeout> | null = null;
+  private watchdog: ReturnType<typeof setInterval> | null = null;
+  private lastSeen = 0;
+  private lastPing = 0;
   private toastId = 0;
   private lastActivity = 0;
   private stopped = false;
+  private listening = false;
 
   // --- derived helpers ---------------------------------------------------------------------
   get lockedByOther(): boolean {
@@ -75,8 +90,11 @@ class App {
     return channelColor(path, channels?.[Number(n)]?.linked);
   }
 
+  /** True when this client cannot change anything: no server, no DSP, Control or screen lock. */
   get readOnly(): boolean {
-    return this.lockedByOther || this.screenLocked || this.status?.status !== "online";
+    return (
+      !this.connected || this.lockedByOther || this.screenLocked || this.status?.status !== "online"
+    );
   }
 
   /** True when the parameter kind has been verified on a real DSP 408. */
@@ -111,7 +129,7 @@ class App {
   async logout(): Promise<void> {
     this.stopped = true;
     await api.logout();
-    this.ws?.close();
+    this.drop();
     this.reset();
     this.view = "login";
   }
@@ -124,40 +142,140 @@ class App {
     this.screenLocked = false;
     this.meters = null;
     this.connected = false;
+    this.retries = 0;
     this.rev = 0;
   }
 
   private connect(): void {
+    this.listen();
+    if (this.retryTimer !== null) clearTimeout(this.retryTimer);
+    this.retryTimer = null;
     const scheme = location.protocol === "https:" ? "wss" : "ws";
     const ws = new WebSocket(`${scheme}://${location.host}/ws`);
     this.ws = ws;
+    this.lastSeen = Date.now();
     ws.onopen = () => {
+      if (this.ws !== ws) return;
       this.connected = true;
-      this.retryMs = 500;
+      this.retries = 0;
+      this.retryMs = RETRY_MIN_MS;
+      this.lastSeen = Date.now();
     };
-    ws.onmessage = (event) => this.handle(JSON.parse(event.data as string));
+    ws.onmessage = (event) => {
+      if (this.ws !== ws) return;
+      this.lastSeen = Date.now();
+      this.handle(JSON.parse(event.data as string));
+    };
     ws.onclose = (event) => {
       if (this.ws !== ws) return;
-      this.connected = false;
-      for (const [, p] of this.pending) {
-        clearTimeout(p.timer);
-        p.resolve({ type: "result", req: null, ok: false, error: "disconnected" });
-      }
-      this.pending.clear();
       if (event.code === 4401) {
+        this.drop();
         this.reset();
         this.view = "login";
         return;
       }
-      if (!this.stopped) {
-        setTimeout(() => this.connect(), this.retryMs);
-        this.retryMs = Math.min(this.retryMs * 2, 5000);
-      }
+      this.lost();
     };
+    if (this.watchdog === null) this.watchdog = setInterval(() => this.check(), 1_000);
   }
 
+  /** Forget the current socket (closing it if still open) and fail the pending requests. */
+  private drop(): void {
+    const ws = this.ws;
+    this.ws = null;
+    if (ws) {
+      ws.onopen = ws.onmessage = ws.onclose = null;
+      if (ws.readyState === WebSocket.CONNECTING || ws.readyState === WebSocket.OPEN) ws.close();
+    }
+    if (this.watchdog !== null) clearInterval(this.watchdog);
+    this.watchdog = null;
+    if (this.retryTimer !== null) clearTimeout(this.retryTimer);
+    this.retryTimer = null;
+    this.connected = false;
+    this.meters = null; // stale levels must not stay on screen
+    for (const [, p] of this.pending) {
+      clearTimeout(p.timer);
+      p.resolve({ type: "result", req: null, ok: false, error: "disconnected" });
+    }
+    this.pending.clear();
+  }
+
+  /** The link is gone: drop it and try again after a growing, jittered delay. */
+  private lost(): void {
+    this.drop();
+    if (this.stopped) return;
+    this.retries += 1;
+    // A server restarted behind a proxy may refuse the socket without the 4401 code: ask once
+    // in a while whether the session is still known, and show the login if not.
+    if (this.retries % 3 === 0) void this.checkSession();
+    // Jitter so that every client of a restarted server does not come back at the same instant.
+    const delay = this.retryMs * (0.75 + Math.random() * 0.5);
+    this.retryMs = Math.min(this.retryMs * 2, RETRY_MAX_MS);
+    this.retryTimer = setTimeout(() => this.connect(), delay);
+  }
+
+  private async checkSession(): Promise<void> {
+    if ((await api.sessionState()) !== "expired" || this.connected || this.stopped) return;
+    this.drop();
+    this.reset();
+    this.view = "login";
+  }
+
+  /** Reconnect now (the "Retry now" button, the page coming back, the network coming back). */
+  reconnectNow(): void {
+    if (this.stopped || this.view !== "app" || this.connected) return;
+    this.drop();
+    this.retryMs = RETRY_MIN_MS;
+    this.connect();
+  }
+
+  /** Start over with a fresh snapshot (a missed update). */
   private reconnect(): void {
-    this.ws?.close();
+    this.drop();
+    if (!this.stopped) this.connect();
+  }
+
+  /** Watchdog (every second): heartbeat while open, timeouts while connecting or silent. */
+  private check(): void {
+    const ws = this.ws;
+    if (!ws) return;
+    const now = Date.now();
+    if (ws.readyState === WebSocket.CONNECTING) {
+      if (now - this.lastSeen > CONNECT_TIMEOUT_MS) this.lost();
+      return;
+    }
+    if (ws.readyState !== WebSocket.OPEN) return;
+    // A hidden tab's timers are throttled (down to once a minute): do not judge the silence
+    // there; the check resumes when the page is shown again (see listen()).
+    if (document.hidden) return;
+    if (now - this.lastSeen > SILENCE_TIMEOUT_MS) {
+      this.lost();
+      return;
+    }
+    if (now - this.lastPing >= PING_INTERVAL_MS) {
+      this.lastPing = now;
+      this.send({ type: "ping" });
+    }
+  }
+
+  /** Page shown again or network back: reconnect at once, or check the link that looks open. */
+  private listen(): void {
+    if (this.listening || typeof window === "undefined") return;
+    this.listening = true;
+    const wake = () => {
+      if (document.hidden) return;
+      if (!this.connected) {
+        this.reconnectNow();
+      } else if (this.ws?.readyState === WebSocket.OPEN) {
+        // It may be dead after a sleep: ping now and give the answer a few seconds.
+        this.lastPing = Date.now();
+        this.send({ type: "ping" });
+        this.lastSeen = Math.max(this.lastSeen, Date.now() - SILENCE_TIMEOUT_MS + 5_000);
+      }
+    };
+    document.addEventListener("visibilitychange", wake);
+    window.addEventListener("online", wake);
+    window.addEventListener("pageshow", wake);
   }
 
   // --- incoming --------------------------------------------------------------------------------
@@ -187,6 +305,7 @@ class App {
         break;
       case "device":
         this.status = msg as unknown as DeviceMessage;
+        if (this.status.status !== "online") this.meters = null; // no stale levels
         // "DSP206" -> "DSP 206": the tab / home-screen title follows the detected model
         if (this.status.model) document.title = this.status.model.replace(/^DSP\s*/, "DSP ");
         break;
@@ -203,6 +322,8 @@ class App {
       case "clients":
         this.clients = msg.clients as { id: string; name: string }[];
         break;
+      case "pong":
+        break; // only proves the link is alive (lastSeen)
       case "settings":
         this.settings = msg as unknown as Settings;
         break;
@@ -226,6 +347,15 @@ class App {
 
   request(message: { type: string; [key: string]: unknown }): Promise<ResultMessage> {
     const req = this.nextReq++;
+    if (this.ws?.readyState !== WebSocket.OPEN) {
+      return Promise.resolve({
+        type: "result",
+        req,
+        ok: false,
+        error: "disconnected",
+        message: "not connected to the server",
+      });
+    }
     return new Promise((resolve) => {
       const timeout = SLOW_REQUESTS.has(message.type) ? SLOW_REQUEST_TIMEOUT_MS : REQUEST_TIMEOUT_MS;
       const timer = setTimeout(() => {
@@ -241,8 +371,13 @@ class App {
   async run(message: { type: string; [key: string]: unknown }): Promise<boolean> {
     this.activity(true);
     const result = await this.request(message);
-    if (!result.ok && result.error !== "disconnected") {
-      this.toast(result.message ?? result.error ?? "error", "error");
+    if (!result.ok) {
+      this.toast(
+        result.error === "disconnected"
+          ? "Connection to the server lost: check that the change was applied"
+          : (result.message ?? result.error ?? "error"),
+        "error",
+      );
     }
     return result.ok;
   }

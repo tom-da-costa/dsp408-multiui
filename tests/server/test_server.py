@@ -189,7 +189,8 @@ def test_login_rate_limit(client: TestClient) -> None:
 
 
 def test_websocket_requires_login_and_same_origin(client: TestClient) -> None:
-    with pytest.raises(WebSocketDisconnect) as info, client.websocket_connect("/ws") as ws:
+    # Accepted, then closed with 4401: a browser only sees the code after the handshake.
+    with client.websocket_connect("/ws") as ws, pytest.raises(WebSocketDisconnect) as info:
         ws.receive_json()
     assert info.value.code == 4401
     login(client)

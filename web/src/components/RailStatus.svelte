@@ -11,6 +11,14 @@
 
   let { expanded, onpick }: Props = $props();
 
+  const STATUS_TEXT: Record<string, string> = {
+    disconnected: "no server",
+    offline: "DSP offline",
+    connecting: "DSP connecting",
+    initialising: "DSP reading",
+    stopped: "DSP stopped",
+  };
+
   const status = $derived(app.connected ? (app.status?.status ?? "connecting") : "disconnected");
   const device = $derived(app.device);
   const slot = $derived(
@@ -20,7 +28,9 @@
     [
       device ? `${slot} ${device.preset_name}` : "DSP 408",
       device?.modified ? "unsaved changes" : "",
-      `DSP ${status}${app.status?.error ? `: ${app.status.error}` : ""}`,
+      status === "disconnected"
+        ? "no connection to the server"
+        : `DSP ${status}${app.status?.error ? `: ${app.status.error}` : ""}`,
       app.hello?.demo ? "demo mode (no DSP)" : "",
     ]
       .filter(Boolean)
@@ -45,7 +55,9 @@
       <small>
         {#if device?.modified}<span class="unsaved">● unsaved</span>{/if}
         {#if app.hello?.demo}<span class="demo">DEMO</span>{/if}
-        <span class="muted">{status === "online" ? (app.status?.model ?? "") : status}</span>
+        <span class="muted"
+          >{status === "online" ? (app.status?.model ?? "") : (STATUS_TEXT[status] ?? status)}</span
+        >
       </small>
     </span>
   </button>
