@@ -65,7 +65,9 @@ On a phone, in landscape:
   phone left unattended; a reload stays locked
 - Survives an unstable network: a heartbeat detects a dead link within ~12 s, every browser
   reconnects by itself (at once when a phone wakes up or the Wi-Fi comes back) and the server
-  reconnects to the DSP. A banner says which link is down (*SERVER* or *DSP*); meanwhile the
+  reconnects to the DSP. Towards the DSP the command timeout adapts to the measured round trip
+  (a Wi-Fi bridge or a VPN is fine), late answers are never taken for the next command's, and
+  an operation that fails half-way makes the server re-read the DSP rather than guess. A banner says which link is down (*SERVER* or *DSP*); meanwhile the
   values shown are the last known and every control is disabled, so no change is silently lost
 - Access protected by a shared code (default `0000`, set with `--pin`)
 - No database, no internet access needed, no external assets

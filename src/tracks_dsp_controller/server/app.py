@@ -101,7 +101,11 @@ def create_app(
     def with_timeout(p: ProtocolProfile) -> ProtocolProfile:
         if config.command_timeout_s is None:
             return p
-        return p.with_overrides({"timing": {"command_timeout_s": config.command_timeout_s}})
+        floor = config.command_timeout_s  # --command-timeout: the adaptive timeout's floor
+        ceiling = max(floor, p.command_timeout_max_s)
+        return p.with_overrides(
+            {"timing": {"command_timeout_s": floor, "command_timeout_max_s": ceiling}}
+        )
 
     def model_profile(key: str) -> ProtocolProfile:
         return with_timeout(base_profile_for(key))

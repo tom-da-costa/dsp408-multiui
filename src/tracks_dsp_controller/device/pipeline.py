@@ -4,11 +4,14 @@
 * Coalescing: a write whose ``coalesce_key`` matches a queued write replaces it in place, so a
   fader moved by several clients costs at most one frame in flight plus one queued per key.
 * Writes go before meter polls, but a poll runs as soon as its period has elapsed, so the meter
-  rate holds even while writes keep coming.
+  rate holds even while writes keep coming. After a poll, a waiting write goes first: on a slow
+  link a poll can last longer than the meter period, and polls alone would then starve writes.
 * ``exclusive()`` pauses the worker so a caller can run a multi-request sequence (preset recall,
   config read) directly on the connection.
-* A timeout is retried; after ``max_failures`` consecutive failures, or on a transport error,
-  the pipeline closes and reports why (the session then reconnects).
+* A timeout is retried; after ``max_failures`` consecutive failures, after a timeout with no
+  frame at all from the device for ``dead_after_s`` (the link is dead, not just slow: late
+  answers still count as signs of life), or on a transport error, the pipeline closes and
+  reports why (the session then reconnects).
 """
 
 from __future__ import annotations
@@ -21,6 +24,7 @@ from collections import deque
 from collections.abc import AsyncIterator, Callable
 from dataclasses import dataclass, field
 
+from tracks_dsp_controller.aio import cancel_and_wait
 from tracks_dsp_controller.device.reader import Requester
 from tracks_dsp_controller.device.transport import TransportError, TransportTimeoutError
 from tracks_dsp_controller.protocol import commands as cmd
@@ -61,6 +65,7 @@ class CommandPipeline:
         on_meters: Callable[[bytes | None], None],
         retries: int = 1,
         max_failures: int = 3,
+        dead_after_s: float = 4.0,
         clock: Callable[[], float] = time.monotonic,
     ) -> None:
         self.conn = conn
@@ -68,6 +73,7 @@ class CommandPipeline:
         self.on_meters = on_meters
         self.retries = retries
         self.max_failures = max_failures
+        self.dead_after_s = dead_after_s
         self.clock = clock
         self.stats = PipelineStats()
         self._queue: deque[_Item] = deque()
@@ -75,6 +81,7 @@ class CommandPipeline:
         self._wake = asyncio.Event()
         self._gate = asyncio.Lock()
         self._last_poll = float("-inf")
+        self._polled_last = False
         self._failures = 0
         self._task: asyncio.Task[None] | None = None
         self._closed: asyncio.Future[BaseException] = asyncio.get_running_loop().create_future()
@@ -85,11 +92,14 @@ class CommandPipeline:
 
     async def stop(self) -> None:
         if self._task is not None:
-            self._task.cancel()
-            with contextlib.suppress(asyncio.CancelledError):
-                await self._task
+            await cancel_and_wait(self._task)
             self._task = None
         self._close(PipelineClosedError("pipeline stopped"))
+
+    def abort(self, reason: BaseException) -> None:
+        """Close the pipeline from outside (the session then reconnects and re-reads)."""
+        self._close(reason)
+        self._wake.set()
 
     @property
     def closed(self) -> bool:
@@ -143,10 +153,13 @@ class CommandPipeline:
         try:
             while True:
                 async with self._gate:
-                    if self.clock() - self._last_poll >= self.meter_interval:
+                    due = self.clock() - self._last_poll >= self.meter_interval
+                    if due and not (self._queue and self._polled_last):
+                        self._polled_last = True
                         await self._poll()
                         continue
                     if self._queue:
+                        self._polled_last = False
                         item = self._queue.popleft()
                         key = item.request.coalesce_key
                         if key is not None:
@@ -174,6 +187,11 @@ class CommandPipeline:
             except TransportTimeoutError:
                 self.stats.timeouts += 1
                 log.debug("timeout on %r (attempt %d)", request, attempt + 1)
+                last = getattr(self.conn, "last_received", None)
+                if last is not None and time.monotonic() - last >= self.dead_after_s:
+                    raise _TooManyFailuresError(
+                        f"no answer from the device for {time.monotonic() - last:.1f} s"
+                    ) from None
                 continue
             self._failures = 0
             return response

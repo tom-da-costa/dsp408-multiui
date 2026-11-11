@@ -85,6 +85,50 @@ async def test_late_answer_is_skipped(server: SimulatorServer) -> None:
         assert await conn.request(c.GetActivePreset(), timeout=0.5) == r.ActivePreset(0)
 
 
+async def test_late_answer_is_not_taken_for_the_next_one(server: SimulatorServer) -> None:
+    # Responses are untagged: the late PresetName(0) must not answer GetPresetName(1).
+    async with connection(server, timeout=0.1) as conn:
+        server.faults.extra_latency_s = 0.15
+        with pytest.raises(TransportTimeoutError):
+            await conn.request(c.GetPresetName(0))
+        server.faults.extra_latency_s = 0.0
+        reply = await conn.request(c.GetPresetName(1))
+        assert isinstance(reply, r.PresetName)
+        assert reply.index == 1
+        assert conn.late_answers == 1
+
+
+async def test_timeout_adapts_to_a_slow_link(server: SimulatorServer) -> None:
+    async with connection(server, timeout=0.1) as conn:
+        server.faults.extra_latency_s = 0.25
+        with pytest.raises(TransportTimeoutError):
+            await conn.request(c.GetActivePreset())
+        failures = 0
+        for _ in range(10):
+            try:
+                assert await conn.request(c.GetActivePreset()) == r.ActivePreset(0)
+            except TransportTimeoutError:
+                failures += 1
+        assert failures <= 1  # backoff, then the measured round trip
+        assert conn.timeout > 0.25
+
+
+async def test_a_retry_takes_the_late_answer(server: SimulatorServer) -> None:
+    async with connection(server, timeout=0.1) as conn:
+        server.faults.extra_latency_s = 0.15
+        with pytest.raises(TransportTimeoutError):
+            await conn.request(c.GetPresetName(1))
+        server.faults.extra_latency_s = 0.0
+        reply = await conn.request(c.GetPresetName(1))
+        assert isinstance(reply, r.PresetName)
+        assert reply.index == 1
+        # the retry's own answer, owed, is dropped before the next request
+        reply = await conn.request(c.GetPresetName(0))
+        assert isinstance(reply, r.PresetName)
+        assert reply.index == 0
+        assert conn.late_answers == 1
+
+
 async def test_corrupt_response_is_dropped(server: SimulatorServer) -> None:
     async with connection(server, timeout=0.1) as conn:
         server.faults.corrupt_rate = 1.0

@@ -58,5 +58,7 @@ clip_db = 12.0             # CLIP above +12 dBu (owner's choice: 8 dB below full
 floor_db = -90.0
 
 [timing]
+# The command timeout adapts to the measured round trip (device/transport.py), between these two.
 command_timeout_s = 0.5
+command_timeout_max_s = 5.0
 slow_command_timeout_s = 10.0  # 408: recall ~3.2 s, store ~7.4 s

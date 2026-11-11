@@ -17,6 +17,7 @@ from typing import Any, TypeGuard
 from fastapi import WebSocket, WebSocketDisconnect
 
 from tracks_dsp_controller import __version__
+from tracks_dsp_controller.aio import cancel_and_wait
 from tracks_dsp_controller.device.pipeline import CommandTimeoutError, PipelineClosedError
 from tracks_dsp_controller.device.session import DeviceSession, DeviceStatus, DeviceUnavailableError
 from tracks_dsp_controller.protocol import codecs as c
@@ -265,9 +266,7 @@ class Hub:
         finally:
             self.clients.discard(client)
             if client.sender is not None:
-                client.sender.cancel()
-                with contextlib.suppress(asyncio.CancelledError):
-                    await client.sender
+                await cancel_and_wait(client.sender)
             self.broadcast(self.clients_message())
 
     async def _sender(self, client: Client) -> None:
