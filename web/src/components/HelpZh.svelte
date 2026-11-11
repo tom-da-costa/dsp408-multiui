@@ -133,6 +133,10 @@
       让<strong>本</strong>设备变为只读，适用于无人看管的手机或电脑：所有内容保持可见（包括电平表），视图保持不变，但无法修改或切换。<em>Unlock screen</em>
       需要输入访问码。刷新页面后仍保持锁定。
     </dd>
+    <dt>Master（Settings）</dt>
+    <dd>
+      一个人可以在 <em>Settings › Connected clients</em> 中点击 <em>Become master</em> 成为 master（主控）。master 可以用 <em>Disconnect</em> 断开其他客户端（对方回到登录页面，需要重新输入访问码），也可以用 <em>Block new connections</em> 禁止新的连接：之后任何人都无法登录，但已连接的浏览器保持连接。当 master 点击 <em>Stop being master</em>、退出登录，或关闭应用超过 5 分钟时，禁止会自动解除。要把某人排除在外：先断开他，再禁止新连接。
+    </dd>
   </dl>
 </section>
 

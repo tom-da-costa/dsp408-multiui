@@ -14,6 +14,7 @@ from tracks_dsp_controller.protocol.profile import DEFAULT_PROFILE
 from tracks_dsp_controller.server.app import AppContext, create_app
 from tracks_dsp_controller.server.auth import AuthManager, LoginError, RateLimitedError, clean_name
 from tracks_dsp_controller.server.lock import LockManager
+from tracks_dsp_controller.server.master import MasterManager, MasterState
 from tracks_dsp_controller.server.settings import ServerConfig
 from tracks_dsp_controller.simulator import Faults, SimulatedDevice, apply_scenario
 from tracks_dsp_controller.state import registry
@@ -69,6 +70,39 @@ def test_lock_activity_and_idle_expiry() -> None:
     assert changes == ["a", None, "b", None]
     with pytest.raises(ValueError, match="idle_timeout"):
         LockManager(0)
+
+
+# --- unit: master role ----------------------------------------------------------------------------
+def test_master_role_block_and_absence() -> None:
+    now = [0.0]
+    master = MasterManager(300, clock=lambda: now[0])
+    states: list[tuple[str | None, bool]] = []
+    master.on_change(lambda s: states.append((s.owner_id, s.logins_blocked)))
+    assert not master.block_logins("a", True)  # nobody is the master yet
+    assert master.acquire("a", "Alice")
+    assert master.acquire("a", "Alice")  # already the master: fine, no event
+    assert not master.acquire("b", "Bob")
+    assert not master.block_logins("b", True)
+    assert master.block_logins("a", True)
+    assert master.logins_blocked
+    # away for a while: a reload or a short network loss keeps the role
+    master.presence("a", False)
+    now[0] = 200.0
+    assert not master.expire()
+    master.presence("a", True)
+    now[0] = 1000.0
+    assert not master.expire()
+    # away for too long: the role ends, and the block with it
+    master.presence("a", False)
+    now[0] = 1301.0
+    assert master.expire()
+    assert master.state() == MasterState(None, None, False)
+    assert master.acquire("b", "Bob")
+    assert not master.release("a")
+    assert master.release("b")
+    assert states == [("a", False), ("a", True), (None, False), ("b", False), (None, False)]
+    with pytest.raises(ValueError, match="absent_timeout"):
+        MasterManager(0)
 
 
 def test_server_config_validation() -> None:
@@ -513,3 +547,60 @@ def test_logout_closes_websockets_and_releases_lock(client: TestClient) -> None:
         client.post("/api/logout")
         with pytest.raises(WebSocketDisconnect):
             drain(ws)
+
+
+def test_master_disconnects_a_client_and_blocks_new_logins(client: TestClient) -> None:
+    login(client, "Alice")
+    alice_cookie = client.cookies.get("dsp408_session")
+    with client.websocket_connect("/ws") as alice:
+        login(client, "Bob")
+        bob_cookie = client.cookies.get("dsp408_session")
+        with client.websocket_connect("/ws") as bob:
+            receive_until(alice, "hello")
+            bob_id = receive_until(bob, "hello")["client_id"]
+            assert receive_until(bob, "master")["owner_id"] is None
+
+            # only the master may disconnect or block
+            denied = request(bob, {"type": "client.kick", "req": 1, "client_id": bob_id})
+            assert denied["error"] == "not_master"
+            assert request(bob, {"type": "logins.block", "req": 2, "blocked": True})["error"] == (
+                "not_master"
+            )
+            assert request(alice, {"type": "master.acquire", "req": 3})["ok"]
+            master = receive_until(bob, "master")
+            assert master["owner_name"] == "Alice"
+            assert request(bob, {"type": "master.acquire", "req": 4})["error"] == "master_taken"
+
+            # Alice blocks new logins: the code is checked, then the login refused
+            assert request(alice, {"type": "logins.block", "req": 5, "blocked": True})["ok"]
+            assert receive_until(bob, "master")["logins_blocked"]
+            refused = client.post("/api/login", json={"pin": "4321", "name": "Carol"})
+            assert refused.status_code == 403
+            assert refused.json() == {
+                "error": "logins_blocked",
+                "message": "New connections are blocked by Alice",
+            }
+            assert client.post("/api/login", json={"pin": "nope"}).status_code == 401
+
+            # Alice disconnects Bob: his session ends, his browser gets the login with a reason
+            assert request(alice, {"type": "client.kick", "req": 6, "client_id": bob_id})["ok"]
+            with pytest.raises(WebSocketDisconnect) as closed:
+                drain(bob)
+            assert closed.value.code == 4401
+            assert closed.value.reason == "Disconnected by Alice"
+        client.cookies.set("dsp408_session", bob_cookie or "")
+        assert client.get("/api/session").status_code == 401
+        assert request(alice, {"type": "client.kick", "req": 7, "client_id": bob_id})["error"] == (
+            "invalid"
+        )
+
+        # the block ends with the role
+        assert request(alice, {"type": "master.release", "req": 8})["ok"]
+        assert not receive_until(alice, "master")["logins_blocked"]
+        login(client, "Carol")
+        # a master logging out gives the role up
+        client.cookies.set("dsp408_session", alice_cookie or "")
+        assert request(alice, {"type": "master.acquire", "req": 9})["ok"]
+        client.post("/api/logout")
+    ctx: AppContext = client.app.state.ctx  # type: ignore[attr-defined]
+    assert ctx.master.state().owner_id is None

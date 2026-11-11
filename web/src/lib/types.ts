@@ -158,6 +158,13 @@ export interface DeviceMessage {
   model_tested: boolean;
 }
 
+/** Master role: may disconnect clients and block new logins (blocking ends with the role). */
+export interface MasterMessage {
+  owner_id: string | null;
+  owner_name: string | null;
+  logins_blocked: boolean;
+}
+
 export interface LockMessage {
   owner_id: string | null;
   owner_name: string | null;

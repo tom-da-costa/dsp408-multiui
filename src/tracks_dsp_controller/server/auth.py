@@ -73,6 +73,10 @@ class AuthManager:
 
     def login(self, pin: str, name: str | None, address: str) -> ClientSession:
         self.check_pin(pin, address)
+        return self.open_session(name)
+
+    def open_session(self, name: str | None) -> ClientSession:
+        """A new session, once the code is checked."""
         now = self.clock()
         self._counter += 1
         client_id = f"c{self._counter}-{secrets.token_hex(3)}"
@@ -90,3 +94,10 @@ class AuthManager:
 
     def logout(self, token: str | None) -> ClientSession | None:
         return self._sessions.pop(token, None) if token else None
+
+    def logout_client(self, client_id: str) -> ClientSession | None:
+        """End the session of ``client_id`` (disconnected by the master)."""
+        for token, session in list(self._sessions.items()):
+            if session.client_id == client_id:
+                return self._sessions.pop(token)
+        return None

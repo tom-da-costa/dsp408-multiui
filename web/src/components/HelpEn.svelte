@@ -171,6 +171,15 @@
       can be changed or navigated. <em>Unlock screen</em> asks for the access code. A reload
       stays locked.
     </dd>
+    <dt>Master (Settings)</dt>
+    <dd>
+      One person can <em>Become master</em> in <em>Settings › Connected clients</em>. The master
+      can <em>Disconnect</em> another client (it goes back to the login screen and must type the
+      access code again) and <em>Block new connections</em>: nobody can log in any more, while
+      the browsers already connected stay connected. The block ends when the master taps
+      <em>Stop being master</em>, logs out, or has had the app closed for 5 minutes. To exclude
+      someone: disconnect them, then block.
+    </dd>
   </dl>
 </section>
 

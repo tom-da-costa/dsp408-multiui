@@ -192,6 +192,16 @@
       mais on ne peut rien modifier ni changer de vue. <em>Unlock screen</em> demande le code
       d'accès. Le verrouillage résiste au rechargement de la page.
     </dd>
+    <dt>Master (Settings)</dt>
+    <dd>
+      Une personne peut devenir master avec <em>Become master</em> dans <em>Settings › Connected
+      clients</em>. Le master peut déconnecter un autre client avec <em>Disconnect</em> (il
+      revient à l'écran de connexion et doit retaper le code d'accès) et bloquer les nouvelles
+      connexions avec <em>Block new connections</em> : plus personne ne peut se connecter, mais
+      les navigateurs déjà connectés le restent. Le blocage prend fin quand le master touche
+      <em>Stop being master</em>, se déconnecte, ou a fermé l'appli depuis 5 minutes. Pour
+      exclure quelqu'un : le déconnecter, puis bloquer.
+    </dd>
   </dl>
 </section>
 

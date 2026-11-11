@@ -19,6 +19,7 @@
     event.preventDefault();
     busy = true;
     error = "";
+    app.loginNotice = "";
     try {
       try {
         localStorage.setItem("dsp408.name", name);
@@ -52,12 +53,20 @@
       Your name <span class="muted">(optional)</span>
       <input type="text" maxlength="32" placeholder="e.g. FOH phone" bind:value={name} />
     </label>
+    {#if app.loginNotice}<p class="notice" role="status">{app.loginNotice}</p>{/if}
     {#if error}<p class="error" role="alert">{error}</p>{/if}
     <button class="primary" type="submit" disabled={busy || !pin}>Connect</button>
   </form>
 </main>
 
 <style>
+  .notice {
+    margin: 0;
+    padding: 8px 10px;
+    border-radius: 8px;
+    background: color-mix(in srgb, var(--warn) 18%, var(--panel));
+    border-left: 3px solid var(--warn);
+  }
   main {
     min-height: 100%;
     display: grid;
