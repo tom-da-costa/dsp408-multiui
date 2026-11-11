@@ -63,7 +63,7 @@ _SECTIONS: dict[str, tuple[str, ...]] = {
         "meter_clip_db",
         "meter_floor_db",
     ),
-    "timing": ("command_timeout_s", "slow_command_timeout_s"),
+    "timing": ("command_timeout_s", "command_timeout_max_s", "slow_command_timeout_s"),
 }
 # Keys in the [meters] section drop the "meter_" prefix.
 _PREFIXED_SECTIONS = {"meters": "meter_"}
@@ -113,7 +113,8 @@ class ProtocolProfile:
     meter_clip_db: float = 12.0  # CLIP indicator, 8 dB below full scale
     meter_floor_db: float = -90.0
     # timing
-    command_timeout_s: float = 0.5
+    command_timeout_s: float = 0.5  # floor of the adaptive timeout (device/transport.py)
+    command_timeout_max_s: float = 5.0  # its ceiling, on a slow link
     slow_command_timeout_s: float = 10.0
 
     def __post_init__(self) -> None:
@@ -137,6 +138,8 @@ class ProtocolProfile:
             raise ProfileError("bitmasks limit inputs and outputs to 8 each")
         if self.meter_input_slots < self.input_count or self.meter_output_slots < self.output_count:
             raise ProfileError("the meter frame needs a slot for every channel")
+        if not 0 < self.command_timeout_s <= self.command_timeout_max_s:
+            raise ProfileError("command_timeout_s must be > 0 and <= command_timeout_max_s")
         if not self.freq_min_hz < self.freq_max_hz:
             raise ProfileError("freq_min_hz must be < freq_max_hz")
         if not 0 < self.q_min < self.q_max:

@@ -13,12 +13,17 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import logging
-from collections.abc import Callable
+from collections.abc import AsyncIterator, Callable
 from enum import StrEnum
 from typing import Any
 
+from tracks_dsp_controller.aio import cancel_and_wait
 from tracks_dsp_controller.device import reader
-from tracks_dsp_controller.device.pipeline import CommandPipeline, PipelineClosedError
+from tracks_dsp_controller.device.pipeline import (
+    CommandPipeline,
+    CommandTimeoutError,
+    PipelineClosedError,
+)
 from tracks_dsp_controller.device.transport import (
     DspConnection,
     TransportError,
@@ -46,6 +51,15 @@ log = logging.getLogger(__name__)
 
 METER_RATE_MIN_HZ = 1.0
 METER_RATE_MAX_HZ = 10.0
+RESYNC_DELAY_S = 0.5  # after a write left unanswered: let the link settle, then re-read
+
+# A multi-request sequence (recall, store, links, config read) can fail with these.
+SEQUENCE_ERRORS = (
+    TransportError,
+    TransportTimeoutError,
+    reader.UnexpectedResponseError,
+    cm.ConfigError,
+)
 
 
 class DeviceStatus(StrEnum):
@@ -121,6 +135,7 @@ class DeviceSession:
         # not acked yet: a partial write merges onto it rather than onto the acked state, so two
         # quick edits of different fields of one band both survive.
         self._inflight: dict[str, dict[str, Any]] = {}
+        self._resync_task: asyncio.Task[None] | None = None
 
     def _default_connection(self) -> DspConnection:
         # Built at each attempt, so host/port can change (embedded simulator, reconfiguration).
@@ -194,10 +209,11 @@ class DeviceSession:
             self._task = asyncio.create_task(self._run(), name="dsp-session")
 
     async def stop(self) -> None:
+        if self._resync_task is not None:
+            await cancel_and_wait(self._resync_task)
+            self._resync_task = None
         if self._task is not None:
-            self._task.cancel()
-            with contextlib.suppress(asyncio.CancelledError):
-                await self._task
+            await cancel_and_wait(self._task)
             self._task = None
         await self._teardown()
         self._set_status(DeviceStatus.STOPPED)
@@ -234,7 +250,11 @@ class DeviceSession:
             self.store.replace(self._after_reconnect(state))
             delay = self.reconnect_min_s
             pipeline = CommandPipeline(
-                conn, meter_interval=1.0 / self._meter_rate_hz, on_meters=self._publish_meters
+                conn,
+                meter_interval=1.0 / self._meter_rate_hz,
+                on_meters=self._publish_meters,
+                # no frame at all for this long: the link is dead (4 s with the 0.5 s floor)
+                dead_after_s=8 * self.profile.command_timeout_s,
             )
             self._pipeline = pipeline
             pipeline.start()
@@ -325,6 +345,36 @@ class DeviceSession:
             raise DeviceUnavailableError(f"device is {self.status.value}")
         return self._pipeline
 
+    @contextlib.asynccontextmanager
+    async def _sequence(self, what: str, *, abort: bool = True) -> AsyncIterator[reader.Requester]:
+        """Run a multi-request sequence alone on the connection.
+
+        If it fails half-way (no answer, a wrong answer), part of it may have reached the DSP and
+        its state is unknown: with ``abort`` the connection is dropped, so the session reconnects
+        and re-reads everything rather than showing a guess.
+        """
+        pipeline = self._require_pipeline()
+        try:
+            async with pipeline.exclusive() as conn:
+                yield conn
+        except SEQUENCE_ERRORS as exc:
+            if abort:
+                log.warning("%s failed (%s): reconnecting to re-read the DSP", what, exc)
+                pipeline.abort(exc)
+            raise DeviceUnavailableError(f"{what} failed: {exc}") from exc
+
+    def _resync_soon(self) -> None:
+        """A write was left unanswered: the DSP may or may not have applied it. Re-read."""
+        if self._resync_task is None or self._resync_task.done():
+            self._resync_task = asyncio.create_task(self._resync_later(), name="dsp-resync")
+
+    async def _resync_later(self) -> None:
+        await asyncio.sleep(RESYNC_DELAY_S)
+        log.info("re-reading the DSP after an unanswered write")
+        # Failing, it drops the connection: the reconnection re-reads everything.
+        with contextlib.suppress(DeviceUnavailableError, PipelineClosedError):
+            await self.resync(abort=True)
+
     # --- operations -------------------------------------------------------------------------------
     def resolve(self, path: str, value: Any) -> Write:
         """Validate a write without sending it (raises ``ParamError``)."""
@@ -344,6 +394,9 @@ class DeviceSession:
                 write.request,
                 on_ack=lambda: self.store.apply(self._with_modified(write.changes), origin),
             )
+        except CommandTimeoutError:
+            self._resync_soon()
+            raise
         finally:
             for p, v in mine.items():
                 if self._inflight.get(p) is v:
@@ -353,13 +406,9 @@ class DeviceSession:
     async def recall(self, slot: int, origin: str) -> None:
         if not 0 <= slot <= self.profile.preset_count:
             raise ParamError(f"preset slot out of range: {slot}")
-        pipeline = self._require_pipeline()
-        try:
-            async with pipeline.exclusive() as conn:
-                reader.expect(await conn.request(cmd.RecallPreset(slot)), rsp.Ack)
-                state = await self._read_state(conn, previous=self.store.state)
-        except (TransportError, TransportTimeoutError) as exc:
-            raise DeviceUnavailableError(str(exc)) from exc
+        async with self._sequence(f"recall of preset {slot}") as conn:
+            reader.expect(await conn.request(cmd.RecallPreset(slot)), rsp.Ack)
+            state = await self._read_state(conn, previous=self.store.state)
         log.info("preset %d recalled by %s", slot, origin)
         self.store.replace(state.model_copy(update={"modified": False}))
 
@@ -370,14 +419,10 @@ class DeviceSession:
             validate_name(name, PRESET_NAME_LENGTH)
         except ValueError as exc:
             raise ParamError(str(exc)) from exc
-        pipeline = self._require_pipeline()
-        try:
-            async with pipeline.exclusive() as conn:
-                reader.expect(await conn.request(cmd.SetPresetName(name)), rsp.Ack)
-                reader.expect(await conn.request(cmd.StorePreset(slot)), rsp.Ack)
-                await reader.activate(conn)
-        except (TransportError, TransportTimeoutError) as exc:
-            raise DeviceUnavailableError(str(exc)) from exc
+        async with self._sequence(f"store to preset {slot}") as conn:
+            reader.expect(await conn.request(cmd.SetPresetName(name)), rsp.Ack)
+            reader.expect(await conn.request(cmd.StorePreset(slot)), rsp.Ack)
+            await reader.activate(conn)
         log.info("preset %d stored as %r by %s", slot, name, origin)
         self.store.apply(
             [
@@ -409,25 +454,20 @@ class DeviceSession:
             raise ParamError(str(exc)) from exc
         if not requests:
             return
-        pipeline = self._require_pipeline()
-        try:
-            async with pipeline.exclusive() as conn:
-                for request in requests:
-                    reader.expect(await conn.request(request), rsp.Ack)
-                state = await self._read_state(conn, previous=self.store.state)
-        except (TransportError, TransportTimeoutError) as exc:
-            raise DeviceUnavailableError(str(exc)) from exc
+        async with self._sequence(f"{side} link change") as conn:
+            for request in requests:
+                reader.expect(await conn.request(request), rsp.Ack)
+            state = await self._read_state(conn, previous=self.store.state)
         log.info("%s links set to %s by %s", side, normalise(groups, count), origin)
         self.store.replace(state.model_copy(update={"modified": True}))
 
-    async def resync(self) -> None:
-        """Re-read the whole configuration (front-panel changes)."""
-        pipeline = self._require_pipeline()
-        try:
-            async with pipeline.exclusive() as conn:
-                state = await self._read_state(conn, previous=self.store.state)
-        except (TransportError, TransportTimeoutError) as exc:
-            raise DeviceUnavailableError(str(exc)) from exc
+    async def resync(self, *, abort: bool = False) -> None:
+        """Re-read the whole configuration (front-panel changes).
+
+        ``abort``: the state is in doubt, so a failed re-read drops the connection (the
+        reconnection re-reads everything); otherwise the known state simply stays."""
+        async with self._sequence("configuration read", abort=abort) as conn:
+            state = await self._read_state(conn, previous=self.store.state)
         previous = self.store.state
         if previous.active_slot != state.active_slot:
             modified = None  # recalled from the front panel or another client

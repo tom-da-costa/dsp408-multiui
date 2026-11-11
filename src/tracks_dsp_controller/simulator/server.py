@@ -7,6 +7,7 @@ import contextlib
 import logging
 from enum import StrEnum
 
+from tracks_dsp_controller.aio import cancel_and_wait
 from tracks_dsp_controller.framelog import FROM_DEVICE, TO_DEVICE, FrameLog
 from tracks_dsp_controller.protocol.commands import Opcode
 from tracks_dsp_controller.protocol.framing import HOST, Frame, FrameDecoder
@@ -21,6 +22,11 @@ DEFAULT_PORT = 9761
 class SecondClient(StrEnum):
     """What happens when a client connects while another one is connected."""
 
+    # The DSP 408 (HW, PROTOCOL.md Q10): the new connection waits, unanswered, until the earlier
+    # one leaves, then is served; the first client is not disturbed. (On the DSP the TCP
+    # connection itself only completes then; here it completes at once but nothing is answered,
+    # and what the client sends meanwhile is dropped.)
+    QUEUE = "queue"
     ACCEPT = "accept"  # both are served (requests are serialised)
     REFUSE = "refuse"  # the new connection is closed immediately
     KICK = "kick"  # the old connection is closed, the new one is served
@@ -34,7 +40,7 @@ class SimulatorServer:
         host: str = "127.0.0.1",
         port: int = DEFAULT_PORT,
         faults: Faults | None = None,
-        second_client: SecondClient = SecondClient.ACCEPT,
+        second_client: SecondClient = SecondClient.QUEUE,
         frame_log: FrameLog | None = None,
     ) -> None:
         self.device = device
@@ -46,6 +52,7 @@ class SimulatorServer:
         self._server: asyncio.Server | None = None
         self._clients: dict[asyncio.StreamWriter, asyncio.Task[None]] = {}
         self._device_lock = asyncio.Lock()  # the device handles one request at a time
+        self._left = asyncio.Condition()  # notified when a client leaves (QUEUE mode)
 
     @property
     def bound_port(self) -> int:
@@ -113,6 +120,10 @@ class SimulatorServer:
             log.info("refusing second client %s", peer)
             writer.close()
             return
+        if self._clients and self.second_client is SecondClient.QUEUE:
+            log.info("client %s waits: another client is connected", peer)
+            if not await self._wait_turn(reader, writer):
+                return
         if self._clients and self.second_client is SecondClient.KICK:
             for old in list(self._clients):
                 log.info("kicking client %s", old.get_extra_info("peername"))
@@ -128,9 +139,34 @@ class SimulatorServer:
         finally:
             self._clients.pop(writer, None)
             writer.close()
+            async with self._left:
+                self._left.notify_all()
             with contextlib.suppress(ConnectionError):
                 await writer.wait_closed()
             log.info("client disconnected: %s", peer)
+
+    async def _wait_turn(self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> bool:
+        """QUEUE mode: hold the connection until no other client is connected.
+
+        What the client sends meanwhile is dropped. Returns False if it left first."""
+
+        async def discard() -> None:
+            while await reader.read(4096):
+                pass
+
+        draining = asyncio.create_task(discard())
+        try:
+            async with self._left:
+                while self._clients and self.second_client is SecondClient.QUEUE:
+                    left = asyncio.create_task(self._left.wait())
+                    await asyncio.wait({left, draining}, return_when=asyncio.FIRST_COMPLETED)
+                    if draining.done():
+                        left.cancel()
+                        writer.close()
+                        return False
+        finally:
+            await cancel_and_wait(draining)  # before _serve() reads the same stream
+        return True
 
     async def _serve(self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> None:
         decoder = FrameDecoder()

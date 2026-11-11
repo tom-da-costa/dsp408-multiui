@@ -12,6 +12,7 @@ which the host sees as a timeout.
 from __future__ import annotations
 
 import logging
+import time
 from collections.abc import Callable
 from dataclasses import dataclass, field, replace
 
@@ -43,6 +44,9 @@ class Timing:
     default_s: float = 0.002
     recall_s: float = 3.2
     store_s: float = 7.4
+    # A connection left without any request for this long stops answering reads until the next
+    # handshake; writes still work (HW: between 5 and 7 s on a DSP 408, PROTOCOL.md §1).
+    idle_expiry_s: float = 6.0
 
 
 @dataclass(slots=True)
@@ -52,6 +56,8 @@ class Link:
     simulator uses the handshake). Several connections each have their own state."""
 
     ready: bool = False
+    expired: bool = False  # idle too long: reads unanswered until the next handshake
+    last_request: float | None = None
 
 
 @dataclass
@@ -111,6 +117,14 @@ class SimulatedDevice:
     def handle(self, payload: bytes, link: Link | None = None) -> Reply:
         """Answer one request received on ``link`` (a TCP connection)."""
         self.requests_handled += 1
+        if link is not None:
+            now = (self.clock or time.monotonic)()
+            if (
+                link.last_request is not None
+                and now - link.last_request > self.timing.idle_expiry_s
+            ):
+                link.expired = True
+            link.last_request = now
         if (
             payload[:1] == bytes((cmd.Opcode.SET_PRESET_NAME,))
             and len(payload) - 1 > PRESET_NAME_LENGTH
@@ -131,9 +145,12 @@ class SimulatedDevice:
         return Reply(response, self.timing.default_s)
 
     def _dispatch(self, r: cmd.Request, link: Link) -> Reply:
+        if link.expired and isinstance(r, _READS):
+            return Reply(None)  # the 408 stays silent until the next handshake
         match r:
             case cmd.Handshake():
                 link.ready = True
+                link.expired = False
                 return self._reply(rsp.HandshakeReply(self.model.handshake))
             case cmd.GetDeviceInfo():
                 return self._reply(rsp.DeviceInfo(self.identity))
@@ -266,3 +283,15 @@ class SimulatedDevice:
 
 def _fields(channel: cm.RawInput | cm.RawOutput) -> dict[str, object]:
     return {name: getattr(channel, name) for name in channel.__slots__}
+
+
+# Requests answered with data (not an ACK): unanswered on a connection left idle too long.
+_READS = (
+    cmd.GetDeviceInfo,
+    cmd.GetStatus,
+    cmd.GetPresetHeader,
+    cmd.GetActivePreset,
+    cmd.GetPresetName,
+    cmd.PollMeters,
+    cmd.ReadConfigPage,
+)

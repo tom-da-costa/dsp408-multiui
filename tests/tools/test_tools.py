@@ -40,7 +40,8 @@ async def test_read_info(sim: SimulatorServer) -> None:
 
 
 async def test_dump_config_matches_the_device(sim: SimulatorServer) -> None:
-    async with DspConnection("127.0.0.1", sim.bound_port, P) as conn:
+    quick = P.with_overrides({"timing": {"command_timeout_max_s": 0.5}})  # no long backoff
+    async with DspConnection("127.0.0.1", sim.bound_port, quick) as conn:
         with pytest.raises(TransportTimeoutError):  # like the 408: nothing before the init
             await probe.read_config_blob(conn)
         await probe.read_info(conn)

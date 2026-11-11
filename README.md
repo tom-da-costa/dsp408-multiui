@@ -65,7 +65,9 @@ On a phone, in landscape:
   phone left unattended; a reload stays locked
 - Survives an unstable network: a heartbeat detects a dead link within ~12 s, every browser
   reconnects by itself (at once when a phone wakes up or the Wi-Fi comes back) and the server
-  reconnects to the DSP. A banner says which link is down (*SERVER* or *DSP*); meanwhile the
+  reconnects to the DSP. Towards the DSP the command timeout adapts to the measured round trip
+  (a Wi-Fi bridge or a VPN is fine), late answers are never taken for the next command's, and
+  an operation that fails half-way makes the server re-read the DSP rather than guess. A banner says which link is down (*SERVER* or *DSP*); meanwhile the
   values shown are the last known and every control is disabled, so no change is silently lost
 - Access protected by a shared code (default `0000`, set with `--pin`)
 - No database, no internet access needed, no external assets
@@ -166,8 +168,9 @@ docker compose -f compose.sim.yaml up -d
 - `--preset 8=u08.bin` loads a config dumped from a real DSP (of the same model) into U08.
 - `--scenario demo|silent|clipping|stress` sets the initial presets and input signals.
 - `--fast` answers preset recall and store at once (the real DSP takes about 3 s and 7 s).
-- `--latency-ms`, `--drop-rate`, `--corrupt-rate`, `--nan-rate` and `--second-client
-  accept|refuse|kick` inject faults.
+- `--second-client queue|accept|refuse|kick`: what a second TCP client gets. `queue` (the
+  default) is what a DSP 408 does: it waits, unanswered, until the first client leaves.
+- `--latency-ms`, `--drop-rate`, `--corrupt-rate` and `--nan-rate` inject faults.
 - Console (when run in a terminal; type `help`): `status`, `presets`, `recall N` (front-panel
   recall), `kick` (drop the connections), `offline 10` (unreachable for 10 s), `latency 200`,
   `drop 0.1`, `signal A steady -3`, `quit`.

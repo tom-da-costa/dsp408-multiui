@@ -42,8 +42,8 @@ Confidence tags used below:
 | Transport | Plain TCP, DSP is the server | 408 |
 | Port | **9761** | 408 |
 | Discovery | None known; the IP is entered manually in every source | UNKNOWN |
-| Concurrent TCP clients | Unknown; assume **one**. Our backend must be the only client (the official editor cannot run at the same time). | UNKNOWN |
-| Keepalive | The client polls meters (`0x40`) continuously; the editor polls at ~150 ms, dsp-408-ui at 300 ms. Whether the DSP drops an idle socket is unknown. | 408 / UNKNOWN |
+| Concurrent TCP clients | **One.** A second client's TCP connection is neither accepted nor refused: it waits until the first client disconnects, then completes at once (tested 2026-11-11: a connect pending for 6 s completed the instant the first client closed). The first client is not disturbed. So the official editor and this app cannot run at the same time: whichever connects second waits. | HW |
+| Keepalive | The client polls meters (`0x40`) continuously; the editor polls at ~150 ms, dsp-408-ui at 300 ms. The DSP keeps an idle socket open (it still holds the slot), but after **5–7 s without any request** it stops answering reads (`14`, `40` … all tried), until a handshake `10`, which is enough to bring them back (no full init needed). Writes are still acknowledged and applied meanwhile. | HW |
 | Flow control | **Strict request/response, one frame in flight.** Every request gets exactly one response frame (data or ACK). dsp-408-ui and miniDSP both serialise like this; dsp-408-ui unblocks after 500 ms without an answer. | 408 + SIB |
 
 ---
@@ -360,7 +360,7 @@ with the ▶ choice as default. The hardware session of 2026-11-08 (firmware V01
 | Q7 | Matrix crosspoint gain opcode | **Partly (204)**: `41 ch input u16 level` on a DSP 204 (§10); not tried on a 408 |
 | Q8 | `0x2c` and `0x10` responses; DSP PIN lock | **Answered (HW)** for the responses (§5.1); PIN lock not tested |
 | Q9 | Write ACK format; unsolicited frames | **Answered (HW)**: ACK = `01` (the `26` ACK echoes the name); no unsolicited frames seen |
-| Q10 | Second TCP client: refused, accepted, or kicks the first one? Idle timeout? | Open |
+| Q10 | Second TCP client: refused, accepted, or kicks the first one? Idle timeout? | **Answered (HW)** (§1): one client; a second one waits until the first leaves. An idle connection stays open but stops answering reads after 5–7 s, until a handshake |
 | Q11 | Remaining config-blob fields | **Answered (HW)** (§7), except a few trailer bytes and bytes 135 / 99 of the records |
 | Q12 | Input HPF/LPF and input delay | **Answered (HW)**: both are accepted and stored |
 | Q13 | Compressor ratio table (16 entries, index 15 = "Limit" from the 206) | Open: compare with the editor |

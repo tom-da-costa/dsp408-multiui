@@ -106,8 +106,9 @@ def build_parser() -> argparse.ArgumentParser:
     faults.add_argument(
         "--second-client",
         choices=[m.value for m in SecondClient],
-        default=_env("SECOND_CLIENT", SecondClient.ACCEPT.value),
-        help="what happens when a second client connects (default accept)",
+        default=_env("SECOND_CLIENT", SecondClient.QUEUE.value),
+        help="what happens when a second client connects (default queue: it waits for the "
+        "first to leave, like a DSP 408)",
     )
     p.add_argument("--frame-log", type=Path, help="append every frame to this JSONL file")
     p.add_argument(

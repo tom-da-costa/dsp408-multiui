@@ -15,6 +15,7 @@ import os
 import sys
 from collections.abc import Sequence
 from pathlib import Path
+from typing import Any
 
 from tracks_dsp_controller import __version__
 from tracks_dsp_controller.protocol import config_map as cm
@@ -100,7 +101,12 @@ def build_parser() -> argparse.ArgumentParser:
         default=_env_float("RESYNC_INTERVAL", 0),
         help="re-read the DSP config every N seconds (0 = off)",
     )
-    serve.add_argument("--command-timeout", type=float, default=None)
+    serve.add_argument(
+        "--command-timeout",
+        type=float,
+        default=None,
+        help="floor of the adaptive command timeout in s (default 0.5; it grows on a slow link)",
+    )
     serve.add_argument(
         "--experimental",
         action="store_true",
@@ -206,7 +212,11 @@ async def _probe(args: argparse.Namespace, profile: ProtocolProfile) -> int:
             profile = load_profile(args.profile, sizes.get(len(before), "408"))
         print(probe.format_diff(before, after, cm.layout_for(profile)))
         return 0
-    timeout = {"timing": {"command_timeout_s": args.timeout}} if args.timeout else {}
+    # --timeout: the adaptive timeout's floor (the ceiling follows if it is lower)
+    timeout: dict[str, Any] = {}
+    if args.timeout:
+        ceiling = max(args.timeout, profile.command_timeout_max_s)
+        timeout = {"timing": {"command_timeout_s": args.timeout, "command_timeout_max_s": ceiling}}
     profile = profile.with_overrides(timeout)
     async with DspConnection(args.dsp_host, args.dsp_port, profile) as conn:
         if args.model == "auto" and args.action != "raw":

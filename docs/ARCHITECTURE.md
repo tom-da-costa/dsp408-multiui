@@ -85,12 +85,17 @@ through a single queue (`device/pipeline.py`):
    order, since a write reaches the queue without yielding), so the values of a drag reach the
    queue while the previous one is in flight.
 2. **Priorities.** Writes come before meter polls, but when the meter period has elapsed the next
-   free slot goes to a poll, which guarantees the configured rate (and at least 1 Hz).
+   free slot goes to a poll, which guarantees the configured rate (and at least 1 Hz). After a
+   poll, a waiting write goes first: on a slow link a poll can outlast the meter period, and
+   back-to-back polls would starve the writes.
 3. **Barriers.** Preset recall/store, link changes and resync are exclusive sequences with long
-   timeouts. Writes received in the meantime wait in the queue.
-4. **ACK handling.** Timeout of 500 ms (`--command-timeout`) and one retry. On failure, the server
-   reports an error, marks the parameter for re-read and, after several consecutive failures,
-   reconnects.
+   timeouts. Writes received in the meantime wait in the queue. A sequence that fails half-way
+   (no answer, a wrong answer) leaves the DSP in an unknown state: the session drops the
+   connection, so it reconnects and re-reads everything instead of showing a guess.
+4. **ACK handling.** An adaptive timeout and one retry. On failure, the server reports an error
+   and re-reads the configuration in the background (the DSP may have applied the write without
+   its ACK getting through); after three consecutive failures, or a timeout with no frame at all
+   from the DSP for 8 × the timeout floor (4 s), it reconnects.
 5. **Ordering.** The state store is updated, and the patch broadcast, **after** the DSP
    acknowledges the write, so every client converges on what the device accepted.
 
@@ -103,6 +108,26 @@ records); `device.model_tested` tells the UI that this project has not tested th
 
 The device session goes through `connecting → initialising → online ↔ offline`. It reconnects
 with exponential backoff (1 s → 30 s) and re-reads the full state after reconnecting.
+
+### Unstable link to the DSP
+
+The DSP may sit behind a Wi-Fi bridge, a VPN or a congested network, where the round trip
+varies and can exceed the 0.5 s that a DSP on the LAN needs.
+
+- **Adaptive timeout** (`device/rtt.py`): as in TCP (RFC 6298), the timeout follows the smoothed
+  round trip plus four times its variation, between a floor (`command_timeout_s`, 0.5 s, or
+  `--command-timeout`) and a ceiling (`command_timeout_max_s`, 5 s). A timeout doubles it until
+  the next clean answer, so a link that suddenly got slower is caught up with in a request or
+  two; a slow command (recall, store) adds the profile's `slow_command_timeout_s`.
+- **Late answers** (`device/transport.py`): responses carry no request tag, so an answer that
+  comes after its request timed out could be taken for the next request's (a config page or a
+  preset name for another one). After a timeout, the next *different* request first waits for
+  the owed answer and drops it (up to as long again as the timeout); a retry of the *same*
+  request takes it as its own, without a round-trip sample (Karn's rule).
+- **Dead link**: late answers are signs of life. Only when nothing at all arrives for 8 × the
+  timeout floor does the pipeline give up and the session reconnect.
+- **Stopping**: cancelling a task never swallows the canceller's own cancellation
+  (`aio.cancel_and_wait`), so a stop during a reconnection always ends.
 
 ### Client behaviour
 
@@ -178,7 +203,8 @@ captures of a real device, the 204 the notes of an app tested on one ([PROTOCOL.
 - Meters are synthetic and scriptable per channel (silence, sine level, noise, clipping, limiter
   or compressor active).
 - Fault injection: latency, dropped responses, malformed frames, NaN meters, disconnects, slow
-  recall/store, refusal of a second TCP client.
+  recall/store, a second TCP client queued until the first leaves (as on a 408; or accepted,
+  refused, kicking the first), reads unanswered on a connection left idle for 6 s.
 - It loads the same protocol profile as the backend (§6) and logs every frame it receives, so the
   official editor can be pointed at it to capture its requests ([captures.md](captures.md)).
 - It is a **separate program**, `tracks-dsp-sim`, reached over TCP like a real DSP, so tests

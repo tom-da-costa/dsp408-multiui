@@ -251,3 +251,106 @@ async def test_concurrent_partial_writes_to_one_band_keep_every_field(
     assert band.type == 1
     await session.resync()
     assert session.store.state.outputs[3].peq[2] == band
+
+
+# --- unstable link ---------------------------------------------------------------------------
+# Short slow-command timeout, so that a lost recall answer is noticed quickly.
+FAST = P.with_overrides({"timing": {"slow_command_timeout_s": 0.3}})
+
+
+@pytest.fixture
+async def flaky() -> AsyncIterator[tuple[DeviceSession, SimulatorServer]]:
+    async with SimulatorServer(make_device(), port=0) as server:
+        s = DeviceSession(
+            "127.0.0.1",
+            server.bound_port,
+            FAST,
+            StateStore(),
+            meter_rate_hz=10,
+            reconnect_min_s=0.05,
+            reconnect_max_s=0.2,
+        )
+        await s.start()
+        await s.wait_online(5)
+        yield s, server
+        await s.stop()
+
+
+def went(session: DeviceSession, status: DeviceStatus) -> asyncio.Event:
+    event = asyncio.Event()
+    session.on_status(lambda s, error: event.set() if s is status else None)
+    return event
+
+
+async def test_stays_online_on_a_slow_link(
+    flaky: tuple[DeviceSession, SimulatorServer],
+) -> None:
+    session, sim = flaky
+    offline = went(session, DeviceStatus.OFFLINE)
+    sim.faults.extra_latency_s = 0.5  # above the 0.2 s floor: the timeout must adapt
+    ok = 0
+    for i in range(6):
+        try:
+            await session.write("outputs.0.gain_db", -float(i), "c")
+            ok += 1
+        except TimeoutError:
+            pass
+    assert ok >= 4
+    assert not offline.is_set()
+    assert session.store.state.outputs[0].gain_db == -5.0
+    assert sim.device.live.outputs[0].gain == 230
+
+
+async def test_a_dead_link_is_detected(flaky: tuple[DeviceSession, SimulatorServer]) -> None:
+    session, sim = flaky
+    offline = went(session, DeviceStatus.OFFLINE)
+    sim.faults.drop_rate = 1.0  # the TCP connection stays up, nothing comes back
+    await asyncio.wait_for(offline.wait(), 4)
+    assert "no answer" in (session.last_error or "") or "timed out" in (session.last_error or "")
+    sim.faults.drop_rate = 0.0
+    await session.wait_online(5)
+
+
+async def test_an_unanswered_write_is_reread(
+    flaky: tuple[DeviceSession, SimulatorServer],
+) -> None:
+    session, sim = flaky
+    sim.faults.drop_rate = 1.0  # the DSP applies the write, the ACK is lost
+    with pytest.raises(TimeoutError):
+        await session.write("outputs.1.mute", True, "c")
+    sim.faults.drop_rate = 0.0
+    assert sim.device.live.outputs[1].mute
+    for _ in range(50):  # re-read in the background
+        if session.store.state.outputs[1].mute:
+            break
+        await asyncio.sleep(0.05)
+    assert session.store.state.outputs[1].mute
+
+
+async def test_a_recall_that_fails_half_way_rereads_everything(
+    flaky: tuple[DeviceSession, SimulatorServer],
+) -> None:
+    session, sim = flaky
+    offline = went(session, DeviceStatus.OFFLINE)
+    sim.faults.drop_rate = 1.0  # the DSP recalls the preset, its answer is lost
+    with pytest.raises(DeviceUnavailableError, match="recall"):
+        await session.recall(2, "c")
+    await asyncio.wait_for(offline.wait(), 2)  # the state is unknown: reconnect and re-read
+    sim.faults.drop_rate = 0.0
+    await session.wait_online(5)
+    assert sim.device.active_slot == 2
+    assert session.store.state.active_slot == 2
+    assert session.store.state.preset_name == "Mono Sub"
+
+
+async def test_stop_right_after_a_failed_recall_ends(
+    flaky: tuple[DeviceSession, SimulatorServer],
+) -> None:
+    # The stop cancels the session while it tears the dropped connection down: that cancel must
+    # not be swallowed (the reconnection loop would then run forever).
+    session, sim = flaky
+    sim.faults.drop_rate = 1.0
+    with pytest.raises(DeviceUnavailableError):
+        await session.recall(2, "c")
+    await asyncio.wait_for(session.stop(), 2)
+    assert session.status is DeviceStatus.STOPPED

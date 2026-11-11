@@ -7,9 +7,9 @@ unchanged, even when they do not decode.
 from __future__ import annotations
 
 import asyncio
-import contextlib
 import logging
 
+from tracks_dsp_controller.aio import cancel_and_wait
 from tracks_dsp_controller.framelog import FROM_DEVICE, TO_DEVICE, FrameLog
 from tracks_dsp_controller.protocol.framing import FrameDecoder
 
@@ -57,10 +57,7 @@ class ProxyServer:
         if self._server is not None:
             self._server.close()
         for task in list(self._tasks):
-            task.cancel()
-        for task in list(self._tasks):
-            with contextlib.suppress(asyncio.CancelledError):
-                await task
+            await cancel_and_wait(task)
         if self._server is not None:
             await self._server.wait_closed()
             self._server = None
