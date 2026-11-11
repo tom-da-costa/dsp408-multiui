@@ -14,7 +14,7 @@ import asyncio
 import contextlib
 import logging
 from collections.abc import AsyncIterator, Callable
-from dataclasses import replace
+from dataclasses import dataclass, replace
 from enum import StrEnum
 from typing import Any
 
@@ -32,6 +32,7 @@ from tracks_dsp_controller.device.transport import (
 )
 from tracks_dsp_controller.protocol import commands as cmd
 from tracks_dsp_controller.protocol import config_map as cm
+from tracks_dsp_controller.protocol import preset_file as pf
 from tracks_dsp_controller.protocol import responses as rsp
 from tracks_dsp_controller.protocol.codecs import PRESET_NAME_LENGTH, validate_name
 from tracks_dsp_controller.protocol.links import LinkError, link_requests, masks_for, normalise
@@ -77,6 +78,22 @@ class DeviceUnavailableError(RuntimeError):
 
 class ModelError(RuntimeError):
     """The device is not a model this session can drive."""
+
+
+@dataclass(frozen=True, slots=True)
+class PresetImport:
+    """Outcome of loading a preset file: its name (as the DSP can store it) and what did not
+    load exactly (characters a channel name could not keep, fields that differ afterwards)."""
+
+    name: str
+    notes: tuple[str, ...]
+
+
+@dataclass(frozen=True, slots=True)
+class PresetExport:
+    filename: str
+    data: bytes
+    notes: tuple[str, ...]
 
 
 AUTO = "auto"
@@ -131,6 +148,7 @@ class DeviceSession:
         self.status = DeviceStatus.STOPPED
         self.last_error: str | None = None
         self.info = DeviceInfo()
+        self._raw: cm.RawConfig | None = None  # the last config read, as the DSP holds it
         self._status_listeners: list[StatusListener] = []
         self._meter_listeners: list[MeterListener] = []
         self._conn: DspConnection | None = None
@@ -314,6 +332,7 @@ class DeviceSession:
         summary = await reader.read_info(conn)
         raw = cm.decode_config(await reader.read_config_blob(conn), cm.layout_for(self.profile))
         await reader.activate(conn)
+        self._raw = raw
         parts = summary.identity.split()
         self.info = DeviceInfo(
             identity=summary.identity,
@@ -469,6 +488,70 @@ class DeviceSession:
             state = await self._read_state(conn, previous=self.store.state)
         log.info("%s links set to %s by %s", side, normalise(groups, count), origin)
         self.store.replace(state.model_copy(update={"modified": True}))
+
+    async def import_preset(
+        self, data: bytes, origin: str, *, slot: int | None = None, name: str | None = None
+    ) -> PresetImport:
+        """Load a preset file (.prs) into the live setup; with ``slot``, store it there too.
+
+        Nothing is sent before the whole file is checked. The DSP's config is read first, the
+        writes that differ are sent (``preset_file.plan_import``), then the config is read again
+        and compared with the file.
+        """
+        layout = cm.layout_for(self.profile)
+        model = self.model_key or "408"
+        try:
+            blob = pf.decode_preset_file(data, model, layout)
+        except pf.PresetFileError as exc:
+            raise ParamError(str(exc)) from exc
+        target = cm.decode_config(blob, layout)
+        stored_name = pf.ascii_name(target.preset_name, PRESET_NAME_LENGTH) or "Imported"
+        if slot is not None:
+            # Checked before anything is sent, like the file.
+            if not 1 <= slot <= self.profile.preset_count:
+                raise ParamError(f"user preset slot must be 1..{self.profile.preset_count}")
+            stored_name = stored_name if name is None else name
+            try:
+                validate_name(stored_name, PRESET_NAME_LENGTH)
+            except ValueError as exc:
+                raise ParamError(str(exc)) from exc
+        async with self._sequence("preset import") as conn:
+            current = cm.decode_config(await reader.read_config_blob(conn), layout)
+            try:
+                plan = pf.plan_import(current, target, self.profile)
+            except pf.PresetFileError as exc:
+                raise ParamError(str(exc)) from exc
+            for request in plan.requests:
+                reader.expect(await reader.ask(conn, request), rsp.Ack)
+            state = await self._read_state(conn, previous=self.store.state)
+            actual = self._raw.image if self._raw is not None else b""
+        log.info("preset file %r loaded by %s (%d writes)", target.preset_name, origin,
+                 len(plan.requests))  # fmt: skip
+        self.store.replace(state.model_copy(update={"modified": True}))
+        notes = list(plan.notes)
+        differing = pf.mismatches(plan.expected, actual, layout)
+        if differing:
+            log.warning("after loading the preset file, the DSP differs in %s", differing)
+            notes.append("the DSP differs from the file in: " + ", ".join(differing))
+        if slot is not None:
+            await self.store_preset(slot, stored_name, origin)
+        return PresetImport(stored_name, tuple(notes))
+
+    async def export_preset(self) -> PresetExport:
+        """The live setup as a preset file (.prs) for the official editor (re-read first)."""
+        await self.resync()
+        raw = self._raw
+        if raw is None:  # pragma: no cover - set by every config read
+            raise DeviceUnavailableError("no configuration read yet")
+        layout = cm.config_layout(raw)
+        data = pf.encode_preset_file(raw.image, layout, self.info.identity or self.profile.model)
+        channels: list[cm.RawInput | cm.RawOutput] = [*raw.inputs, *raw.outputs]
+        notes = tuple(
+            f"{ch.name or 'a channel'}: the PEQ bypass is not kept in a .prs file"
+            for ch in channels
+            if ch.peq_bypass
+        )
+        return PresetExport(pf.file_name(raw.preset_name), data, notes)
 
     async def resync(self, *, abort: bool = False) -> None:
         """Re-read the whole configuration (front-panel changes).

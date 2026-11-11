@@ -2,6 +2,7 @@
 
 import asyncio
 from collections.abc import AsyncIterator
+from pathlib import Path
 from typing import Any
 
 import pytest
@@ -10,8 +11,11 @@ from tracks_dsp_controller.device.session import (
     DeviceSession,
     DeviceStatus,
     DeviceUnavailableError,
+    PresetImport,
     clamp_meter_rate,
 )
+from tracks_dsp_controller.protocol import config_map as cm
+from tracks_dsp_controller.protocol import preset_file as pf
 from tracks_dsp_controller.protocol.meters import MeterReading
 from tracks_dsp_controller.protocol.profile import DEFAULT_PROFILE
 from tracks_dsp_controller.simulator import Faults, SimulatedDevice, SimulatorServer, apply_scenario
@@ -354,3 +358,59 @@ async def test_stop_right_after_a_failed_recall_ends(
         await session.recall(2, "c")
     await asyncio.wait_for(session.stop(), 2)
     assert session.status is DeviceStatus.STOPPED
+
+
+EDITOR_FILE = Path(__file__).parent.parent / "fixtures" / "presets" / "dsp408_editor.prs"
+
+
+async def test_import_preset_file(session: DeviceSession, sim: SimulatorServer) -> None:
+    data = EDITOR_FILE.read_bytes()
+    result = await session.import_preset(data, "client-a")
+    assert result == PresetImport("FSMXLmGDLsEq", ())
+    file_blob = pf.decode_preset_file(data, "408", cm.LAYOUT_408)
+    differing = {name for *_, name in cm.diff_blobs(file_blob, sim.device.config_blob)}
+    assert differing <= {"marker", "preset_name"}
+    state = session.store.state
+    assert state.modified is True
+    assert [ch.name for ch in state.outputs] == ["Sub", "Kick", "Med", "High"] * 2
+    assert state.outputs[0].linked == [4]
+    assert state.inputs[2].mute
+    assert state.inputs[2].linked == [3]
+
+
+async def test_import_and_store(session: DeviceSession, sim: SimulatorServer) -> None:
+    result = await session.import_preset(EDITOR_FILE.read_bytes(), "a", slot=5, name="Imported")
+    assert result.name == "Imported"
+    assert sim.device.presets[5].preset_name == "Imported"
+    assert sim.device.presets[5].outputs[3].delay == 506
+    state = session.store.state
+    assert (state.active_slot, state.modified, state.presets[4].name) == (5, False, "Imported")
+
+
+async def test_import_refuses_bad_files_before_sending(
+    session: DeviceSession, sim: SimulatorServer
+) -> None:
+    before = sim.device.config_blob
+    data = EDITOR_FILE.read_bytes()
+    for bad, kwargs in [
+        (data[:100], {}),
+        (data.replace(b"DSP408", b"DSP206", 1), {}),
+        (data, {"slot": 0}),
+        (data, {"slot": 3, "name": "fifteen chars!!"}),
+    ]:
+        with pytest.raises(ParamError):
+            await session.import_preset(bad, "a", **kwargs)
+    assert sim.device.config_blob == before
+
+
+async def test_export_preset_file(session: DeviceSession, sim: SimulatorServer) -> None:
+    exported = await session.export_preset()
+    assert exported.filename == "Demo 3-way.prs"
+    assert len(exported.data) == 1452
+    assert exported.data.startswith(b"***DSP408V010***")
+    blob = pf.decode_preset_file(exported.data, "408", cm.LAYOUT_408)
+    end = pf.stored_end(cm.LAYOUT_408)
+    assert blob[2:end] == sim.device.config_blob[2:end]
+    # A file exported and loaded back changes nothing.
+    assert (await session.import_preset(exported.data, "a")).notes == ()
+    assert sim.device.config_blob[2:end] == blob[2:end]

@@ -15,6 +15,8 @@ import os
 from pathlib import Path
 
 from tracks_dsp_controller.protocol import config_map as cm
+from tracks_dsp_controller.protocol import preset_file as pf
+from tracks_dsp_controller.protocol.profile import load_profile
 from tracks_dsp_controller.simulator.device import SimulatedDevice
 
 log = logging.getLogger(__name__)
@@ -27,8 +29,18 @@ def preset_file(directory: Path, slot: int) -> Path:
 
 
 def read_config(path: Path, layout: cm.ConfigLayout = cm.LAYOUT_408) -> cm.RawConfig:
-    """Read a config dump (``probe dump-config`` output or a stored preset file)."""
-    return cm.decode_config(path.read_bytes(), layout)
+    """Read a config dump (``probe dump-config`` output or a stored preset file), or a preset
+    file of the official editor (.prs)."""
+    data = path.read_bytes()
+    if data.startswith(pf.MAGIC):
+        try:
+            model = pf.file_model(data)
+            if cm.layout_for(load_profile(model=model)) != layout:
+                raise pf.PresetFileError(f"preset file for a DSP {model}, not this model")
+            data = pf.decode_preset_file(data, model, layout)
+        except pf.PresetFileError as exc:
+            raise cm.ConfigError(f"{path}: {exc}") from exc
+    return cm.decode_config(data, layout)
 
 
 def _write_atomic(path: Path, data: bytes) -> None:

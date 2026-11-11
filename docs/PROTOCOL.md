@@ -274,7 +274,7 @@ owner's preset is in `tests/fixtures/config/dsp408_u08.bin`. Implemented in
 
 | Offset | Size | Content | Conf. |
 |---|---|---|---|
-| 0 | 2 | Marker: `ff ff` = modified user preset, `ff 00` = factory/empty | 408 |
+| 0 | 2 | Marker: `ff ff` = modified user preset, `ff 00` = factory/empty (408). But on the 408 (HW, 2026-11-11) the live marker read `ff 00` right after a store from this app, and `ff ff` after a recall of that same, unchanged preset: its meaning is unclear. Nothing relies on it | 408 / UNKNOWN |
 | 2 | 14 | Active preset name, space-padded, Latin-1 | HW |
 | 16 | 4 × 140 | Input records | HW |
 | 576 | 8 × 104 | Output records | HW |
@@ -330,6 +330,42 @@ included); the other members hold 0. On the owner's DSP: In A = `03` (A+B), Out 
 
 dsp-408-ui finds records by searching for the strings `"InA"` / `"Out1"`. That breaks as soon as
 a user renames a channel. We use the fixed offsets above.
+
+### 7.1 Preset files (`.prs`) of the official editor
+
+Decoded from a file the official editor exported from the owner's DSP 408 (V0104P, 2026-11-11,
+`tests/fixtures/presets/dsp408_editor.prs`, 1452 bytes). Implemented in
+`protocol/preset_file.py`.
+
+| Offset | Size | Content | Conf. |
+|---|---|---|---|
+| 0 | 16 | Header `***DSP408V010***`: `***`, the identity without its space cut to 10 characters, `***` | HW (one file; the rule for other firmware strings is a guess) |
+| 16 | 1420 | The config blob of §7 from its byte 2 to byte 1435: preset name, the 12 records, the trailer's first 28 bytes (mute masks, PEQ band bypass masks) | HW (one file) |
+| 1436 | 2 | `0d 0a` (CR LF) | HW (one file) |
+
+Every byte of the records decodes to a coherent setup (the same 4-way system as
+`dsp408_u08.bin`, with its own names, EQ, delays and links). The file leaves out the blob's marker
+and its last 12 bytes: the whole-PEQ bypass masks (trailer 34 and 36) and the unknown trailer bytes.
+So a channel's whole-PEQ bypass is not kept in a `.prs` file; on import it is set to off.
+Whether the editor reads the final CR LF, and whether its 206 / 204 files follow the same rule
+(`16 + blob[2 : trailer + 4 + 2 × channels] + CR LF`: 930 + 2 bytes on a 206), is **UNKNOWN**.
+
+**Loading a file.** No known request writes a whole config (the editor's own upload is not
+captured), so the app loads a file with the writes of §5.3, all hardware-verified: it reads the
+live config, mutes every output, unlinks the link groups (`3b` own bit, `12`), writes every
+parameter that differs, links again as the file says (`2a` + `3b` + `12`), unmutes the outputs
+the file does not mute, sends `12`, then reads the config again and compares it with the file.
+The matrix crosspoint gains cannot be written (Q7): they are kept and reported when they differ.
+Channel names with non-ASCII characters are written in plain ASCII (`é` → `e`). The preset name
+comes with a store (`26` + `21`).
+
+**Verified on the owner's DSP 408 (HW, 2026-11-11, on U04, a copy of U01).** The live config
+exported as `.prs` is byte for byte the file the editor exported from U01, except the preset
+name; its 12 bytes left out of the file were the marker `ff ff` and zeros. Loading a different
+preset (U08 as a `.prs`, In C + D unlinked instead of linked, a name `Médi`) took 81 writes and
+about 12 s (outputs muted meanwhile); the config read afterwards matched the file in every field
+but the transliterated name. Stored to U04 and recalled, it came back identical. Loading the
+original file back (82 writes) and storing it restored U04 byte for byte.
 
 ---
 

@@ -8,6 +8,8 @@ overflow closes that client, which reconnects and gets a fresh snapshot.
 from __future__ import annotations
 
 import asyncio
+import base64
+import binascii
 import contextlib
 import json
 import logging
@@ -41,7 +43,27 @@ QUEUE_SIZE = 256
 SHUTDOWN_FLUSH_S = 0.3  # lets the clients get the "shutdown" message before the server stops
 # Accepted while the session's screen is locked.
 SCREEN_LOCK_TYPES = {"screen.lock", "screen.unlock"}
-ACTIVITY_TYPES = {"set", "preset.recall", "preset.store", "lock.acquire", "activity", "resync"}
+ACTIVITY_TYPES = {
+    "set",
+    "preset.recall",
+    "preset.store",
+    "preset.import",
+    "preset.export",
+    "lock.acquire",
+    "activity",
+    "resync",
+}
+# Requests handled in their own task, so that the client's next messages are read meanwhile.
+BACKGROUND_TYPES = {
+    "set",
+    "preset.recall",
+    "preset.store",
+    "preset.import",
+    "preset.export",
+    "link.set",
+    "resync",
+}
+PRESET_FILE_MAX_BYTES = 16 * 1024  # a DSP 408 preset file is 1452 bytes
 
 
 class RequestError(Exception):
@@ -76,7 +98,7 @@ class Client:
         default_factory=lambda: asyncio.Queue(maxsize=QUEUE_SIZE)
     )
     sender: asyncio.Task[None] | None = None
-    # Writes still waiting for the device (strong references: the loop only keeps weak ones).
+    # Requests still waiting for the device (strong references: the loop only keeps weak ones).
     writes: set[asyncio.Task[None]] = field(default_factory=set)
 
     @property
@@ -273,11 +295,13 @@ class Hub:
                 if self.auth.get(session.token) is None:  # logged out from another tab
                     await websocket.close(code=4401)
                     break
-                if message.get("type") == "set":
-                    # Do not wait for the DSP: the next values of a dragged control must reach
+                if message.get("type") in BACKGROUND_TYPES:
+                    # Do not wait for the DSP. The next values of a dragged control must reach
                     # the pipeline while this one is in flight, so that it coalesces them
                     # instead of replaying every step. Order is kept: up to the pipeline's
                     # queue, a write runs without yielding, and tasks start in creation order.
+                    # A long sequence (an import, a recall on a slow link) can last longer than
+                    # the client's silence limit (12 s): pings must still be answered meanwhile.
                     task = asyncio.create_task(self._dispatch(client, message))
                     client.writes.add(task)
                     task.add_done_callback(client.writes.discard)
@@ -322,7 +346,7 @@ class Hub:
         if kind == "activity":
             return
         try:
-            await self._handle(client, str(kind), message)
+            extra = await self._handle(client, str(kind), message)
         except RequestError as exc:
             self._send(client, _result(req, exc.code, exc.message))
             return
@@ -338,7 +362,7 @@ class Hub:
         except CommandTimeoutError as exc:
             self._send(client, _result(req, "device_timeout", str(exc)))
             return
-        self._send(client, _result(req))
+        self._send(client, {**_result(req), **(extra or {})})
 
     def _require_lock(self, client: Client) -> None:
         """Control (the `lock.*` messages): only its holder may write while someone has it."""
@@ -352,7 +376,10 @@ class Hub:
         for client in [cl for cl in self.clients if cl.session is session]:
             self._send(client, {"type": "screen_lock", "locked": locked})
 
-    async def _handle(self, client: Client, kind: str, message: dict[str, Any]) -> None:
+    async def _handle(
+        self, client: Client, kind: str, message: dict[str, Any]
+    ) -> dict[str, Any] | None:
+        """Handle a request; the fields returned are added to its (successful) result."""
         match kind:
             case "set":
                 self._require_lock(client)
@@ -375,6 +402,24 @@ class Hub:
                 if not isinstance(name, str):
                     raise RequestError("invalid", "name must be a string")
                 await self.session.store_preset(_int(message, "slot"), name, client.id)
+            case "preset.import":
+                self._require_lock(client)
+                data = _preset_file(message.get("data"))
+                slot = message.get("slot")
+                if slot is not None:
+                    slot = _int(message, "slot")
+                name = message.get("name")
+                if name is not None and not isinstance(name, str):
+                    raise RequestError("invalid", "name must be a string")
+                loaded = await self.session.import_preset(data, client.id, slot=slot, name=name)
+                return {"name": loaded.name, "notes": list(loaded.notes)}
+            case "preset.export":
+                exported = await self.session.export_preset()
+                return {
+                    "filename": exported.filename,
+                    "data": base64.b64encode(exported.data).decode("ascii"),
+                    "notes": list(exported.notes),
+                }
             case "link.set":
                 self._require_lock(client)
                 if not is_verified("link") and not self.config.allow_unverified:
@@ -431,6 +476,7 @@ class Hub:
                 await self.session.resync()
             case _:
                 raise RequestError("invalid", f"unknown message type {kind!r}")
+        return None
 
     async def shutdown(self, client: Client) -> None:
         """Disconnect from the DSP cleanly, then stop the server (every client is told)."""
@@ -474,6 +520,16 @@ def _int(message: dict[str, Any], key: str) -> int:
     if isinstance(value, bool) or not isinstance(value, int):
         raise RequestError("invalid", f"{key} must be an integer")
     return value
+
+
+def _preset_file(data: object) -> bytes:
+    """The bytes of a preset file sent in base64."""
+    if not isinstance(data, str) or len(data) > PRESET_FILE_MAX_BYTES * 4 // 3 + 4:
+        raise RequestError("invalid", "data must be a preset file in base64")
+    try:
+        return base64.b64decode(data, validate=True)
+    except binascii.Error as exc:
+        raise RequestError("invalid", "data is not valid base64") from exc
 
 
 def _result(req: Any, error: str | None = None, message: str | None = None) -> dict[str, Any]:

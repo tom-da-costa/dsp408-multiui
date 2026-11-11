@@ -183,4 +183,10 @@ export interface ResultMessage {
   ok: boolean;
   error?: string;
   message?: string;
+  // preset.import: the preset's name; preset.import / preset.export: what did not carry over
+  name?: string;
+  notes?: string[];
+  // preset.export: the preset file (.prs), base64
+  filename?: string;
+  data?: string;
 }

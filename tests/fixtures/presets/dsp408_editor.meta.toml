@@ -1,0 +1,11 @@
+# Preset file (.prs) exported by the official t.racks editor from the owner's DSP 408
+# (firmware V0104P), 2026-11-11, from preset U01. Checked: a config read of a copy of U01
+# exported by this project (probe export-preset) is identical except the preset name.
+device = "DSP 408"
+size = 1452
+source = "owner's device, exported with the official editor"
+notes = """
+Header "***DSP408V010***", then the config blob from its byte 2 (preset name "FSMXLmGDLsEq",
+records, the first 28 trailer bytes), then CR LF. Same 4-way system as dsp408_u08.bin
+(Sub / Kick / Med / High on Out 1-4 and 5-8), with In C + In D linked and muted.
+"""

@@ -17,12 +17,13 @@ from tracks_dsp_controller.protocol import commands as c
 from tracks_dsp_controller.protocol import config_map as cm
 from tracks_dsp_controller.protocol import responses as r
 from tracks_dsp_controller.protocol.profile import DEFAULT_PROFILE as P
+from tracks_dsp_controller.protocol.profile import load_profile
 from tracks_dsp_controller.simulator import Faults, SimulatedDevice, SimulatorServer, apply_scenario
 from tracks_dsp_controller.simulator import cli as sim_cli
 from tracks_dsp_controller.simulator.console import Console
 from tracks_dsp_controller.simulator.meters import Shape
 from tracks_dsp_controller.simulator.server import SecondClient
-from tracks_dsp_controller.simulator.storage import PresetStore, preset_file
+from tracks_dsp_controller.simulator.storage import PresetStore, preset_file, read_config
 from tracks_dsp_controller.state.store import StateStore
 
 FIXTURES = Path(__file__).parents[1] / "fixtures"
@@ -192,6 +193,15 @@ def test_build_device_options(tmp_path: Path) -> None:
 def test_build_device_errors(argv: list[str], message: str) -> None:
     with pytest.raises(ValueError, match=message):
         sim_cli.build_device(parse(*argv), P)
+
+
+def test_a_preset_file_loads_into_a_slot() -> None:
+    prs = Path(__file__).parent.parent / "fixtures" / "presets" / "dsp408_editor.prs"
+    device, _, _ = sim_cli.build_device(parse("--preset", f"2={prs}"), P)
+    assert device.active_slot == 2
+    assert device.live.preset_name == "FSMXLmGDLsEq"
+    with pytest.raises(cm.ConfigError, match="for a DSP 408, not this model"):
+        read_config(prs, cm.layout_for(load_profile(model="206")))
 
 
 def test_bad_preset_argument() -> None:

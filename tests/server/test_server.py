@@ -1,5 +1,6 @@
 """Server: auth, lock, WebSocket fan-out, against the embedded simulator."""
 
+import base64
 import time
 from collections.abc import Iterator
 from pathlib import Path
@@ -630,3 +631,72 @@ def test_shutdown_disconnects_the_dsp_then_stops_the_server(client: TestClient) 
             assert receive_until(bob, "shutdown")["by"] == "Alice"
             assert ctx.session.status.value == "stopped"
             assert exits == [True]
+
+
+def test_preset_export_and_import(client: TestClient) -> None:
+    login(client, "Op")
+    with client.websocket_connect("/ws") as ws:
+        receive_until(ws, "snapshot")
+        exported = request(ws, {"type": "preset.export", "req": 1})
+        assert exported["ok"]
+        assert exported["filename"] == "Demo 3-way.prs"
+        data = base64.b64decode(exported["data"])
+        assert data.startswith(b"***DSP408V010***")
+        assert exported["notes"] == []
+        editor_file = Path(__file__).parent.parent / "fixtures" / "presets" / "dsp408_editor.prs"
+        upload = base64.b64encode(editor_file.read_bytes()).decode()
+        loaded = request(ws, {"type": "preset.import", "req": 2, "data": upload})
+        assert loaded == {
+            "type": "result",
+            "req": 2,
+            "ok": True,
+            "name": "FSMXLmGDLsEq",
+            "notes": [],
+        }
+        receive_until(ws, "snapshot")  # the export's config read
+        state = receive_until(ws, "snapshot")["state"]
+        assert [o["name"] for o in state["outputs"][:4]] == ["Sub", "Kick", "Med", "High"]
+        assert state["modified"] is True
+        stored = request(
+            ws, {"type": "preset.import", "req": 3, "data": upload, "slot": 6, "name": "Club"}
+        )
+        assert stored["ok"]
+        assert stored["name"] == "Club"
+        for req, message, error in [
+            (4, {"data": 12}, "invalid"),
+            (5, {"data": "not base64!"}, "invalid"),
+            (6, {"data": base64.b64encode(b"x" * 20000).decode()}, "invalid"),
+            (7, {"data": base64.b64encode(b"***DSP408V010***").decode()}, "invalid"),
+            (8, {"data": upload, "slot": "1"}, "invalid"),
+            (9, {"data": upload, "slot": 1, "name": 3}, "invalid"),
+        ]:
+            result = request(ws, {"type": "preset.import", "req": req, **message})
+            assert result["error"] == error, (req, result)
+
+
+def test_pings_are_answered_during_a_long_request(web_dir: Path) -> None:
+    """A preset import (or a recall on a slow link) can last longer than the client's 12 s
+    silence limit: the server keeps answering pings meanwhile, or the client drops the link."""
+    app, device = make_app(web_dir)
+    device.timing.store_s = 0.5
+    with TestClient(app) as test_client:
+        ctx: AppContext = app.state.ctx
+        deadline = time.monotonic() + 5
+        while ctx.session.status.value != "online" and time.monotonic() < deadline:
+            time.sleep(0.02)
+        login(test_client)
+        with test_client.websocket_connect("/ws") as ws:
+            receive_until(ws, "snapshot")
+            editor_file = (
+                Path(__file__).parent.parent / "fixtures" / "presets" / "dsp408_editor.prs"
+            )
+            upload = base64.b64encode(editor_file.read_bytes()).decode()
+            ws.send_json({"type": "preset.import", "req": 1, "data": upload, "slot": 2})
+            ws.send_json({"type": "ping", "req": 2})
+            order = []
+            while len(order) < 2:
+                message = ws.receive_json()
+                if message["type"] in ("pong", "result"):
+                    order.append((message["type"], message["req"]))
+            assert order == [("pong", 2), ("result", 1)]
+            assert device.presets[2].preset_name == "FSMXLmGDLsEq"
