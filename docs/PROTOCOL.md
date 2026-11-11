@@ -274,7 +274,7 @@ owner's preset is in `tests/fixtures/config/dsp408_u08.bin`. Implemented in
 
 | Offset | Size | Content | Conf. |
 |---|---|---|---|
-| 0 | 2 | Marker: `ff ff` = modified user preset, `ff 00` = factory/empty | 408 |
+| 0 | 2 | Marker: `ff ff` = modified user preset, `ff 00` = factory/empty (408). But on the 408 (HW, 2026-11-11) the live marker read `ff 00` right after a store from this app, and `ff ff` after a recall of that same, unchanged preset: its meaning is unclear. Nothing relies on it | 408 / UNKNOWN |
 | 2 | 14 | Active preset name, space-padded, Latin-1 | HW |
 | 16 | 4 × 140 | Input records | HW |
 | 576 | 8 × 104 | Output records | HW |
