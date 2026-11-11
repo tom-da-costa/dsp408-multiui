@@ -24,9 +24,9 @@
       const saved = Number(localStorage.getItem(STORAGE_KEY));
       if (saved >= MIN_BRIGHTNESS && saved <= 100) return saved;
     } catch {
-      // storage unavailable: full brightness
+      // storage unavailable: the default
     }
-    return 100;
+    return MIN_BRIGHTNESS; // dim by default: it lights often, it should not dazzle
   }
 
   let brightness = $state(loadBrightness());
