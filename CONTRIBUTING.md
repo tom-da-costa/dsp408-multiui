@@ -25,6 +25,17 @@ uv run tracks-dsp-sim --host 127.0.0.1             # simulated DSP 408 on :9761,
 uv run tracks-dsp-controller --dsp-host 127.0.0.1  # the app, connected to it like to a real DSP
 ```
 
+`make dev` takes the backend options in `DEV_BACKEND` (default `--demo`). Point it at the
+simulator or at a real DSP to work on the UI with hot reload against them:
+
+```bash
+make dev DEV_BACKEND="--dsp-host 127.0.0.1"     # the separate simulator above
+make dev DEV_BACKEND="--dsp-host 192.168.1.50"  # a real DSP (see Device safety below)
+```
+
+Against a real DSP, every change made in the UI is sent to the device: read
+[Device safety](#device-safety) first.
+
 ## Checks
 
 Run what CI runs before opening a pull request:
