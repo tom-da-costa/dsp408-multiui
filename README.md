@@ -127,8 +127,8 @@ environment variable.
   set); each view remembers its choice in the browser (Params: one choice for every setting).
 - **Too loud** view: one indicator that fills the screen, for whoever sets the volume. It lights
   in the compressor's colour when at least one output's compressor or limiter acts (and names
-  those outputs), and stays grey otherwise. Flashing now and then is fine; if it stays lit, turn
-  the volume down.
+  those outputs), and stays grey otherwise; its brightness is adjustable (per browser). Flashing
+  now and then is fine; if it stays lit, turn the volume down.
 - **Full screen:** the ⛶ button at the bottom of the tab bar (Android, desktop browsers).
 - **Install on the home screen:** iPhone: Safari › Share › *Add to Home Screen*; it then opens
   full screen without the browser bars. Android: Chrome installs web apps only over HTTPS (or

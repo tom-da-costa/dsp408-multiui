@@ -2,7 +2,8 @@
   // "Too loud" tab: one indicator that fills the screen, for whoever sets the volume. It lights
   // in the compressor's colour when at least one output's compressor or limiter acts (a single
   // colour, so that it does not flash between two), and stays grey otherwise. The outputs
-  // concerned are listed with their names.
+  // concerned are listed with their names. How bright it lights is set at the bottom (from
+  // nearly grey to the full colour), remembered in this browser.
   import { app } from "../lib/app.svelte";
   import { slotLabel } from "../lib/nav.svelte";
   import { COMP_COLOR } from "../lib/scale";
@@ -14,6 +15,32 @@
       return [`${slotLabel(`outputs.${i}`)}${name ? ` (${name})` : ""}`];
     });
   }
+
+  const STORAGE_KEY = "dsp408.loud.brightness";
+  const MIN_BRIGHTNESS = 20;
+
+  function loadBrightness(): number {
+    try {
+      const saved = Number(localStorage.getItem(STORAGE_KEY));
+      if (saved >= MIN_BRIGHTNESS && saved <= 100) return saved;
+    } catch {
+      // storage unavailable: full brightness
+    }
+    return 100;
+  }
+
+  let brightness = $state(loadBrightness());
+
+  function saveBrightness() {
+    try {
+      localStorage.setItem(STORAGE_KEY, String(brightness));
+    } catch {
+      // not persisted: fine
+    }
+  }
+
+  /** The lit colour, mixed with the grey of the unlit panel below full brightness. */
+  const litColor = $derived(`color-mix(in srgb, ${COMP_COLOR} ${brightness}%, var(--panel))`);
 
   const limiting = $derived(acting(app.meters?.limit));
   const compressing = $derived(acting(app.meters?.comp));
@@ -31,7 +58,9 @@
   <div
     class="light"
     class:lit
-    style:--c={COMP_COLOR}
+    class:dim={brightness < 60}
+    style:--c={litColor}
+    style:--glow={`${Math.round((40 * brightness) / 100)}px`}
     role="status"
     aria-live="polite"
     aria-label={lit ? `Too loud. ${compLine}. ${limitLine}.` : "Level fine"}
@@ -43,6 +72,19 @@
   <p class="hint">
     Flashing now and then is fine. If it stays lit, turn the volume down.
   </p>
+  <label class="brightness">
+    <span>Brightness</span>
+    <input
+      type="range"
+      min={MIN_BRIGHTNESS}
+      max="100"
+      step="5"
+      bind:value={brightness}
+      onchange={saveBrightness}
+      disabled={app.screenLocked}
+    />
+    <span class="value">{brightness} %</span>
+  </label>
 </div>
 
 <style>
@@ -50,7 +92,7 @@
     height: 100%;
     min-height: 280px;
     display: grid;
-    grid-template-rows: 1fr auto;
+    grid-template-rows: 1fr auto auto;
     gap: 12px;
   }
   .light {
@@ -69,7 +111,10 @@
     background: var(--c);
     border-color: var(--c);
     color: #000;
-    box-shadow: 0 0 40px var(--c);
+    box-shadow: 0 0 var(--glow) var(--c);
+  }
+  .light.lit.dim {
+    color: #fff; /* black would not read on a dim colour */
   }
   strong {
     font-size: clamp(3rem, 14vw, 12rem);
@@ -83,6 +128,24 @@
   .detail {
     font-size: clamp(1rem, 3vw, 1.6rem);
     font-weight: 700;
+  }
+  .brightness {
+    display: grid;
+    grid-template-columns: auto minmax(0, 320px) 6ch;
+    justify-content: center;
+    align-items: center;
+    gap: 10px;
+    color: var(--muted);
+    font-size: 0.9rem;
+  }
+  .brightness input {
+    width: 100%;
+    min-height: var(--tap);
+  }
+  .brightness .value {
+    font-variant-numeric: tabular-nums;
+    text-align: right;
+    white-space: nowrap;
   }
   .hint {
     margin: 0;
