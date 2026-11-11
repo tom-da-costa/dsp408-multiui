@@ -27,7 +27,7 @@ latency MS                      extra delay before each response
 drop RATE | corrupt RATE        share of responses dropped / sent with a bad checksum (0-1)
 nan RATE                        share of meter frames without data (0-1)
 disconnect-after N | off        close each connection after N requests
-second-client accept|refuse|kick
+second-client queue|accept|refuse|kick
 signal CH|all SHAPE [DB]        input CH (A-D, or A-B on a 206/204): music|steady|noise|silence
 help | quit"""
 

@@ -203,7 +203,8 @@ captures of a real device, the 204 the notes of an app tested on one ([PROTOCOL.
 - Meters are synthetic and scriptable per channel (silence, sine level, noise, clipping, limiter
   or compressor active).
 - Fault injection: latency, dropped responses, malformed frames, NaN meters, disconnects, slow
-  recall/store, refusal of a second TCP client.
+  recall/store, a second TCP client queued until the first leaves (as on a 408; or accepted,
+  refused, kicking the first), reads unanswered on a connection left idle for 6 s.
 - It loads the same protocol profile as the backend (§6) and logs every frame it receives, so the
   official editor can be pointed at it to capture its requests ([captures.md](captures.md)).
 - It is a **separate program**, `tracks-dsp-sim`, reached over TCP like a real DSP, so tests

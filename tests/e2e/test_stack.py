@@ -84,6 +84,8 @@ class Stack:
                 *command("DSP408_E2E_SIM_CMD", "tracks_dsp_controller.simulator"),
                 "--host", "127.0.0.1", "--port", str(self.sim_port),
                 "--state-dir", str(self.state_dir), "--fast", "--console", "off",
+                # the tests read the DSP as a second client (a real 408 queues it)
+                "--second-client", "accept",
                 *(["--preset", f"8={U08}"] if self.starts == 0 else []),
             ],
         )  # fmt: skip

@@ -65,7 +65,13 @@ class DspConnection:
             self._reader, self._writer = await asyncio.wait_for(
                 asyncio.open_connection(self.host, self.port), self.connect_timeout
             )
-        except (OSError, TimeoutError) as exc:
+        except TimeoutError as exc:
+            # A DSP 408 serves one client at a time and leaves the next one waiting.
+            raise TransportError(
+                f"cannot connect to {self.host}:{self.port}: no answer (is another program, such "
+                "as the t.racks editor, connected to the DSP? It accepts one at a time)"
+            ) from exc
+        except OSError as exc:
             raise TransportError(f"cannot connect to {self.host}:{self.port}: {exc}") from exc
         self._decoder.reset()
         self._pending.clear()

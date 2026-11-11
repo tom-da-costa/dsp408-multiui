@@ -168,8 +168,9 @@ docker compose -f compose.sim.yaml up -d
 - `--preset 8=u08.bin` loads a config dumped from a real DSP (of the same model) into U08.
 - `--scenario demo|silent|clipping|stress` sets the initial presets and input signals.
 - `--fast` answers preset recall and store at once (the real DSP takes about 3 s and 7 s).
-- `--latency-ms`, `--drop-rate`, `--corrupt-rate`, `--nan-rate` and `--second-client
-  accept|refuse|kick` inject faults.
+- `--second-client queue|accept|refuse|kick`: what a second TCP client gets. `queue` (the
+  default) is what a DSP 408 does: it waits, unanswered, until the first client leaves.
+- `--latency-ms`, `--drop-rate`, `--corrupt-rate` and `--nan-rate` inject faults.
 - Console (when run in a terminal; type `help`): `status`, `presets`, `recall N` (front-panel
   recall), `kick` (drop the connections), `offline 10` (unreachable for 10 s), `latency 200`,
   `drop 0.1`, `signal A steady -3`, `quit`.
