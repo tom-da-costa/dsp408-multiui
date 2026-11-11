@@ -251,8 +251,16 @@
     <dt>Device</dt>
     <dd>
       L'état, le modèle et le firmware du DSP, et la version de l'application.
-      <em>Refresh from device</em> relit tous les réglages depuis le DSP. <em>Log out</em> quitte
-      l'application sur cet appareil.
+      <em>Refresh from device</em> relit tous les réglages depuis le DSP. <em>Disconnect from DSP
+      and shutdown</em> arrête proprement le serveur : il libère le DSP (qui n'accepte qu'un
+      programme à la fois, par exemple pour utiliser l'éditeur t.racks), puis arrête
+      l'application pour tout le monde. Le DSP garde ses réglages. Impossible tant que quelqu'un
+      d'autre a le contrôle ou est master.
+    </dd>
+    <dt>This browser</dt>
+    <dd>
+      <em>Log out</em> quitte l'application sur cet appareil seulement ; le serveur continue de
+      tourner.
     </dd>
   </dl>
 </section>

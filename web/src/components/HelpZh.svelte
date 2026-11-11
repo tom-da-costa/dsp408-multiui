@@ -172,8 +172,10 @@
     <dd>当前正在使用本应用的所有人，以及谁持有控制权。</dd>
     <dt>Device</dt>
     <dd>
-      DSP 的状态、型号和固件，以及本应用的版本。<em>Refresh from device</em> 会从 DSP 重新读取所有设置。<em>Log out</em> 在本设备上退出应用。
+      DSP 的状态、型号和固件，以及本应用的版本。<em>Refresh from device</em> 会从 DSP 重新读取所有设置。<em>Disconnect from DSP and shutdown</em> 会干净地关闭服务器：先断开与 DSP 的连接（DSP 同一时间只接受一个程序，例如要使用 t.racks 编辑器时），然后为所有人关闭应用。DSP 会保留当前设置。当其他人持有控制权或是 master 时无法使用。
     </dd>
+    <dt>This browser</dt>
+    <dd><em>Log out</em> 只在本设备上退出应用，服务器继续运行。</dd>
   </dl>
 </section>
 

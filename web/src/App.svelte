@@ -3,6 +3,7 @@
   import AllInOne from "./components/AllInOne.svelte";
   import ConnectionBanner from "./components/ConnectionBanner.svelte";
   import ChannelsView from "./components/ChannelsView.svelte";
+  import ShutdownScreen from "./components/ShutdownScreen.svelte";
   import Help from "./components/Help.svelte";
   import LimiterCalc from "./components/LimiterCalc.svelte";
   import LiveView from "./components/LiveView.svelte";
@@ -84,7 +85,9 @@
   });
 </script>
 
-{#if app.view === "login"}
+{#if app.view === "shutdown"}
+  <ShutdownScreen />
+{:else if app.view === "login"}
   <Login />
 {:else if app.view === "app"}
   <div class="layout" class:expanded>

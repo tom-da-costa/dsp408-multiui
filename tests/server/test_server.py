@@ -604,3 +604,29 @@ def test_master_disconnects_a_client_and_blocks_new_logins(client: TestClient) -
         client.post("/api/logout")
     ctx: AppContext = client.app.state.ctx  # type: ignore[attr-defined]
     assert ctx.master.state().owner_id is None
+
+
+def test_shutdown_disconnects_the_dsp_then_stops_the_server(client: TestClient) -> None:
+    ctx: AppContext = client.app.state.ctx  # type: ignore[attr-defined]
+    exits: list[bool] = []
+    login(client, "Alice")
+    with client.websocket_connect("/ws") as alice:
+        login(client, "Bob")
+        with client.websocket_connect("/ws") as bob:
+            receive_until(alice, "hello")
+            receive_until(bob, "hello")
+            # not available unless the CLI wired the exit
+            assert request(bob, {"type": "server.shutdown", "req": 1})["error"] == "unsupported"
+            ctx.hub.request_exit = lambda: exits.append(True)
+            # another client has control, or is the master: refused
+            assert request(alice, {"type": "lock.acquire", "req": 2})["ok"]
+            assert request(bob, {"type": "server.shutdown", "req": 3})["error"] == "locked"
+            assert request(alice, {"type": "lock.release", "req": 4})["ok"]
+            assert request(alice, {"type": "master.acquire", "req": 5})["ok"]
+            assert request(bob, {"type": "server.shutdown", "req": 6})["error"] == "not_master"
+            assert not exits
+            # the master may: every client is told, the DSP is let go, then the server stops
+            assert request(alice, {"type": "server.shutdown", "req": 7})["ok"]
+            assert receive_until(bob, "shutdown")["by"] == "Alice"
+            assert ctx.session.status.value == "stopped"
+            assert exits == [True]
