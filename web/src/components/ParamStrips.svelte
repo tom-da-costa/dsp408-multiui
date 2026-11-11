@@ -7,6 +7,7 @@
   import type { ChannelSelection } from "../lib/selection.svelte";
   import ChannelPicker from "./ChannelPicker.svelte";
   import ParamBlock from "./ParamBlock.svelte";
+  import SideDivider from "./SideDivider.svelte";
 
   interface Props {
     param: Param;
@@ -36,7 +37,7 @@
     {@const channel = channelOf(path)}
     {#if channel}
       {#if i > 0 && path.startsWith("outputs.") && paths[i - 1]?.startsWith("inputs.")}
-        <div class="divider"></div>
+        <SideDivider />
       {/if}
       <section class="strip" class:muted={channel.mute} style:--ch={app.color(path)}>
         <button class="name" onclick={() => nav.open(path)} title="Open this channel">
@@ -69,12 +70,6 @@
     overflow-x: auto;
     overscroll-behavior-x: contain;
     padding-bottom: 6px;
-  }
-  .divider {
-    flex: 0 0 2px;
-    align-self: stretch;
-    background: var(--line);
-    border-radius: 1px;
   }
   .strip {
     flex: 0 0 auto;

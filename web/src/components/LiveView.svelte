@@ -4,6 +4,7 @@
   import { ChannelSelection } from "../lib/selection.svelte";
   import ChannelPicker from "./ChannelPicker.svelte";
   import LiveStrip from "./LiveStrip.svelte";
+  import SideDivider from "./SideDivider.svelte";
 
   const selection = new ChannelSelection("dsp408.live.hidden");
   const shown = $derived(selection.shown);
@@ -15,7 +16,7 @@
   <div class="strips">
     {#each shown as path, i (path)}
       {#if i > 0 && path.startsWith("outputs.") && shown[i - 1]?.startsWith("inputs.")}
-        <div class="divider"></div>
+        <SideDivider />
       {/if}
       <LiveStrip {path} />
     {:else}
@@ -40,10 +41,5 @@
     overscroll-behavior-x: contain;
     padding-bottom: 6px;
     min-height: 0;
-  }
-  .divider {
-    flex: 0 0 2px;
-    background: var(--line);
-    border-radius: 1px;
   }
 </style>

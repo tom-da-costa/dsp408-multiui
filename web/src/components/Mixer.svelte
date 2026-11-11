@@ -4,6 +4,7 @@
   import type { ChannelSelection } from "../lib/selection.svelte";
   import ChannelPicker from "./ChannelPicker.svelte";
   import Strip from "./Strip.svelte";
+  import SideDivider from "./SideDivider.svelte";
 
   interface Props {
     /** The Params tab's channel choice. */
@@ -28,7 +29,7 @@
       {@const channel = side === "inputs" ? device.inputs[index] : device.outputs[index]}
       {#if channel}
         {#if i > 0 && side === "outputs" && paths[i - 1]?.startsWith("inputs.")}
-          <div class="divider"></div>
+          <SideDivider />
         {/if}
         <Strip
           {channel}
@@ -61,10 +62,5 @@
     overflow-x: auto;
     overscroll-behavior-x: contain;
     padding-bottom: 6px;
-  }
-  .divider {
-    flex: 0 0 2px;
-    background: var(--line);
-    border-radius: 1px;
   }
 </style>
