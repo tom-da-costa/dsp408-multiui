@@ -1,10 +1,12 @@
 # tracks-dsp-controller
 
 Self-hosted web app to control a **t.racks DSP 408, 206 or 204** over the network from several
-browsers at once (phones first), with live metering. The model is detected automatically.
+browsers at once (computers, tablets, phones), with live metering. The model is detected
+automatically.
 
-One backend process owns the TCP connection to the DSP. It serves a mobile-first web UI to
-every client on the local network and keeps them in sync in real time. It works fully offline.
+One backend process owns the TCP connection to the DSP. It serves a web UI, which also works on
+phones, to every client on the local network and keeps them in sync in real time. It works fully
+offline.
 
 > [!WARNING]
 > **Unofficial software.** This project is not affiliated with, endorsed by or supported by
@@ -28,11 +30,15 @@ Taken in demo mode (simulated DSP 408).
 
 ![Live view on a computer: meters, faders and mute for the 4 inputs and 8 outputs](docs/screenshots/desktop-live.png)
 
-| Live | Params (gain strips) | Channel page |
-| :---: | :---: | :---: |
-| <img src="docs/screenshots/phone-live.png" width="250" alt="Live view on a phone: meters and faders"> | <img src="docs/screenshots/phone-params.png" width="250" alt="Params view: the gain of every channel as vertical strips"> | <img src="docs/screenshots/phone-channel.png" width="250" alt="Channel page of Out 1: frequency response graph and channel settings"> |
-| **All-in-one** | **Presets** | **Limiter calculator** |
-| <img src="docs/screenshots/phone-all-in-one.png" width="250" alt="All-in-one view: one column per channel with gain, delay and filters"> | <img src="docs/screenshots/phone-presets.png" width="250" alt="Presets: recall and store U01 to U20"> | <img src="docs/screenshots/phone-limiter.png" width="250" alt="Limiter calculator: thresholds computed from the amplifier and speaker"> |
+On a phone, in landscape:
+
+| Live | Params (gain strips) |
+| :---: | :---: |
+| <img src="docs/screenshots/phone-live.png" width="400" alt="Live view on a phone: meters and faders"> | <img src="docs/screenshots/phone-params.png" width="400" alt="Params view: the gain of every channel as vertical strips"> |
+| **Channel page** | **All-in-one** |
+| <img src="docs/screenshots/phone-channel.png" width="400" alt="Channel page of Out 1: frequency response graph and channel settings"> | <img src="docs/screenshots/phone-all-in-one.png" width="400" alt="All-in-one view: one column per channel with gain, delay and filters"> |
+| **Presets** | **Limiter calculator** |
+| <img src="docs/screenshots/phone-presets.png" width="400" alt="Presets: recall and store U01 to U20"> | <img src="docs/screenshots/phone-limiter.png" width="400" alt="Limiter calculator: thresholds computed from the amplifier and speaker"> |
 
 ## Features
 
@@ -105,7 +111,7 @@ Then open `http://<server-ip>:8080` from any device on the LAN. Run
 `tracks-dsp-controller --help` for every option; each one can also be set with a `DSP408_<NAME>`
 environment variable.
 
-## On a phone
+## Using the app
 
 - **Live** view (first tab): per channel, CLIP / CMP / LIM indicators, a meter graduated every
   10 dB with the compressor (C) and limiter (L) thresholds, the gain fader with − / + and MUTE.

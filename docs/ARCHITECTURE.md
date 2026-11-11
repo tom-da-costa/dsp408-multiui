@@ -16,7 +16,7 @@ the client/server API and the security model. The device protocol itself is in
 | Constraint | Consequence |
 |---|---|
 | Private LAN, no internet access at the venue | No CDN, no external fonts, no telemetry: every asset ships in the package. |
-| Clients are phones first, then desktop and tablet | Mobile-first layout, touch-safe controls, works at 360 px width. |
+| Clients are computers, tablets and phones | Responsive layout, touch-safe controls, works at 360 px width. |
 | DSP connected to the network over Ethernet | TCP client only, no USB. |
 | Start with one command | One process serves the API, the WebSocket and the static UI. |
 | No database | Presets live in the DSP; the server keeps only in-memory state. |
