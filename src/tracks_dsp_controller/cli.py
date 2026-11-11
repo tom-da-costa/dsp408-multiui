@@ -14,6 +14,7 @@ import logging
 import os
 import sys
 from collections.abc import Sequence
+from dataclasses import replace
 from pathlib import Path
 from typing import Any
 
@@ -63,7 +64,21 @@ def _common(suppress: bool) -> argparse.ArgumentParser:
         default=default or _env("MODEL", "auto"),
         help="DSP model: auto (default: detected from the device's identity), 408, 206 or 204",
     )
+    env_id = _env("DEVICE_ID")
+    common.add_argument(
+        "--device-id",
+        type=_device_id,
+        default=default or (int(env_id) if env_id else None),
+        help="the ID number set on the DSP (1-250); default: searched for",
+    )
     return common
+
+
+def _device_id(text: str) -> int:
+    value = int(text)
+    if not 1 <= value <= 250:
+        raise argparse.ArgumentTypeError("the device ID is 1-250")
+    return value
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -217,6 +232,7 @@ async def _serve(args: argparse.Namespace, profile: ProtocolProfile) -> int:
         demo=args.demo,
         demo_scenario=args.demo_scenario,
         model=args.model,
+        device_id=getattr(args, "device_id", None),
         tls=context is not None,
     )
     app = create_app(config, profile, profile_for=lambda key: load_profile(args.profile, key))
@@ -261,13 +277,19 @@ async def _probe(args: argparse.Namespace, profile: ProtocolProfile) -> int:
         ceiling = max(args.timeout, profile.command_timeout_max_s)
         timeout = {"timing": {"command_timeout_s": args.timeout, "command_timeout_max_s": ceiling}}
     profile = profile.with_overrides(timeout)
+    device_id = getattr(args, "device_id", None)
+    if device_id is not None:
+        profile = replace(profile, host_dst=device_id)
     async with DspConnection(args.dsp_host, args.dsp_port, profile) as conn:
         if args.model == "auto" and args.action != "raw":
-            identity = await probe.read_identity(conn)
+            identity = await probe.read_identity(conn, scan=device_id is None)
             key = detect_model(identity)
             if key is None:
                 raise ValueError(f"unknown device {identity!r}: use --model 408|206|204")
-            profile = load_profile(args.profile, key).with_overrides(timeout)
+            address = conn.profile.host_dst
+            profile = replace(
+                load_profile(args.profile, key).with_overrides(timeout), host_dst=address
+            )
             conn.profile = profile
         if args.action != "info" and not getattr(args, "no_init", False):
             # The 408 serves config pages and meters only after the init sequence.

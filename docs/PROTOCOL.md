@@ -72,8 +72,18 @@ Confidence tags used below:
   The parser **must** therefore frame on `LEN` and then check `10 03 CHK`; it must **not**
   search for the first `10 03` like dsp-408-ui does, because a payload can legitimately
   contain those bytes (e.g. a gain or frequency value). (SIB)
-- **Device address**: the 408 is `01` (HW). The editor addresses the 206 as `02`; the 206 also
-  answers requests sent to `01`, replying from `01` (206). The profile sets it (`host_dst`).
+- **Device address = the "ID number" set on the DSP's front panel** (1–250, `01` from the
+  factory; HW, 2026-11-11). With the ID set to 6, a 408 answers frames sent to `06` only, from
+  `06`; frames to `01`, `02`, any other ID, `00` or `ff` (no broadcast) get no answer. It lets
+  several DSPs share a serial bus; over TCP each one has its own IP anyway. The editor addressed
+  the captured 206 as `02` — most likely that unit's ID; it also answered frames sent to `01`,
+  replying from `01` (206). The profile's `host_dst` is only the first address tried: the app
+  then tries `01`, `02`, and searches every ID (handshakes spaced 40 ms apart, the first
+  answer wins), or uses `--device-id`; the ID found is tried first at the next connection.
+- **One frame at a time, also on the wire (HW).** Two frames in one TCP write (even two
+  handshakes for different IDs), or frames less than ~15 ms apart, are missed, and after two
+  frames in one write the connection stops answering altogether (a new connection is fine).
+  Hence one request in flight, and the 40 ms spacing of the ID search.
 - Generic **ACK** from the DSP: payload `01`, i.e. `10 02 01 00 01 01 10 03 00`. (SIB; dsp-408-ui
   treats "any response" as an ACK, which is compatible.)
 - TCP is a byte stream: one `recv()` can return several frames, or part of one. Buffer and resync on
@@ -383,7 +393,7 @@ project's frame decoder (206). The fixtures are `tests/fixtures/config/dsp206_ca
 
 | Item | DSP 206 | Same as the 408? |
 |---|---|---|
-| Device address | `02` (also answers on `01`) | no: `01` |
+| Device address | `02` (also answers on `01`); most likely the unit's front-panel ID (§2) | no: `01` |
 | Checksum | full form of §2 | yes (same formula) |
 | Identity (`13`) | `DSP206 V0104P` | no: `DSP408 V0104P` |
 | Handshake (`10`) | `10 19` | no: `10 13` |

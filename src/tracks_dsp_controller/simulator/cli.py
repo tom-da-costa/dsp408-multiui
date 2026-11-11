@@ -85,6 +85,14 @@ def build_parser() -> argparse.ArgumentParser:
         "repeatable",
     )
     p.add_argument("--active", type=int, help="active preset at start-up (0 = F00)")
+    env_id = _env("DEVICE_ID")
+    p.add_argument(
+        "--device-id",
+        type=int,
+        default=int(env_id) if env_id else None,
+        help="the ID number set on the front panel, 1-250: the DSP only answers frames sent to "
+        "it (default: 1, 2 for a 206)",
+    )
     p.add_argument(
         "--state-dir",
         type=Path,
@@ -185,6 +193,7 @@ async def run(args: argparse.Namespace, profile: ProtocolProfile) -> int:
         faults=faults,
         second_client=SecondClient(args.second_client),
         frame_log=frame_log,
+        device_id=args.device_id,
     )
     stopped = asyncio.Event()
     loop = asyncio.get_running_loop()

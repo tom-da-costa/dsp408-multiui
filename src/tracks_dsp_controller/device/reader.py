@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+from collections.abc import Iterable
 from dataclasses import dataclass, field, replace
 from typing import Protocol
 
@@ -65,27 +66,49 @@ async def read_active_slot(conn: Requester) -> int:
     return expect(await ask(conn, cmd.GetActivePreset()), rsp.ActivePreset).slot
 
 
-# Device addresses tried by ``read_identity`` after the profile's own: the 408 and 204 answer on
-# 0x01, the 206 on 0x02 (and on 0x01).
+# The device address is the "ID number" set on the DSP's front panel (1–250, factory 1; HW,
+# PROTOCOL.md §2): the DSP answers only frames sent to it. These are tried first, then every ID.
 KNOWN_ADDRESSES = (0x01, 0x02)
+DEVICE_IDS = range(1, 251)
 
 
-async def read_identity(conn: Requester) -> str:
-    """Handshake and 0x13 identity, on the profile's address, then on the other known ones.
+class AddressScanner(Protocol):
+    async def find_device(self, addresses: Iterable[int]) -> int | None: ...
+
+
+async def _identity_at(conn: Requester, address: int) -> str:
+    conn.profile = replace(conn.profile, host_dst=address)
+    expect(await ask(conn, cmd.Handshake(), retries=0), rsp.HandshakeReply)
+    return expect(await ask(conn, cmd.GetDeviceInfo()), rsp.DeviceInfo).text
+
+
+async def read_identity(conn: Requester, *, scan: bool = True) -> str:
+    """Handshake and 0x13 identity on the profile's address (the last ID found, ``--device-id``,
+    or the model's default). With ``scan``, then on the other known addresses, then on every
+    device ID when the connection can search for it.
 
     Leaves ``conn.profile`` on the address that answered."""
     base = conn.profile
-    error: TransportTimeoutError | None = None
-    for address in dict.fromkeys((base.host_dst, *KNOWN_ADDRESSES)):
-        conn.profile = replace(base, host_dst=address)
+    tried = list(dict.fromkeys((base.host_dst, *(KNOWN_ADDRESSES if scan else ()))))
+    for address in tried:
         try:
-            expect(await ask(conn, cmd.Handshake(), retries=0), rsp.HandshakeReply)
-            return expect(await ask(conn, cmd.GetDeviceInfo()), rsp.DeviceInfo).text
-        except TransportTimeoutError as exc:
-            error = exc
-    conn.profile = base
-    assert error is not None
-    raise error
+            return await _identity_at(conn, address)
+        except TransportTimeoutError:
+            conn.profile = base
+    if scan and hasattr(conn, "find_device"):
+        scanner: AddressScanner = conn  # type: ignore[assignment]
+        found = await scanner.find_device(a for a in DEVICE_IDS if a not in tried)
+        if found is not None:
+            try:
+                return await _identity_at(conn, found)
+            except TransportTimeoutError:
+                conn.profile = base
+    if not scan:
+        raise TransportTimeoutError(
+            f"no answer from device ID {base.host_dst}: check the ID number set on the DSP "
+            "(or leave --device-id out to search for it)"
+        )
+    raise TransportTimeoutError("no DSP answered, on any device ID (1–250)")
 
 
 async def read_info(conn: Requester) -> DeviceSummary:

@@ -22,6 +22,7 @@ class ServerConfig:
     demo: bool = False  # no DSP: a simulated one runs in this process
     demo_scenario: str = "demo"
     model: str = "auto"  # "auto" (detect from the identity), "408", "206" or "204"
+    device_id: int | None = None  # the ID number set on the DSP; None = search for it
     tls: bool = False  # served over HTTPS: the session cookie is Secure
 
     def __post_init__(self) -> None:
@@ -33,6 +34,8 @@ class ServerConfig:
             raise ValueError("--lock-idle-timeout must be > 0")
         if self.resync_interval_s < 0:
             raise ValueError("--resync-interval must be >= 0")
+        if self.device_id is not None and not 1 <= self.device_id <= 250:
+            raise ValueError("--device-id must be 1-250")
         if self.model not in ("auto", "408", "206", "204"):
             raise ValueError("--model must be auto, 408, 206 or 204")
 

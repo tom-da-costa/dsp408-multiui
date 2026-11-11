@@ -104,6 +104,7 @@ On a phone, in landscape:
 git clone https://github.com/tom-da-costa/tracks-dsp-controller.git && cd tracks-dsp-controller
 uv run tracks-dsp-controller --dsp-host 192.168.1.50 --pin 1234
 # The DSP model is detected; --model 408|206|204 enforces one (refused if the device differs)
+# The DSP's ID number (front panel, 1-250) is searched for; --device-id N skips the search
 
 # Demo without a DSP (a simulated DSP runs inside the app)
 uv run tracks-dsp-controller --demo
@@ -189,6 +190,7 @@ docker compose -f compose.sim.yaml up -d
 - `--preset 8=u08.bin` loads a config dumped from a real DSP (of the same model) into U08.
 - `--scenario demo|silent|clipping|stress` sets the initial presets and input signals.
 - `--fast` answers preset recall and store at once (the real DSP takes about 3 s and 7 s).
+- `--device-id N`: the simulated DSP's front-panel ID; it only answers frames sent to it.
 - `--second-client queue|accept|refuse|kick`: what a second TCP client gets. `queue` (the
   default) is what a DSP 408 does: it waits, unanswered, until the first client leaves.
 - `--latency-ms`, `--drop-rate`, `--corrupt-rate` and `--nan-rate` inject faults.

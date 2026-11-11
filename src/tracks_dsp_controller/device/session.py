@@ -14,6 +14,7 @@ import asyncio
 import contextlib
 import logging
 from collections.abc import AsyncIterator, Callable
+from dataclasses import replace
 from enum import StrEnum
 from typing import Any
 
@@ -105,14 +106,19 @@ class DeviceSession:
         connection_factory: ConnectionFactory | None = None,
         model: str | None = None,
         profile_for: ProfileFactory | None = None,
+        device_id: int | None = None,
     ) -> None:
         """``model``: None = use ``profile`` as is (no identity check), "auto" = detect the
         model, or a model key ("408", "206", "204") the device must report.
+        ``device_id``: the ID number set on the DSP (its address); None = search for it.
         ``profile_for`` builds the profile of a model key (default: the built-in one)."""
         if model is not None and model != AUTO and model not in MODELS:
             raise ValueError(f"unknown model {model!r}; choose from auto, {', '.join(MODELS)}")
         self.host = host
         self.port = port
+        if device_id is not None:
+            profile = replace(profile, host_dst=device_id)
+        self.device_id = device_id
         self.profile = profile
         self.model = model
         self._profile_for = profile_for or (lambda key: load_profile(model=key))
@@ -268,7 +274,8 @@ class DeviceSession:
         """Check the device's model and switch to its profile (``model`` "auto" or a key)."""
         if self.model is None:
             return
-        identity = await reader.read_identity(conn)
+        identity = await reader.read_identity(conn, scan=self.device_id is None)
+        address = conn.profile.host_dst  # remembered: tried first at the next connection
         detected = detect_model(identity)
         if self.model == AUTO:
             if detected is None:
@@ -284,7 +291,7 @@ class DeviceSession:
                 )
             key = self.model
         if key != self.model_key:
-            self.profile = self._profile_for(key)
+            self.profile = replace(self._profile_for(key), host_dst=address)
             log.info("device %r: using the DSP %s profile", identity, key)
             if key not in TESTED_MODELS:
                 log.warning(
@@ -297,6 +304,8 @@ class DeviceSession:
                     listener(self.profile)
                 except Exception:
                     log.exception("profile listener failed")
+        else:
+            self.profile = replace(self.profile, host_dst=address)
         conn.profile = self.profile
 
     async def _read_state(
