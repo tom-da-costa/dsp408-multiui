@@ -9,6 +9,7 @@
   import Presets from "./components/Presets.svelte";
   import Settings from "./components/Settings.svelte";
   import Toasts from "./components/Toasts.svelte";
+  import TooLoud from "./components/TooLoud.svelte";
   import RailLock from "./components/RailLock.svelte";
   import RailStatus from "./components/RailStatus.svelte";
   import { app } from "./lib/app.svelte";
@@ -138,6 +139,8 @@
           <ChannelsView />
         {:else if nav.tab === "aio"}
           <AllInOne />
+        {:else if nav.tab === "loud"}
+          <TooLoud />
         {:else if nav.tab === "limiter"}
           <LimiterCalc />
         {:else if nav.tab === "presets"}

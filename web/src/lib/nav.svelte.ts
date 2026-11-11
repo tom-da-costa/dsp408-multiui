@@ -9,6 +9,7 @@ export const TABS = [
   ["params", "Params", "🎚"],
   ["channels", "Channels", "🔈"],
   ["aio", "All-in-one", "▥"],
+  ["loud", "Too loud", "🚨"],
   ["limiter", "Limiter calc", "🧮"],
   ["presets", "Presets", "☰"],
   ["settings", "Settings", "⚙"],
