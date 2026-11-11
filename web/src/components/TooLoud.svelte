@@ -1,10 +1,10 @@
 <script lang="ts">
   // "Too loud" tab: one indicator that fills the screen, for whoever sets the volume. It takes
   // the limiter's colour when at least one output's limiter acts, else the compressor's when at
-  // least one output's compressor acts (the limiter prevails), and stays dark otherwise.
+  // least one output's compressor acts (the limiter prevails), and is green otherwise.
   import { app } from "../lib/app.svelte";
   import { slotLabel } from "../lib/nav.svelte";
-  import { COMP_COLOR, LIMIT_COLOR } from "../lib/scale";
+  import { COMP_COLOR, LIMIT_COLOR, METER_COLORS } from "../lib/scale";
 
   const limiting = $derived(
     (app.meters?.limit ?? []).flatMap((on, i) => (on ? [slotLabel(`outputs.${i}`)] : [])),
@@ -14,7 +14,7 @@
   );
   const state = $derived(limiting.length ? "limit" : compressing.length ? "comp" : "ok");
   const color = $derived(
-    state === "limit" ? LIMIT_COLOR : state === "comp" ? COMP_COLOR : undefined,
+    state === "limit" ? LIMIT_COLOR : state === "comp" ? COMP_COLOR : METER_COLORS.green,
   );
   const detail = $derived(
     state === "limit"
@@ -57,15 +57,12 @@
     gap: 8px;
     padding: 16px;
     border-radius: var(--radius);
-    border: 2px solid var(--line);
-    background: var(--panel);
-    color: var(--muted);
+    border: 2px solid var(--c);
+    background: var(--c);
+    color: #000;
     text-align: center;
   }
   .light.lit {
-    background: var(--c);
-    border-color: var(--c);
-    color: #000;
     box-shadow: 0 0 40px var(--c);
   }
   strong {
