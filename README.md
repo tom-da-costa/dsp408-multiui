@@ -99,8 +99,8 @@ environment variable.
   10 dB with the compressor (C) and limiter (L) thresholds, the gain fader with − / + and MUTE.
 - **Params** view: one setting on the channels you pick. Gain, delay, filters, compressor,
   limiter and gate are shown as one strip per channel, with vertical faders.
-- **All-in-one** view: one column per channel with the settings you pick; the ✎ button next
-  to a channel's name renames it.
+- **All-in-one** view: one column per channel with the settings you pick, including the
+  channel name (*Name*).
 - In Live, Params and All-in-one, a row picks the channels shown (all, inputs, outputs or any
   set); each view remembers its choice in the browser (Params: one choice for every setting).
 - **Full screen:** the ⛶ button at the bottom of the tab bar (Android, desktop browsers).
