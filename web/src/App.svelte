@@ -2,6 +2,7 @@
   import { onMount } from "svelte";
   import AllInOne from "./components/AllInOne.svelte";
   import ChannelsView from "./components/ChannelsView.svelte";
+  import Help from "./components/Help.svelte";
   import LimiterCalc from "./components/LimiterCalc.svelte";
   import LiveView from "./components/LiveView.svelte";
   import Login from "./components/Login.svelte";
@@ -145,6 +146,8 @@
           <LimiterCalc />
         {:else if nav.tab === "presets"}
           <Presets />
+        {:else if nav.tab === "help"}
+          <Help />
         {:else}
           <Settings />
         {/if}

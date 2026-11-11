@@ -129,6 +129,9 @@ environment variable.
   in the compressor's colour when at least one output's compressor or limiter acts (and names
   those outputs), and stays grey otherwise; its brightness is adjustable (per browser). Flashing
   now and then is fine; if it stays lit, turn the volume down.
+- **Help** view: how to use the app (tabs, buttons, control, screen lock, presets, settings,
+  channel choice) and what each audio setting does (gain, delay, filters, EQ, dynamics, routing,
+  links).
 - **Full screen:** the ⛶ button at the bottom of the tab bar (Android, desktop browsers).
 - **Install on the home screen:** iPhone: Safari › Share › *Add to Home Screen*; it then opens
   full screen without the browser bars. Android: Chrome installs web apps only over HTTPS (or

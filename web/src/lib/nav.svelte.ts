@@ -13,6 +13,7 @@ export const TABS = [
   ["limiter", "Limiter calc", "🧮"],
   ["presets", "Presets", "☰"],
   ["settings", "Settings", "⚙"],
+  ["help", "Help", "❓"],
 ] as const;
 export type Tab = (typeof TABS)[number][0];
 
