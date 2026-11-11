@@ -109,11 +109,11 @@
     font-size: 0.85rem;
   }
   .body {
+    /* No shrinking below the fader's own height: it would overflow under MUTE and hide −. */
     flex: 1;
     display: flex;
     gap: 4px;
     justify-content: center;
-    min-height: 0;
   }
   .buttons {
     display: grid;
