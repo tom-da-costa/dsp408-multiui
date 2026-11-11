@@ -22,6 +22,7 @@ class ServerConfig:
     demo: bool = False  # no DSP: a simulated one runs in this process
     demo_scenario: str = "demo"
     model: str = "auto"  # "auto" (detect from the identity), "408", "206" or "204"
+    tls: bool = False  # served over HTTPS: the session cookie is Secure
 
     def __post_init__(self) -> None:
         if not self.demo and not self.dsp_host:

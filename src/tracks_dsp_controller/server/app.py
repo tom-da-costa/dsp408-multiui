@@ -195,7 +195,12 @@ def create_app(
             )
         client = auth.open_session(body.name)
         response.set_cookie(
-            SESSION_COOKIE, client.token, httponly=True, samesite="strict", path="/"
+            SESSION_COOKIE,
+            client.token,
+            httponly=True,
+            samesite="strict",
+            path="/",
+            secure=config.tls,
         )
         return {"client_id": client.client_id, "name": client.name}
 
