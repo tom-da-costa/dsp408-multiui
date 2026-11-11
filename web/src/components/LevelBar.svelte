@@ -17,7 +17,7 @@
   interface Props {
     path: string; // "inputs.0" / "outputs.3"
     compact?: boolean;
-    /** CLIP / CMP / LIM as a row under the meter (the channel page). */
+    /** CLIP / CMP / LIM as a row under the meter (channel page, All-in-one). */
     indicators?: boolean;
   }
 
@@ -204,6 +204,10 @@
     background: var(--panel-2);
     color: var(--muted);
     border: 1px solid var(--line);
+  }
+  .compact .big {
+    height: 24px;
+    font-size: 0.65rem;
   }
   .big.lit {
     background: var(--c);
