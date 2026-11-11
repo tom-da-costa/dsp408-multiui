@@ -42,8 +42,12 @@ class SimulatorServer:
         faults: Faults | None = None,
         second_client: SecondClient = SecondClient.QUEUE,
         frame_log: FrameLog | None = None,
+        device_id: int | None = None,
     ) -> None:
+        """``device_id``: the ID number "set on the front panel" (the device address); None =
+        the profile's (1 for a 408)."""
         self.device = device
+        self.device_id = device_id if device_id is not None else device.profile.host_dst
         self.host = host
         self.port = port
         self.faults = faults or Faults()
@@ -113,6 +117,11 @@ class SimulatorServer:
         assert self._server is not None
         await self._server.serve_forever()
 
+    def addressed(self, address: int) -> bool:
+        """Whether a frame sent to ``address`` is for this device: its ID; a captured DSP 206
+        also answered frames sent to 0x01 (PROTOCOL.md §10)."""
+        return address == self.device_id or (address == 0x01 and self.device.model.key == "206")
+
     # --- connections ----------------------------------------------------------------------------
     async def _on_connect(self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> None:
         peer = writer.get_extra_info("peername")
@@ -181,6 +190,8 @@ class SimulatorServer:
                     self.frame_log.write(TO_DEVICE, frame)
                 if frame.from_device:
                     continue  # ignore echoes of device frames
+                if not self.addressed(frame.dst):
+                    continue  # for another device ID: the DSP does not answer (HW)
                 if not await self._handle(frame, writer, link):
                     return
                 handled += 1
@@ -202,8 +213,8 @@ class SimulatorServer:
             return False
         if reply.response is None or self.faults.roll(self.faults.drop_rate):
             return True
-        # The 206 answers from the address the request was sent to (0x02, or 0x01 like a 408).
-        out = Frame(frame.dst or self.device.profile.host_dst, HOST, reply.response.encode())
+        # It answers from the address the request was sent to (its ID; 0x01 too on a 206).
+        out = Frame(frame.dst, HOST, reply.response.encode())
         wire = bytearray(out.encode())
         if self.faults.roll(self.faults.corrupt_rate):
             wire[-1] ^= 0xFF

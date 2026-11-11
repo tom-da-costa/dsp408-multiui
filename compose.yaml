@@ -18,6 +18,7 @@ services:
       DSP408_EXPERIMENTAL: ${DSP408_EXPERIMENTAL:-false}
       DSP408_DEMO: ${DSP408_DEMO:-false}
       DSP408_MODEL: ${DSP408_MODEL:-auto}
+      DSP408_DEVICE_ID: ${DSP408_DEVICE_ID:-}
       DSP408_LOG_LEVEL: ${DSP408_LOG_LEVEL:-info}
       # HTTPS: a self-signed certificate (kept in the tls volume), or your own (mount it)
       DSP408_TLS_SELF_SIGNED: ${DSP408_TLS_SELF_SIGNED:-false}

@@ -133,7 +133,9 @@ def create_app(
         faults = Faults()
         if simulated_device is None:
             apply_scenario(config.demo_scenario, device, faults)
-        simulator = SimulatorServer(device, host="127.0.0.1", port=0, faults=faults)
+        simulator = SimulatorServer(
+            device, host="127.0.0.1", port=0, faults=faults, device_id=config.device_id
+        )
     # The simulator's port is only known once it runs, so the session resolves it lazily.
     session = DeviceSession(
         config.dsp_host or "127.0.0.1",
@@ -143,6 +145,7 @@ def create_app(
         meter_rate_hz=config.meter_rate_hz,
         model=config.model,
         profile_for=model_profile,
+        device_id=config.device_id,
     )
     hub = Hub(config, session, store, auth, lock, master)
     ctx = AppContext(config, profile, store, session, auth, lock, master, hub, simulator)

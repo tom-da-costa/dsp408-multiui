@@ -14,6 +14,7 @@ import asyncio
 import contextlib
 import logging
 import time
+from collections.abc import Iterable
 
 from tracks_dsp_controller.device.rtt import RttEstimator
 from tracks_dsp_controller.protocol import commands as cmd
@@ -22,6 +23,10 @@ from tracks_dsp_controller.protocol.framing import Frame, FrameDecoder, encode_f
 from tracks_dsp_controller.protocol.profile import ProtocolProfile
 
 log = logging.getLogger(__name__)
+
+
+# Between two handshakes of a device-ID scan (a DSP 408 misses frames closer than ~15 ms).
+SCAN_SPACING_S = 0.04
 
 
 class TransportError(ConnectionError):
@@ -192,6 +197,44 @@ class DspConnection:
         if any(frame.from_device for frame in frames):
             self.last_received = time.monotonic()
         self._pending.extend(frames)
+
+    async def find_device(
+        self, addresses: Iterable[int], spacing: float = SCAN_SPACING_S
+    ) -> int | None:
+        """Send a handshake to each address in turn; return the one the DSP answers from.
+
+        Only the DSP's own address (its front-panel ID) answers. The frames are spaced: a DSP
+        408 that gets two frames at once (or within ~15 ms) stops answering on the connection
+        (HW). The scan stops at the first answer."""
+        async with self._lock:
+            if self._writer is None or self._reader is None:
+                raise TransportError("not connected")
+            try:
+                await self._drain_late()
+                payload = cmd.Handshake().encode(self.profile)
+                for address in addresses:
+                    self._writer.write(encode_frame(payload, dst=address))
+                    await self._writer.drain()
+                    found = await self._device_frame_within(spacing)
+                    if found is not None:
+                        break
+                else:
+                    found = await self._device_frame_within(self.rtt.timeout)
+            except (ConnectionError, OSError) as exc:
+                await self.close()
+                raise TransportError(str(exc)) from exc
+            # A late answer to an earlier address could still come: let it pass, then drop it.
+            await self._device_frame_within(min(self.rtt.timeout, 2 * spacing))
+            self._pending.clear()
+            if found is not None:
+                log.info("the DSP answers on device ID %d", found.src)
+            return None if found is None else found.src
+
+    async def _device_frame_within(self, timeout: float) -> Frame | None:
+        try:
+            return await asyncio.wait_for(self._next_device_frame(None), timeout)
+        except TimeoutError:
+            return None
 
     async def request(self, request: cmd.Request, timeout: float | None = None) -> rsp.Response:
         frame = await self.request_raw(

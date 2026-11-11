@@ -309,6 +309,7 @@ tracks-dsp-controller [serve] --dsp-host 192.168.1.50 [options]   # "serve" is t
   --lock-idle-timeout 120  --resync-interval 0   (seconds, 0 = off)
   --command-timeout 0.5    --experimental        --profile file.toml
   --model auto              (auto: detected from the identity; or 408, 206, 204)
+  --device-id N             (the DSP's front-panel ID, 1–250; default: searched for)
   --demo [--demo-scenario demo|silent|clipping|stress]   (simulates --model; 408 with auto)
   --tls-cert cert.pem --tls-key key.pem  |  --tls-self-signed [--tls-names IP,name] [--tls-dir DIR]
   --log-level info

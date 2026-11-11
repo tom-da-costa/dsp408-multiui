@@ -36,15 +36,19 @@ def test_detect_model() -> None:
     assert detect_model("") is None
 
 
-async def simulated(model: str, identity: str = "") -> SimulatorServer:
+async def simulated(
+    model: str, identity: str = "", device_id: int | None = None
+) -> SimulatorServer:
     device = SimulatedDevice(load_profile(model=model), model=SIM_MODELS[model], identity=identity)
     device.timing.recall_s = device.timing.store_s = 0.0
-    server = SimulatorServer(device, host="127.0.0.1", port=0)
+    server = SimulatorServer(device, host="127.0.0.1", port=0, device_id=device_id)
     await server.start()
     return server
 
 
-def session_for(server: SimulatorServer, model: str | None) -> DeviceSession:
+def session_for(
+    server: SimulatorServer, model: str | None, device_id: int | None = None
+) -> DeviceSession:
     return DeviceSession(
         "127.0.0.1",
         server.bound_port,
@@ -54,6 +58,7 @@ def session_for(server: SimulatorServer, model: str | None) -> DeviceSession:
         reconnect_min_s=0.05,
         reconnect_max_s=0.1,
         model=model,
+        device_id=device_id,
     )
 
 
@@ -79,7 +84,8 @@ async def test_auto_detects_every_model(
     await session.start()
     await session.wait_online(5)
     assert session.model_key == model
-    assert session.profile.host_dst == (2 if model == "206" else 1)
+    # the address that answered is kept (a 206 answers on 0x01 too)
+    assert session.profile.host_dst == 1
     state = session.store.state
     assert (len(state.inputs), len(state.outputs)) == (inputs, outputs)
     assert len(switched) == (0 if model == "408" else 1)  # the 408 profile is kept as given
@@ -122,6 +128,67 @@ async def test_unknown_identity_is_refused_in_auto_but_not_with_a_model(
     await forced.start()
     await forced.wait_online(5)
     assert len(forced.store.state.outputs) == 6
+
+
+# --- device ID (the front panel's "ID number" = the device address, HW) ------------------------
+async def test_a_dsp_with_another_device_id_is_found(stop_later: list[Any]) -> None:
+    server = await simulated("408", device_id=37)
+    session = session_for(server, "auto")
+    stop_later += [server, session]
+    await session.start()
+    await session.wait_online(10)
+    assert session.profile.host_dst == 37
+    await session.write("outputs.0.mute", True, "test")
+    assert server.device.live.outputs[0].mute
+    # the ID found is tried first at the next connection: no search again
+    server.kick()
+    started = time.monotonic()
+    await asyncio.sleep(0.2)
+    await session.wait_online(5)
+    assert time.monotonic() - started < 2
+    assert session.profile.host_dst == 37
+
+
+async def test_a_given_device_id_is_used_without_searching(stop_later: list[Any]) -> None:
+    server = await simulated("408", device_id=7)
+    right = session_for(server, "auto", device_id=7)
+    stop_later += [server, right]
+    await right.start()
+    await right.wait_online(5)
+    assert right.profile.host_dst == 7
+    await right.stop()
+    wrong = session_for(server, "auto", device_id=6)
+    stop_later.append(wrong)
+    await wrong.start()
+    for _ in range(200):
+        if wrong.last_error:
+            break
+        await asyncio.sleep(0.02)
+    assert wrong.status is DeviceStatus.OFFLINE
+    assert "no answer from device ID 6" in (wrong.last_error or "")
+
+
+async def test_the_simulator_only_answers_its_device_id() -> None:
+    from tracks_dsp_controller.device.transport import DspConnection
+
+    server = await simulated("408", device_id=9)
+    try:
+        async with DspConnection("127.0.0.1", server.bound_port, DEFAULT_PROFILE) as conn:
+            with pytest.raises(TransportTimeoutError):
+                await conn.request(c.Handshake(), timeout=0.2)  # sent to 0x01
+            assert await conn.find_device(range(1, 20), spacing=0.01) == 9
+            assert await conn.find_device(range(20, 30), spacing=0.01) is None
+    finally:
+        await server.stop()
+
+
+def test_device_id_options() -> None:
+    with pytest.raises(ValueError, match="device-id"):
+        ServerConfig(demo=True, device_id=251)
+    args = cli.build_parser().parse_args(["serve", "--demo", "--device-id", "6"])
+    assert args.device_id == 6
+    with pytest.raises(SystemExit):
+        cli.build_parser().parse_args(["serve", "--device-id", "0"])
 
 
 def test_unknown_model_key() -> None:
