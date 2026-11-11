@@ -3,7 +3,7 @@
   // shortcuts all / inputs / outputs, then one toggle per channel. With `side`, only that side's
   // channels are listed (a setting that exists on inputs or outputs only).
   import { app } from "../lib/app.svelte";
-  import { slotLabel } from "../lib/nav.svelte";
+  import { links } from "../lib/links.svelte";
   import type { ChannelSelection } from "../lib/selection.svelte";
 
   interface Props {
@@ -14,7 +14,7 @@
   let { selection, side }: Props = $props();
 
   const prefix = $derived(side ? (`${side}.` as const) : "");
-  const all = $derived(selection.all.filter((c) => c.path.startsWith(prefix)));
+  const all = $derived(selection.entries.filter((c) => c.path.startsWith(prefix)));
   const allShown = $derived(all.every((c) => selection.isShown(c.path)));
   const locked = $derived(app.screenLocked); // the locked screen keeps the channels shown
 </script>
@@ -45,11 +45,11 @@
       class:on={selection.isShown(c.path)}
       aria-pressed={selection.isShown(c.path)}
       disabled={locked}
-      title={`${slotLabel(c.path)} ${c.name}`}
+      title={`${links.slot(c.path)} ${links.name(c.path)}`}
       onclick={() => selection.toggle(c.path)}
     >
-      <span>{slotLabel(c.path).replace("In ", "").replace("Out ", "")}</span>
-      <small>{c.name || "—"}</small>
+      <span>{links.shortSlot(c.path)}</span>
+      <small>{links.name(c.path)}</small>
     </button>
   {/each}
 </div>

@@ -1,8 +1,10 @@
 // Channels shown by a multi-channel view (Live, All-in-one), picked with ChannelPicker and
 // remembered in this browser. The hidden channels are stored, not the shown ones, so
-// everything is shown by default.
+// everything is shown by default. With "Merge linked channels", a link group is one entry (its
+// lead): toggling it shows or hides every member.
 
 import { app } from "./app.svelte";
+import { links } from "./links.svelte";
 
 type Prefix = "" | "inputs." | "outputs.";
 
@@ -30,16 +32,24 @@ export class ChannelSelection {
     ];
   }
 
+  /** The entries of the picker: every channel, or one per link group when merging. */
+  get entries(): { path: string; name: string }[] {
+    return this.all.filter((c) => links.isShown(c.path));
+  }
+
   get shown(): string[] {
-    return this.all.filter((c) => !this.hidden.includes(c.path)).map((c) => c.path);
+    return this.entries.filter((c) => !this.hidden.includes(c.path)).map((c) => c.path);
   }
 
   isShown(path: string): boolean {
     return !this.hidden.includes(path);
   }
 
+  /** Show or hide `path`, with the members merged into it. */
   toggle(path: string): void {
-    this.save(this.hidden.includes(path) ? this.hidden.filter((p) => p !== path) : [...this.hidden, path]);
+    const members = links.members(path);
+    const others = this.hidden.filter((p) => !members.includes(p));
+    this.save(this.hidden.includes(path) ? others : [...others, ...members]);
   }
 
   /** Show every channel starting with `prefix` ("" = all), leaving the others as they are. */
@@ -58,7 +68,7 @@ export class ChannelSelection {
     return (
       shown.length > 0 &&
       shown.every((p) => p.startsWith(prefix)) &&
-      this.all.filter((c) => c.path.startsWith(prefix)).every((c) => this.isShown(c.path))
+      this.entries.filter((c) => c.path.startsWith(prefix)).every((c) => this.isShown(c.path))
     );
   }
 

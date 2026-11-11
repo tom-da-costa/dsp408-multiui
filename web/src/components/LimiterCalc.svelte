@@ -2,6 +2,7 @@
   // "Limiter" tab: compute the compressor / limiter thresholds that protect a speaker, from the
   // amp gain, the speaker power, the load and impedance (Hornplans method), then apply them.
   import { app } from "../lib/app.svelte";
+  import { links } from "../lib/links.svelte";
   import {
     APPLIED,
     computeLimiter,
@@ -11,7 +12,6 @@
     type Mode,
     validate,
   } from "../lib/limiter";
-  import { slotLabel } from "../lib/nav.svelte";
   import { formatDb } from "../lib/scale";
 
   const STORAGE_KEY = "dsp408.limiter.calc";
@@ -99,7 +99,7 @@
     busy = false;
     confirming = false;
     if (ok) {
-      app.toast(`Applied to ${selected.map((i) => slotLabel(`outputs.${i}`)).join(", ")}`);
+      app.toast(`Applied to ${selected.map((i) => links.slot(`outputs.${i}`)).join(", ")}`);
       selected = [];
     }
   }
@@ -203,6 +203,8 @@
       <h3>Apply to</h3>
       <div class="chips" role="group" aria-label="Outputs">
         {#each outputs as ch, i (i)}
+          <!-- One chip per link group when merging: the DSP applies the change to the group. -->
+          {#if links.isShown(`outputs.${i}`)}
           <button
             class="ch-bar"
             style:--ch={app.color(`outputs.${i}`)}
@@ -211,18 +213,19 @@
             disabled={!editable || busy}
             onclick={() => toggle(i)}
           >
-            <span>{slotLabel(`outputs.${i}`)}{ch.linked.length ? " 🔗" : ""}</span>
-            <small>{ch.name || "—"}</small>
+            <span>{links.slot(`outputs.${i}`)}{links.mark(`outputs.${i}`)}</span>
+            <small>{links.name(`outputs.${i}`)}</small>
             <small class="now"
               >C {formatDb(ch.compressor.threshold_db)} · L {formatDb(ch.limiter.threshold_db)}</small
             >
           </button>
+          {/if}
         {/each}
       </div>
       {#if confirming}
         <div class="confirm">
           <p>
-            {selected.map((i) => slotLabel(`outputs.${i}`)).join(", ")}: compressor
+            {selected.map((i) => links.slot(`outputs.${i}`)).join(", ")}: compressor
             <strong>{dbu(result.compThresholdDbu)}</strong>, ratio Limit, attack 1 ms, release
             1000 ms, knee 0; limiter <strong>{dbu(result.limitThresholdDbu)}</strong>, attack 1 ms,
             release 1000 ms. Linked outputs follow (the DSP copies the change).

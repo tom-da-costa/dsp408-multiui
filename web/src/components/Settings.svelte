@@ -1,5 +1,6 @@
 <script lang="ts">
   import { app } from "../lib/app.svelte";
+  import { links } from "../lib/links.svelte";
 
   let rate = $state(app.settings?.meter_rate_hz ?? 5);
 
@@ -32,6 +33,24 @@
       />
     </label>
     <p class="muted">Applies to every connected client.</p>
+  </section>
+
+  <section class="card">
+    <h2>Display</h2>
+    <label class="check">
+      <input
+        type="checkbox"
+        checked={links.merge}
+        disabled={app.screenLocked}
+        onchange={(e) => links.setMerge(e.currentTarget.checked)}
+      />
+      Merge linked channels
+    </label>
+    <p class="muted">
+      Linked channels show as one (e.g. "Out 1+5") in every view except Params › Matrix and
+      Link: a change applies to all of them, as the DSP does. Names and routing stay per channel;
+      meters show the loudest. This browser only.
+    </p>
   </section>
 
   <section class="card">
@@ -80,6 +99,17 @@
   label {
     display: grid;
     gap: 8px;
+  }
+  label.check {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-height: var(--tap);
+  }
+  label.check input {
+    width: 22px;
+    height: 22px;
+    margin: 0;
   }
   input[type="range"] {
     width: 100%;

@@ -3,6 +3,7 @@
   // channel name, then the settings of the Params tab), for the channels picked in the row below
   // (as in the Live tab). Both are remembered in this browser.
   import { app } from "../lib/app.svelte";
+  import { links } from "../lib/links.svelte";
   import { nav, PARAM_SCOPE, PARAMS, slotLabel, type Param } from "../lib/nav.svelte";
   import { ChannelSelection } from "../lib/selection.svelte";
   import ChannelPicker from "./ChannelPicker.svelte";
@@ -49,10 +50,13 @@
 
   const selection = new ChannelSelection("dsp408.aio.hidden");
   const device = $derived(app.device);
+  function channelAt(path: string) {
+    const [side, n] = path.split(".");
+    return (side === "inputs" ? device?.inputs : device?.outputs)?.[Number(n)];
+  }
   const channels = $derived(
     selection.shown.flatMap((path) => {
-      const [side, n] = path.split(".");
-      const channel = (side === "inputs" ? device?.inputs : device?.outputs)?.[Number(n)];
+      const channel = channelAt(path);
       return channel ? [{ path, channel }] : [];
     }),
   );
@@ -79,15 +83,31 @@
     {/if}
     <section class="strip" class:muted={channel.mute} style:--ch={app.color(path)}>
       <button class="head" onclick={() => nav.open(path)} title="Open this channel">
-        <span class="slot">{slotLabel(path)}{channel.linked.length ? " 🔗" : ""}</span>
-        <strong>{channel.name || "—"}</strong>
+        <span class="slot">{links.slot(path)}{links.mark(path)}</span>
+        <strong>{links.name(path)}</strong>
       </button>
       <LevelBar {path} compact />
       {#each shown.filter((item) => applies(item, path)) as item (item)}
+        {@const members = links.members(path)}
         {#if item === "name"}
+          <!-- Names stay per channel: one field per member of a merged group. -->
           <Section id={`name@${path}`} title="Name" kind="name">
-            <NameEditor {channel} {path} label={false} />
+            {#each members as member (member)}
+              {@const memberChannel = channelAt(member)}
+              {#if memberChannel}
+                <NameEditor
+                  channel={memberChannel}
+                  path={member}
+                  label={members.length > 1 ? slotLabel(member) : ""}
+                />
+              {/if}
+            {/each}
           </Section>
+        {:else if item === "matrix" && members.length > 1}
+          <!-- So does the routing: one block per member. -->
+          {#each members as member (member)}
+            <ParamBlock param="matrix" path={member} title={`Matrix · ${slotLabel(member)}`} />
+          {/each}
         {:else}
           <ParamBlock param={item} {path} />
         {/if}

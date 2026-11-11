@@ -1,6 +1,7 @@
 <script lang="ts">
   // Horizontal live level of one channel, with its CLIP / LIM / COMP indicators.
   import { app } from "../lib/app.svelte";
+  import { links } from "../lib/links.svelte";
   import { formatDb, meterGradient, meterPos } from "../lib/scale";
 
   interface Props {
@@ -10,14 +11,12 @@
 
   let { path, compact = false }: Props = $props();
 
-  const isOutput = $derived(path.startsWith("outputs."));
-  const index = $derived(Number(path.split(".")[1]));
-  const inputCount = $derived(app.hello?.profile.input_count ?? 4);
-  const meterIndex = $derived(isOutput ? inputCount + index : index);
-  const level = $derived(app.meters?.levels?.[meterIndex] ?? null);
-  const clip = $derived(app.meters?.clip?.[meterIndex] ?? false);
-  const limit = $derived(isOutput ? (app.meters?.limit?.[index] ?? null) : null);
-  const comp = $derived(isOutput ? (app.meters?.comp?.[index] ?? null) : null);
+  // Merged over the link group when "Merge linked channels" is on.
+  const meter = $derived(links.meter(path));
+  const level = $derived(meter.level);
+  const clip = $derived(meter.clip);
+  const limit = $derived(meter.limit);
+  const comp = $derived(meter.comp);
   const floor = $derived(app.hello?.profile.meter_floor_db ?? -90);
   const top = 20; // full scale, +20 dBu
   const zones = $derived(meterGradient("to right", (db) => meterPos(db, floor, top)));

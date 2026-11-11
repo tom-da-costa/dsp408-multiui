@@ -16,7 +16,6 @@
   let { selection, paths }: Props = $props();
 
   const device = $derived(app.device);
-  const inputCount = $derived(app.hello?.profile.input_count ?? 4);
 </script>
 
 {#if device}
@@ -31,12 +30,7 @@
         {#if i > 0 && side === "outputs" && paths[i - 1]?.startsWith("inputs.")}
           <SideDivider />
         {/if}
-        <Strip
-          {channel}
-          {path}
-          meterIndex={side === "inputs" ? index : inputCount + index}
-          outputIndex={side === "inputs" ? null : index}
-        />
+        <Strip {channel} {path} />
       {/if}
     {:else}
       <p class="muted">No channel selected: pick some above.</p>
