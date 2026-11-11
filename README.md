@@ -72,7 +72,8 @@ On a phone, in landscape:
   (a Wi-Fi bridge or a VPN is fine), late answers are never taken for the next command's, and
   an operation that fails half-way makes the server re-read the DSP rather than guess. A banner says which link is down (*SERVER* or *DSP*); meanwhile the
   values shown are the last known and every control is disabled, so no change is silently lost
-- Access protected by a shared code (default `0000`, set with `--pin`)
+- Access protected by a shared code (default `0000`, set with `--pin`); optional HTTPS with
+  your certificate or a self-signed one, on the same port (plain http is redirected)
 - No database, no internet access needed, no external assets
 - `tracks-dsp-sim`: a separate program that simulates a DSP 408, 206 or 204 on the network, to
   test the app without a device (presets kept across restarts, fault injection, live console)
@@ -119,7 +120,21 @@ always available as the
 [**main** pre-release](https://github.com/tom-da-costa/tracks-dsp-controller/releases/tag/main-latest)
 (fixed file names, rebuilt on every push).
 
-Then open `http://<server-ip>:8080` from any device on the LAN. Run
+Then open `http://<server-ip>:8080` from any device on the LAN.
+
+**HTTPS** (optional, same port; typing the address in `http://` redirects to `https://`):
+
+```bash
+# Your own certificate (PEM files)
+uv run tracks-dsp-controller --dsp-host 192.168.1.50 --tls-cert cert.pem --tls-key key.pem
+# Or a self-signed one, generated offline and kept for the next runs: each browser asks once
+# to accept it. --tls-names adds the address the browsers use (needed in Docker)
+uv run tracks-dsp-controller --dsp-host 192.168.1.50 --tls-self-signed --tls-names 192.168.1.10
+```
+
+With Docker Compose: `DSP408_TLS_SELF_SIGNED=true` and `DSP408_TLS_NAMES=<this host's IP>` in
+`.env` (the certificate is kept in the `tracks-dsp-tls` volume), or mount your certificate and
+set `DSP408_TLS_CERT` / `DSP408_TLS_KEY`. Run
 `tracks-dsp-controller --help` for every option; each one can also be set with a `DSP408_<NAME>`
 environment variable.
 

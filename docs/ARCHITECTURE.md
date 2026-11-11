@@ -285,7 +285,14 @@ The threat model is a trusted private LAN; the goal is to stop casual or acciden
 - The WebSocket `Origin` must match the `Host` header (no cross-site WebSocket hijacking).
 - The server validates, clamps and quantises every value; it never trusts client ranges or name
   lengths (a preset name over 14 characters can crash the DSP firmware).
-- Plain HTTP; put a reverse proxy in front for TLS.
+- HTTP by default. HTTPS with `--tls-cert` / `--tls-key` (your certificate) or
+  `--tls-self-signed` (`server/tls.py`: an EC P-256 certificate for this machine's names and
+  addresses plus `--tls-names`, generated offline with `cryptography`, kept in `--tls-dir` with a
+  private key file, renewed when it expires or a name is missing, so a browser's exception
+  survives restarts). One port serves both (`server/listener.py`): each connection's first byte
+  is peeked; `0x16` (a TLS handshake) goes to uvicorn over TLS, anything else gets a `308`
+  redirect to the same URL in https (the `Host` header is only copied when it is a plain
+  host[:port]). The session cookie is then `Secure`. A reverse proxy in front works too.
 - Device safety: no store to preset F00, no test-tone generator (`0x39`), no device-PIN setter
   (`0x2f`).
 
@@ -301,6 +308,7 @@ tracks-dsp-controller [serve] --dsp-host 192.168.1.50 [options]   # "serve" is t
   --command-timeout 0.5    --experimental        --profile file.toml
   --model auto              (auto: detected from the identity; or 408, 206, 204)
   --demo [--demo-scenario demo|silent|clipping|stress]   (simulates --model; 408 with auto)
+  --tls-cert cert.pem --tls-key key.pem  |  --tls-self-signed [--tls-names IP,name] [--tls-dir DIR]
   --log-level info
 tracks-dsp-controller probe --dsp-host IP {info|meters|dump-config|diff-config|raw HEX}
 tracks-dsp-controller proxy --listen 0.0.0.0:9761 --dsp-host IP --log frames.jsonl

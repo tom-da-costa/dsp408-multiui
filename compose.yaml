@@ -18,3 +18,15 @@ services:
       DSP408_DEMO: ${DSP408_DEMO:-false}
       DSP408_MODEL: ${DSP408_MODEL:-auto}
       DSP408_LOG_LEVEL: ${DSP408_LOG_LEVEL:-info}
+      # HTTPS: a self-signed certificate (kept in the tls volume), or your own (mount it)
+      DSP408_TLS_SELF_SIGNED: ${DSP408_TLS_SELF_SIGNED:-false}
+      DSP408_TLS_CERT: ${DSP408_TLS_CERT:-}
+      DSP408_TLS_KEY: ${DSP408_TLS_KEY:-}
+      DSP408_TLS_NAMES: ${DSP408_TLS_NAMES:-}    # e.g. 192.168.1.10,dsp.local: this host's address
+    volumes:
+      - tracks-dsp-tls:/app/tls
+      # your own certificate: mount it and set DSP408_TLS_CERT / DSP408_TLS_KEY to these paths
+      # - ./certs:/certs:ro
+
+volumes:
+  tracks-dsp-tls:

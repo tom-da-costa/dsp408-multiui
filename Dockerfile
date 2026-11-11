@@ -17,16 +17,19 @@ LABEL org.opencontainers.image.title="tracks-dsp-controller" \
       org.opencontainers.image.description="Multi-client web controller for the t.racks DSP 408" \
       org.opencontainers.image.licenses="AGPL-3.0-or-later"
 RUN useradd --system --uid 10001 --home-dir /app dsp408 \
- && mkdir -p /app/state && chown dsp408:dsp408 /app/state   # tracks-dsp-sim --state-dir
+ && mkdir -p /app/state /app/tls \
+ && chown dsp408:dsp408 /app/state /app/tls   # tracks-dsp-sim --state-dir, self-signed cert
 COPY --from=build --chown=dsp408:dsp408 /app/.venv /app/.venv
 ENV PATH="/app/.venv/bin:$PATH" \
     PYTHONUNBUFFERED=1 \
     DSP408_LISTEN_HOST=0.0.0.0 \
-    DSP408_LISTEN_PORT=8080
+    DSP408_LISTEN_PORT=8080 \
+    DSP408_TLS_DIR=/app/tls
 USER dsp408
 WORKDIR /app
 EXPOSE 8080 9761
-HEALTHCHECK --interval=30s --timeout=3s --start-period=10s \
-  CMD ["python", "-c", "import os, urllib.request; urllib.request.urlopen(f\"http://127.0.0.1:{os.environ.get('DSP408_LISTEN_PORT', '8080')}/api/health\", timeout=2)"]
+# HTTPS first (a self-signed certificate is fine here), then plain HTTP.
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s \
+  CMD ["python", "-c", "import os, ssl, urllib.request as u; p = os.environ.get('DSP408_LISTEN_PORT', '8080'); c = ssl._create_unverified_context()\ntry: u.urlopen(f'https://127.0.0.1:{p}/api/health', timeout=2, context=c)\nexcept Exception: u.urlopen(f'http://127.0.0.1:{p}/api/health', timeout=2)"]
 ENTRYPOINT ["tracks-dsp-controller"]
 CMD ["serve"]

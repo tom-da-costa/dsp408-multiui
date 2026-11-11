@@ -120,6 +120,28 @@ def build_parser() -> argparse.ArgumentParser:
         help="demo mode: no DSP, a simulated one runs inside this process "
         "(to test against a separate fake DSP on the network, use tracks-dsp-sim)",
     )
+    tls = serve.add_argument_group("HTTPS (one port: plain http on it is redirected to https)")
+    tls.add_argument("--tls-cert", default=_env("TLS_CERT"), help="certificate file (PEM)")
+    tls.add_argument("--tls-key", default=_env("TLS_KEY"), help="private key file (PEM)")
+    tls.add_argument(
+        "--tls-self-signed",
+        action="store_true",
+        default=_env_flag("TLS_SELF_SIGNED"),
+        help="generate a self-signed certificate (kept in --tls-dir, renewed when needed); "
+        "browsers ask once to accept it",
+    )
+    tls.add_argument(
+        "--tls-names",
+        default=_env("TLS_NAMES", ""),
+        help="extra names or addresses for the self-signed certificate, comma-separated "
+        "(e.g. this host's address when running in Docker)",
+    )
+    tls.add_argument(
+        "--tls-dir",
+        type=Path,
+        default=_env("TLS_DIR"),
+        help="where the self-signed certificate is kept (default: the user's data directory)",
+    )
     serve.add_argument(
         "--demo-scenario",
         default=_env("DEMO_SCENARIO", "demo"),
@@ -163,8 +185,23 @@ def build_parser() -> argparse.ArgumentParser:
 async def _serve(args: argparse.Namespace, profile: ProtocolProfile) -> int:
     import uvicorn
 
+    from tracks_dsp_controller.server import tls
     from tracks_dsp_controller.server.app import create_app
+    from tracks_dsp_controller.server.listener import HttpsServer
     from tracks_dsp_controller.server.settings import ServerConfig
+
+    context = None
+    if args.tls_cert or args.tls_key or args.tls_self_signed:
+        if args.tls_self_signed and (args.tls_cert or args.tls_key):
+            raise ValueError("use either --tls-cert/--tls-key or --tls-self-signed")
+        if args.tls_self_signed:
+            names = tls.local_names(args.host) + tls.parse_names(args.tls_names)
+            files = tls.self_signed(args.tls_dir or tls.default_dir(), names)
+        elif args.tls_cert and args.tls_key:
+            files = tls.TlsFiles(Path(args.tls_cert), Path(args.tls_key))
+        else:
+            raise ValueError("--tls-cert and --tls-key go together")
+        context = tls.server_context(files)
 
     config = ServerConfig(
         dsp_host=args.dsp_host,
@@ -180,23 +217,24 @@ async def _serve(args: argparse.Namespace, profile: ProtocolProfile) -> int:
         demo=args.demo,
         demo_scenario=args.demo_scenario,
         model=args.model,
+        tls=context is not None,
     )
     app = create_app(config, profile, profile_for=lambda key: load_profile(args.profile, key))
     target = "demo mode (no DSP)" if config.demo else f"{config.dsp_host}:{config.dsp_port}"
+    scheme = "https" if context else "http"
     print(
-        f"tracks-dsp-controller {__version__}: http://{config.host}:{config.port} -> {target}",
+        f"tracks-dsp-controller {__version__}: {scheme}://{config.host}:{config.port} -> {target}",
         flush=True,
     )
-    server = uvicorn.Server(
-        uvicorn.Config(
-            app,
-            host=config.host,
-            port=config.port,
-            log_level=args.log_level,
-            access_log=False,
-            ws_ping_interval=20,
-        )
+    uv_config = uvicorn.Config(
+        app,
+        host=config.host,
+        port=config.port,
+        log_level=args.log_level,
+        access_log=False,
+        ws_ping_interval=20,
     )
+    server = HttpsServer(uv_config, context) if context else uvicorn.Server(uv_config)
     await server.serve()
     return 0
 
