@@ -7,7 +7,10 @@ import {
   GEQ_FREQS,
   logIndexStep,
   meterDbToPos,
+  meterFill,
   meterGradient,
+  COMP_COLOR,
+  LIMIT_COLOR,
   sampleStep,
   parseNumber,
   snap,
@@ -122,5 +125,13 @@ describe("meter zones", () => {
       "linear-gradient(to top, #2bbf7f 0 70.00%, #ffd23f 70.00% 79.00%, " +
         "#ff8c1a 79.00% 88.00%, #ff4d5e 88.00% 100%)",
     );
+  });
+
+  it("fills with the limiter colour, then the compressor's, else the zones", () => {
+    expect(meterFill("zones", false, false)).toBe("zones");
+    expect(meterFill("zones", null, null)).toBe("zones");
+    expect(meterFill("zones", false, true)).toBe(COMP_COLOR);
+    expect(meterFill("zones", true, false)).toBe(LIMIT_COLOR);
+    expect(meterFill("zones", true, true)).toBe(LIMIT_COLOR);
   });
 });

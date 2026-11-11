@@ -2,7 +2,13 @@
   // Horizontal live level of one channel, with its CLIP / LIM / COMP indicators.
   import { app } from "../lib/app.svelte";
   import { links } from "../lib/links.svelte";
-  import { formatDb, meterGradient, meterPos } from "../lib/scale";
+  import {
+    formatDb,
+    METER_BACKGROUND_OPACITY,
+    meterFill,
+    meterGradient,
+    meterPos,
+  } from "../lib/scale";
 
   interface Props {
     path: string; // "inputs.0" / "outputs.3"
@@ -24,10 +30,11 @@
 </script>
 
 <div class="meter" class:compact aria-label="Level">
+  <div class="zones" style:background={zones} style:opacity={METER_BACKGROUND_OPACITY}></div>
   <div
     class="level"
     class:clip
-    style:background={clip ? undefined : zones}
+    style:background={clip ? undefined : meterFill(zones, limit, comp)}
     style:clip-path={`inset(0 ${((1 - pos) * 100).toFixed(2)}% 0 0)`}
   ></div>
   <span class="db">{level === null ? "—" : `${formatDb(level)} dBu`}</span>
@@ -52,6 +59,10 @@
     height: 22px;
     gap: 4px;
     padding: 0 6px;
+  }
+  .zones {
+    position: absolute;
+    inset: 0;
   }
   .level {
     position: absolute;

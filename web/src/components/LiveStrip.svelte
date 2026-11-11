@@ -3,10 +3,10 @@
   // dynamics thresholds, the gain fader with − / +, and MUTE.
   import { app } from "../lib/app.svelte";
   import { links } from "../lib/links.svelte";
-  import { METER_COLORS } from "../lib/scale";
+  import { COMP_COLOR, LIMIT_COLOR } from "../lib/scale";
   import { nav } from "../lib/nav.svelte";
   import type { InputChannel, OutputChannel } from "../lib/types";
-  import BigMeter, { LIMIT_COLOR } from "./BigMeter.svelte";
+  import BigMeter from "./BigMeter.svelte";
   import Fader from "./Fader.svelte";
 
   interface Props {
@@ -58,7 +58,7 @@
     <div class="leds">
       <span class="led" class:on={clip} style:--c="var(--danger)">CLIP</span>
       {#if output}
-        <span class="led" class:on={comp} style:--c={METER_COLORS.orange}>CMP</span>
+        <span class="led" class:on={comp} style:--c={COMP_COLOR}>CMP</span>
         <span class="led" class:on={limit} style:--c={LIMIT_COLOR}>LIM</span>
       {/if}
     </div>
@@ -67,6 +67,8 @@
       <BigMeter
         {level}
         {clip}
+        {comp}
+        {limit}
         compThreshold={output && output.compressor.ratio > 0 ? output.compressor.threshold_db : null}
         limitThreshold={output ? output.limiter.threshold_db : null}
       />
