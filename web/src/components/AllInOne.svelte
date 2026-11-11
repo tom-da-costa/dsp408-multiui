@@ -7,6 +7,7 @@
   import ChannelPicker from "./ChannelPicker.svelte";
   import ChipBar from "./ChipBar.svelte";
   import LevelBar from "./LevelBar.svelte";
+  import NameEditor from "./NameEditor.svelte";
   import ParamBlock from "./ParamBlock.svelte";
 
   const STORAGE_KEY = "dsp408.aio.params";
@@ -45,6 +46,9 @@
     }),
   );
 
+  /** Channel whose name is being edited in its column header. */
+  let renaming = $state<string | null>(null);
+
   function applies(param: Param, path: string): boolean {
     const scope = PARAM_SCOPE[param];
     return scope === "all" || path.startsWith(scope);
@@ -65,10 +69,23 @@
       <div class="divider"></div>
     {/if}
     <section class="strip" class:muted={channel.mute} style:--ch={app.color(path)}>
-      <button class="head" onclick={() => nav.open(path)} title="Open this channel">
-        <span class="slot">{slotLabel(path)}{channel.linked.length ? " 🔗" : ""}</span>
-        <strong>{channel.name || "—"}</strong>
-      </button>
+      {#if renaming === path}
+        <NameEditor {channel} {path} compact autofocus ondone={() => (renaming = null)} />
+      {:else}
+        <div class="head">
+          <button class="open" onclick={() => nav.open(path)} title="Open this channel">
+            <span class="slot">{slotLabel(path)}{channel.linked.length ? " 🔗" : ""}</span>
+            <strong>{channel.name || "—"}</strong>
+          </button>
+          <button
+            class="edit"
+            disabled={!app.editable("name")}
+            onclick={() => (renaming = path)}
+            title="Rename this channel"
+            aria-label={`Rename ${slotLabel(path)}`}>✎</button
+          >
+        </div>
+      {/if}
       <LevelBar {path} compact />
       {#each shown.filter((p) => applies(p, path)) as param (param)}
         <ParamBlock {param} {path} />
@@ -113,15 +130,27 @@
     background: var(--panel-2);
   }
   .head {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 4px;
+  }
+  .head button {
     border: 2px solid var(--ch);
     color: var(--ch);
+    min-height: 40px;
+    background: none;
+  }
+  .open {
     display: grid;
     justify-items: start;
-    min-height: 40px;
+    min-width: 0;
     padding: 2px 8px;
     line-height: 1.15;
     text-align: left;
-    background: none;
+  }
+  .edit {
+    min-width: 40px;
+    padding: 0 8px;
   }
   .slot {
     font-size: 0.75rem;
