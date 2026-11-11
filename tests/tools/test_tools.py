@@ -12,6 +12,7 @@ from tracks_dsp_controller.device.transport import DspConnection, TransportTimeo
 from tracks_dsp_controller.framelog import FrameLog
 from tracks_dsp_controller.protocol import commands as c
 from tracks_dsp_controller.protocol import config_map as cm
+from tracks_dsp_controller.protocol import preset_file as pf
 from tracks_dsp_controller.protocol import responses as r
 from tracks_dsp_controller.protocol.profile import DEFAULT_PROFILE as P
 from tracks_dsp_controller.simulator import Faults, SimulatedDevice, SimulatorServer, apply_scenario
@@ -165,6 +166,17 @@ async def test_cli_probe_against_simulator(
     assert "Demo 3-way" in text
     assert f"wrote {cm.CONFIG_SIZE} bytes" in text
     assert out.read_bytes() == sim.device.config_blob
+    prs = tmp_path / "live.prs"
+    export = ["probe", "--dsp-port", port, "export-preset", "-o", str(prs)]
+    assert await run_cli_in_thread(export) == 0
+    assert "wrote 'Demo 3-way' (1452 bytes)" in capsys.readouterr().out
+    assert prs.read_bytes() == pf.encode_preset_file(
+        out.read_bytes(), cm.LAYOUT_408, "DSP408 V0104P"
+    )
+    # A preset file compares with a dump: they differ in what the file leaves out only.
+    assert await run_cli_in_thread(["probe", "diff-config", str(prs), str(out)]) == 0
+    lines = capsys.readouterr().out.splitlines()
+    assert all(line.endswith("marker") for line in lines) or lines == ["no difference"]
 
 
 def test_serve_is_the_default_command() -> None:

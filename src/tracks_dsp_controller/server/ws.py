@@ -8,6 +8,8 @@ overflow closes that client, which reconnects and gets a fresh snapshot.
 from __future__ import annotations
 
 import asyncio
+import base64
+import binascii
 import contextlib
 import json
 import logging
@@ -41,7 +43,17 @@ QUEUE_SIZE = 256
 SHUTDOWN_FLUSH_S = 0.3  # lets the clients get the "shutdown" message before the server stops
 # Accepted while the session's screen is locked.
 SCREEN_LOCK_TYPES = {"screen.lock", "screen.unlock"}
-ACTIVITY_TYPES = {"set", "preset.recall", "preset.store", "lock.acquire", "activity", "resync"}
+ACTIVITY_TYPES = {
+    "set",
+    "preset.recall",
+    "preset.store",
+    "preset.import",
+    "preset.export",
+    "lock.acquire",
+    "activity",
+    "resync",
+}
+PRESET_FILE_MAX_BYTES = 16 * 1024  # a DSP 408 preset file is 1452 bytes
 
 
 class RequestError(Exception):
@@ -322,7 +334,7 @@ class Hub:
         if kind == "activity":
             return
         try:
-            await self._handle(client, str(kind), message)
+            extra = await self._handle(client, str(kind), message)
         except RequestError as exc:
             self._send(client, _result(req, exc.code, exc.message))
             return
@@ -338,7 +350,7 @@ class Hub:
         except CommandTimeoutError as exc:
             self._send(client, _result(req, "device_timeout", str(exc)))
             return
-        self._send(client, _result(req))
+        self._send(client, {**_result(req), **(extra or {})})
 
     def _require_lock(self, client: Client) -> None:
         """Control (the `lock.*` messages): only its holder may write while someone has it."""
@@ -352,7 +364,10 @@ class Hub:
         for client in [cl for cl in self.clients if cl.session is session]:
             self._send(client, {"type": "screen_lock", "locked": locked})
 
-    async def _handle(self, client: Client, kind: str, message: dict[str, Any]) -> None:
+    async def _handle(
+        self, client: Client, kind: str, message: dict[str, Any]
+    ) -> dict[str, Any] | None:
+        """Handle a request; the fields returned are added to its (successful) result."""
         match kind:
             case "set":
                 self._require_lock(client)
@@ -375,6 +390,24 @@ class Hub:
                 if not isinstance(name, str):
                     raise RequestError("invalid", "name must be a string")
                 await self.session.store_preset(_int(message, "slot"), name, client.id)
+            case "preset.import":
+                self._require_lock(client)
+                data = _preset_file(message.get("data"))
+                slot = message.get("slot")
+                if slot is not None:
+                    slot = _int(message, "slot")
+                name = message.get("name")
+                if name is not None and not isinstance(name, str):
+                    raise RequestError("invalid", "name must be a string")
+                loaded = await self.session.import_preset(data, client.id, slot=slot, name=name)
+                return {"name": loaded.name, "notes": list(loaded.notes)}
+            case "preset.export":
+                exported = await self.session.export_preset()
+                return {
+                    "filename": exported.filename,
+                    "data": base64.b64encode(exported.data).decode("ascii"),
+                    "notes": list(exported.notes),
+                }
             case "link.set":
                 self._require_lock(client)
                 if not is_verified("link") and not self.config.allow_unverified:
@@ -431,6 +464,7 @@ class Hub:
                 await self.session.resync()
             case _:
                 raise RequestError("invalid", f"unknown message type {kind!r}")
+        return None
 
     async def shutdown(self, client: Client) -> None:
         """Disconnect from the DSP cleanly, then stop the server (every client is told)."""
@@ -474,6 +508,16 @@ def _int(message: dict[str, Any], key: str) -> int:
     if isinstance(value, bool) or not isinstance(value, int):
         raise RequestError("invalid", f"{key} must be an integer")
     return value
+
+
+def _preset_file(data: object) -> bytes:
+    """The bytes of a preset file sent in base64."""
+    if not isinstance(data, str) or len(data) > PRESET_FILE_MAX_BYTES * 4 // 3 + 4:
+        raise RequestError("invalid", "data must be a preset file in base64")
+    try:
+        return base64.b64decode(data, validate=True)
+    except binascii.Error as exc:
+        raise RequestError("invalid", "data is not valid base64") from exc
 
 
 def _result(req: Any, error: str | None = None, message: str | None = None) -> dict[str, Any]:

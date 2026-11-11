@@ -56,6 +56,8 @@ On a phone, in landscape:
 - Limiter calculator: compressor and limiter thresholds from the amplifier gain and the speaker
   power, impedance and load
 - DSP presets U01–U20: recall, store, rename, with an "unsaved changes" indicator
+- Preset files (`.prs`) of the official t.racks editor: export the live setup, import a file
+  into it (and store it in a slot). The outputs are muted while a file loads
 - Live meters per channel (level, peak, clip, limiter and compressor indicators), 5 Hz by default,
   adjustable from 1 to 10 Hz
 - Multi-client: last writer wins by default. A client can **take control**: the others become
@@ -187,7 +189,8 @@ docker compose -f compose.sim.yaml up -d
   ([docs/PROTOCOL.md §10](docs/PROTOCOL.md)). The app detects the model it is connected to.
 - `--state-dir DIR` keeps stored presets and the active preset across restarts (one `Uxx.bin`
   per preset, the same format as `tracks-dsp-controller probe dump-config`).
-- `--preset 8=u08.bin` loads a config dumped from a real DSP (of the same model) into U08.
+- `--preset 8=u08.bin` loads a config dumped from a real DSP (`probe dump-config`), or a preset
+  file of the official editor (`.prs`), of the same model, into U08.
 - `--scenario demo|silent|clipping|stress` sets the initial presets and input signals.
 - `--fast` answers preset recall and store at once (the real DSP takes about 3 s and 7 s).
 - `--device-id N`: the simulated DSP's front-panel ID; it only answers frames sent to it.

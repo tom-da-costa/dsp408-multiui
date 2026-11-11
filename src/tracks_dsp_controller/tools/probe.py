@@ -15,9 +15,10 @@ from tracks_dsp_controller.device.reader import (
 from tracks_dsp_controller.device.transport import DspConnection
 from tracks_dsp_controller.protocol import commands as cmd
 from tracks_dsp_controller.protocol import config_map as cm
+from tracks_dsp_controller.protocol import preset_file as pf
 from tracks_dsp_controller.protocol import responses as rsp
 from tracks_dsp_controller.protocol.meters import decode_meters
-from tracks_dsp_controller.protocol.profile import ProtocolProfile
+from tracks_dsp_controller.protocol.profile import MODELS, ProtocolProfile, load_profile
 
 ProbeError = UnexpectedResponseError
 _expect = expect
@@ -69,6 +70,21 @@ def format_meters(data: bytes, profile: ProtocolProfile) -> str:
     return "\n".join(lines)
 
 
+def file_model(data: bytes) -> str:
+    """Model of a config dump (from its size) or of a preset file (from its header)."""
+    if data.startswith(pf.MAGIC):
+        return pf.file_model(data)
+    sizes = {load_profile(model=key).config_size: key for key in MODELS}
+    return sizes.get(len(data), "408")
+
+
+def as_blob(data: bytes, layout: cm.ConfigLayout) -> bytes:
+    """A config blob from a config dump or a preset file (.prs)."""
+    if data.startswith(pf.MAGIC):
+        return pf.decode_preset_file(data, pf.file_model(data), layout)
+    return data
+
+
 def format_diff(before: bytes, after: bytes, layout: cm.ConfigLayout = cm.LAYOUT_408) -> str:
     changes = cm.diff_blobs(before, after, layout)
     if not changes:
@@ -94,6 +110,8 @@ async def watch_meters(conn: DspConnection, interval: float, count: int | None) 
 __all__ = [
     "DeviceSummary",
     "ProbeError",
+    "as_blob",
+    "file_model",
     "format_diff",
     "format_info",
     "format_meters",

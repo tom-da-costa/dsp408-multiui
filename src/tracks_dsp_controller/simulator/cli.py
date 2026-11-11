@@ -81,7 +81,8 @@ def build_parser() -> argparse.ArgumentParser:
         action="append",
         default=[],
         metavar="SLOT=FILE",
-        help="load a config dump (probe dump-config, same model) into user preset SLOT (1-20); "
+        help="load a config dump (probe dump-config) or a preset file (.prs) of the same model "
+        "into user preset SLOT (1-20); "
         "repeatable",
     )
     p.add_argument("--active", type=int, help="active preset at start-up (0 = F00)")

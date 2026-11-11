@@ -176,7 +176,13 @@ def build_parser() -> argparse.ArgumentParser:
     meters.add_argument("--count", type=int, help="stop after N frames (with --watch)")
     dump = actions.add_parser("dump-config", help="read the live config blob to a file")
     dump.add_argument("-o", "--output", type=Path, required=True)
-    diff = actions.add_parser("diff-config", help="compare two config dumps (offline)")
+    export = actions.add_parser(
+        "export-preset", help="read the live setup to a preset file (.prs) for the editor"
+    )
+    export.add_argument("-o", "--output", type=Path, required=True)
+    diff = actions.add_parser(
+        "diff-config", help="compare two config dumps or preset files (.prs) (offline)"
+    )
     diff.add_argument("before", type=Path)
     diff.add_argument("after", type=Path)
     raw = actions.add_parser("raw", help="send a raw payload, e.g. '34 04 18 01'")
@@ -262,14 +268,16 @@ async def _serve(args: argparse.Namespace, profile: ProtocolProfile) -> int:
 
 async def _probe(args: argparse.Namespace, profile: ProtocolProfile) -> int:
     from tracks_dsp_controller.device.transport import DspConnection
+    from tracks_dsp_controller.protocol import preset_file
     from tracks_dsp_controller.tools import probe
 
     if args.action == "diff-config":
         before, after = args.before.read_bytes(), args.after.read_bytes()
-        if args.model == "auto":  # offline: the dump's size tells the model
-            sizes = {load_profile(args.profile, key).config_size: key for key in MODELS}
-            profile = load_profile(args.profile, sizes.get(len(before), "408"))
-        print(probe.format_diff(before, after, cm.layout_for(profile)))
+        if args.model == "auto":  # offline: the file tells the model
+            profile = load_profile(args.profile, probe.file_model(before))
+        layout = cm.layout_for(profile)
+        before, after = probe.as_blob(before, layout), probe.as_blob(after, layout)
+        print(probe.format_diff(before, after, layout))
         return 0
     # --timeout: the adaptive timeout's floor (the ceiling follows if it is lower)
     timeout: dict[str, Any] = {}
@@ -291,9 +299,10 @@ async def _probe(args: argparse.Namespace, profile: ProtocolProfile) -> int:
                 load_profile(args.profile, key).with_overrides(timeout), host_dst=address
             )
             conn.profile = profile
+        summary = None
         if args.action != "info" and not getattr(args, "no_init", False):
             # The 408 serves config pages and meters only after the init sequence.
-            await probe.read_info(conn)
+            summary = await probe.read_info(conn)
         if args.action == "info":
             print(probe.format_info(await probe.read_info(conn)))
         elif args.action == "meters":
@@ -305,6 +314,13 @@ async def _probe(args: argparse.Namespace, profile: ProtocolProfile) -> int:
             blob = await probe.read_config_blob(conn)
             args.output.write_bytes(blob)
             print(f"wrote {len(blob)} bytes to {args.output}")
+        elif args.action == "export-preset":
+            blob = await probe.read_config_blob(conn)
+            identity = summary.identity if summary else profile.model
+            data = preset_file.encode_preset_file(blob, cm.layout_for(profile), identity)
+            args.output.write_bytes(data)
+            name = preset_file.preset_name(blob)
+            print(f"wrote {name!r} ({len(data)} bytes) to {args.output}")
         elif args.action == "raw":
             payload = bytes.fromhex("".join(args.payload))
             print(await probe.send_raw(conn, payload))

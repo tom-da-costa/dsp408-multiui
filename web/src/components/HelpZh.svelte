@@ -156,6 +156,10 @@
     <dd>
       侧边栏中的橙色小点以及本页上的“● unsaved changes”表示有未保存的更改，并提供 <em>Save to Uxx</em> 按钮，可将其存入当前预设。
     </dd>
+    <dt>Export / Import .prs</dt>
+    <dd>
+      t.racks 官方编辑器的预设文件。<em>Export live setup</em> 将当前设置保存为文件。<em>Import .prs…</em> 将文件加载到 DSP（<strong>当前所有设置都会被替换</strong>；加载期间输出被静音），并可同时存入一个预设位置。这些文件不包含矩阵电平和 PEQ 旁通。
+    </dd>
   </dl>
 </section>
 

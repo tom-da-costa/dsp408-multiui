@@ -30,7 +30,9 @@ const REQUEST_TIMEOUT_MS = 10_000;
 // Preset recall (~3 s) and store (~7.5 s) on a DSP 408, plus re-reading the configuration
 // (~50 requests: 23 s in all behind a link with 300 ms of latency, measured).
 const SLOW_REQUEST_TIMEOUT_MS = 60_000;
-const SLOW_REQUESTS = new Set(["preset.recall", "preset.store", "resync", "link.set"]);
+const SLOW_REQUESTS = new Set(["preset.recall", "preset.store", "preset.export", "resync", "link.set"]);
+// Loading a preset file: up to a few hundred writes, then maybe a store (~7.5 s).
+const IMPORT_TIMEOUT_MS = 180_000;
 const ACTIVITY_INTERVAL_MS = 10_000;
 // Link to the server: a ping every few seconds; with nothing received for a while (not even the
 // pong), the link is presumed dead (half-open: Wi-Fi lost, phone asleep) and is dropped at once
@@ -382,7 +384,12 @@ class App {
       });
     }
     return new Promise((resolve) => {
-      const timeout = SLOW_REQUESTS.has(message.type) ? SLOW_REQUEST_TIMEOUT_MS : REQUEST_TIMEOUT_MS;
+      const timeout =
+        message.type === "preset.import"
+          ? IMPORT_TIMEOUT_MS
+          : SLOW_REQUESTS.has(message.type)
+            ? SLOW_REQUEST_TIMEOUT_MS
+            : REQUEST_TIMEOUT_MS;
       const timer = setTimeout(() => {
         this.pending.delete(req);
         resolve({ type: "result", req, ok: false, error: "timeout", message: "no answer" });
@@ -394,6 +401,11 @@ class App {
 
   /** Send a request; show a toast if it fails. Returns true on success. */
   async run(message: { type: string; [key: string]: unknown }): Promise<boolean> {
+    return (await this.call(message)).ok;
+  }
+
+  /** Like ``run``, but returns the whole result. */
+  async call(message: { type: string; [key: string]: unknown }): Promise<ResultMessage> {
     this.activity(true);
     const result = await this.request(message);
     if (!result.ok) {
@@ -404,7 +416,7 @@ class App {
         "error",
       );
     }
-    return result.ok;
+    return result;
   }
 
   set(path: string, value: unknown): Promise<boolean> {

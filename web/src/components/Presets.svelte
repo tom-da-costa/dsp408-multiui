@@ -1,20 +1,41 @@
 <script lang="ts">
   import { app } from "../lib/app.svelte";
+  import {
+    asciiName,
+    download,
+    fromBase64,
+    readPresetFile,
+    toBase64,
+    type PresetFileInfo,
+  } from "../lib/presetfile";
 
   const device = $derived(app.device);
   let storing = $state<number | null>(null);
   let name = $state("");
   let busy = $state(false);
+  // Import of a preset file: the file picked, then where it goes (0 = live setup only).
+  let picker = $state<HTMLInputElement>();
+  let importing = $state<{
+    file: string;
+    bytes: Uint8Array;
+    info: PresetFileInfo;
+    unsaved: boolean; // the live setup had unsaved changes when the file was picked
+  } | null>(null);
+  let importSlot = $state(0);
+  let importName = $state("");
 
-  const nameError = $derived(
-    name.length === 0
+  function checkName(value: string): string {
+    return value.length === 0
       ? "a name is required"
-      : name.length > 14
+      : value.length > 14
         ? "14 characters at most"
-        : /^[\x20-\x7e]*$/.test(name)
+        : /^[\x20-\x7e]*$/.test(value)
           ? ""
-          : "plain ASCII characters only",
-  );
+          : "plain ASCII characters only";
+  }
+  const nameError = $derived(checkName(name));
+  const importNameError = $derived(importSlot > 0 ? checkName(importName) : "");
+  const exportable = $derived(app.connected && app.status?.status === "online" && !app.screenLocked);
 
   function label(slot: number): string {
     return slot === 0 ? "F00" : `U${String(slot).padStart(2, "0")}`;
@@ -37,6 +58,54 @@
   function startStore(slot: number, current: string) {
     storing = slot;
     name = current === "Default Preset" ? (device?.preset_name ?? "") : current;
+  }
+
+  async function exportPreset() {
+    busy = true;
+    const result = await app.call({ type: "preset.export" });
+    busy = false;
+    if (!result.ok || !result.data || !result.filename) return;
+    download(fromBase64(result.data), result.filename);
+    app.toast(`Exported ${result.filename}`);
+    for (const note of result.notes ?? []) app.toast(note);
+  }
+
+  async function pickFile(event: Event) {
+    const input = event.currentTarget as HTMLInputElement;
+    const file = input.files?.[0];
+    input.value = ""; // the same file can be picked again
+    if (!file) return;
+    const bytes = new Uint8Array(await file.arrayBuffer());
+    const info = readPresetFile(bytes);
+    if (typeof info === "string") {
+      app.toast(`${file.name}: ${info}`, "error");
+      return;
+    }
+    const model = device?.info.model.replace(/^DSP/, "");
+    if (model && info.model !== model) {
+      app.toast(`${file.name} is a DSP ${info.model} preset, this is a DSP ${model}`, "error");
+      return;
+    }
+    importing = { file: file.name, bytes, info, unsaved: device?.modified === true };
+    importSlot = 0;
+    importName = asciiName(info.name) || "Imported";
+  }
+
+  async function importPreset(event: SubmitEvent) {
+    event.preventDefault();
+    if (importing === null || importNameError) return;
+    const where = importSlot > 0 ? ` and stored to ${label(importSlot)}` : "";
+    busy = true;
+    const result = await app.call({
+      type: "preset.import",
+      data: toBase64(importing.bytes),
+      ...(importSlot > 0 ? { slot: importSlot, name: importName } : {}),
+    });
+    busy = false;
+    if (!result.ok) return;
+    app.toast(`"${importing.info.name}" loaded${where}`);
+    for (const note of result.notes ?? []) app.toast(note, "error");
+    importing = null;
   }
 
   async function store(event: SubmitEvent) {
@@ -90,6 +159,15 @@
         </li>
       {/each}
     </ul>
+    <div class="files">
+      <button disabled={!exportable || busy} onclick={exportPreset}>Export live setup (.prs)</button>
+      <button disabled={app.readOnly || busy} onclick={() => picker?.click()}>Import .prs…</button>
+      <input bind:this={picker} type="file" accept=".prs" hidden onchange={pickFile} />
+    </div>
+    <p class="muted hint">
+      Preset files of the official t.racks editor. Export saves the live setup; import loads a
+      file into it.
+    </p>
   </div>
 
   {#if storing !== null}
@@ -110,7 +188,60 @@
   {/if}
 {/if}
 
+{#if importing !== null}
+  <div class="backdrop" role="presentation" onclick={() => (busy ? null : (importing = null))}></div>
+  <form class="card dialog" onsubmit={importPreset}>
+    <h2>Import "{importing.info.name}"</h2>
+    <p class="muted">
+      From {importing.file}. Every current setting is replaced; the outputs are muted while it
+      loads (a few seconds).
+      {#if importing.unsaved}<strong class="unsaved"
+          >The current setup has UNSAVED CHANGES: they will be lost.</strong
+        >{/if}
+    </p>
+    <label>
+      Then
+      <select bind:value={importSlot}>
+        <option value={0}>keep it as the live setup only</option>
+        {#each device?.presets ?? [] as preset (preset.slot)}
+          <option value={preset.slot}>store it to {label(preset.slot)} ({preset.name})</option>
+        {/each}
+      </select>
+    </label>
+    {#if importSlot > 0}
+      <p class="muted">This overwrites the preset stored in {label(importSlot)}.</p>
+      <label>
+        Name
+        <input type="text" maxlength="14" bind:value={importName} />
+      </label>
+      {#if importNameError}<p class="error">{importNameError}</p>{/if}
+    {/if}
+    <div class="actions">
+      <button type="button" disabled={busy} onclick={() => (importing = null)}>Cancel</button>
+      <button class="primary" type="submit" disabled={!!importNameError || busy || app.readOnly}
+        >{busy ? "Loading…" : "Load"}</button
+      >
+    </div>
+  </form>
+{/if}
+
 <style>
+  .files {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 12px;
+  }
+  .files button {
+    padding: 0 12px;
+  }
+  .hint {
+    margin: 8px 0 0;
+    font-size: 0.85em;
+  }
+  .dialog select {
+    width: 100%;
+  }
   /* Rows are separated, so it is clear which preset a Recall / Store button belongs to. */
   ul {
     list-style: none;

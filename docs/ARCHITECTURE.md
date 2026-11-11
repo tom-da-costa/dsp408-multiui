@@ -257,11 +257,13 @@ WebSocket `/ws` (cookie auth plus an `Origin` check). JSON messages `{type, ...}
 | S→C | `screen_lock` | `locked` (to every tab of the session) |
 | S→C | `settings` | `meter_rate_hz`, `lock_idle_timeout_s` (sent on change) |
 | S→C | `clients` | list of `{id, name}` |
-| S→C | `result` | `req`, `ok`, `error?` (`locked`: another client has control, `screen_locked`, `master_taken`, `not_master`, `wrong_code`, `rate_limited`, `invalid`, `experimental`, `device_offline`, `device_timeout`), `message?` |
+| S→C | `result` | `req`, `ok`, extra fields of some requests (`preset.import`: `name`, `notes`; `preset.export`: `filename`, `data`, `notes`), `error?` (`locked`: another client has control, `screen_locked`, `master_taken`, `not_master`, `wrong_code`, `rate_limited`, `invalid`, `experimental`, `device_offline`, `device_timeout`), `message?` |
 | S→C | `pong` | `req` |
 | C→S | `set` | `req`, `path`, `value` |
 | C→S | `preset.recall` | `req`, `slot` |
 | C→S | `preset.store` | `req`, `slot` (1–20), `name` |
+| C→S | `preset.import` | `req`, `data` (a `.prs` file of the official editor, base64, 16 KB max), `slot?` and `name?` to store it too. The whole file is checked before anything is sent; then one exclusive sequence (PROTOCOL.md §7.1): outputs muted, links undone, the parameters that differ written, links set again, outputs unmuted, config re-read and compared. `notes` lists what did not load exactly |
+| C→S | `preset.export` | `req`; the config is re-read and returned as a `.prs` file (`filename`, `data` in base64). Allowed without control (read-only) |
 | C→S | `lock.acquire` / `lock.release` | `req`; take or release control |
 | C→S | `master.acquire` / `master.release` | `req`; take or give up the master role (giving it up allows new logins again) |
 | C→S | `client.kick` | `req`, `client_id`; master only: end that client's session |
@@ -313,11 +315,11 @@ tracks-dsp-controller [serve] --dsp-host 192.168.1.50 [options]   # "serve" is t
   --demo [--demo-scenario demo|silent|clipping|stress]   (simulates --model; 408 with auto)
   --tls-cert cert.pem --tls-key key.pem  |  --tls-self-signed [--tls-names IP,name] [--tls-dir DIR]
   --log-level info
-tracks-dsp-controller probe --dsp-host IP {info|meters|dump-config|diff-config|raw HEX}
+tracks-dsp-controller probe --dsp-host IP {info|meters|dump-config|export-preset|diff-config|raw HEX}
 tracks-dsp-controller proxy --listen 0.0.0.0:9761 --dsp-host IP --log frames.jsonl
 
 tracks-dsp-sim [--model 408|206|204] [--host 0.0.0.0] [--port 9761] [--scenario demo]
-               [--state-dir DIR] [--preset SLOT=FILE] [--fast] [--latency-ms N] …
+               [--state-dir DIR] [--preset SLOT=FILE(.bin|.prs)] [--fast] [--latency-ms N] …
 ```
 
 ## 10. Design choices

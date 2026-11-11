@@ -229,6 +229,14 @@
       Signalées par un point orange dans la barre latérale et « ● unsaved changes » sur cette
       page, avec un bouton <em>Save to Uxx</em> pour les enregistrer dans le preset en cours.
     </dd>
+    <dt>Export / Import .prs</dt>
+    <dd>
+      Fichiers de preset de l'éditeur officiel t.racks. <em>Export live setup</em> enregistre la
+      configuration actuelle dans un fichier. <em>Import .prs…</em> charge un fichier dans le DSP
+      (<strong>tous les réglages actuels sont remplacés</strong> ; les sorties sont coupées pendant
+      le chargement) et peut l'enregistrer dans un emplacement en même temps. Les niveaux de matrice
+      et le bypass du PEQ ne sont pas transportés par ces fichiers.
+    </dd>
   </dl>
 </section>
 

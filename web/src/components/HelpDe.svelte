@@ -229,6 +229,14 @@
       dieser Seite, mit einer Taste <em>Save to Uxx</em>, um sie ins aktuelle Preset zu
       speichern.
     </dd>
+    <dt>Export / Import .prs</dt>
+    <dd>
+      Preset-Dateien des offiziellen t.racks-Editors. <em>Export live setup</em> speichert das
+      aktuelle Setup in eine Datei. <em>Import .prs…</em> lädt eine Datei in den DSP (<strong>alle
+      aktuellen Einstellungen werden ersetzt</strong>; die Ausgänge sind während des Ladens stumm)
+      und kann sie gleichzeitig in einen Preset-Platz speichern. Matrix-Pegel und der PEQ-Bypass
+      sind in diesen Dateien nicht enthalten.
+    </dd>
   </dl>
 </section>
 

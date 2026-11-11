@@ -205,6 +205,13 @@
       Shown by an orange dot in the side bar and "● unsaved changes" on this page, with a
       <em>Save to Uxx</em> button to store them into the current preset.
     </dd>
+    <dt>Export / Import .prs</dt>
+    <dd>
+      Preset files of the official t.racks editor. <em>Export live setup</em> saves the current
+      setup to a file. <em>Import .prs…</em> loads a file into the DSP (<strong>every current
+      setting is replaced</strong>; the outputs are muted while it loads) and can store it in a slot
+      at the same time. Matrix levels and the PEQ bypass are not carried by these files.
+    </dd>
   </dl>
 </section>
 
