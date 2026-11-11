@@ -115,6 +115,12 @@ with exponential backoff (1 s → 30 s) and re-reads the full state after reconn
 - The client reconnects its WebSocket automatically and gets a fresh snapshot. If the session is
   gone (server restart), it shows the login screen.
 - A fader only moves on a drag that starts on its knob, so scrolling never moves a fader.
+- **PEQ on the response graph** (`ResponseGraph.svelte`): every band that is on has a marker
+  (even at 0 dB). A drag that starts on a marker sets the band's frequency (x, snapped to the
+  device's log steps) and, for peak and shelf bands, its gain (y, 0.1 dB steps); the dB scale is
+  frozen during the drag. The mouse wheel over a marker steps its Q (not passive there, so the
+  page does not scroll; elsewhere the wheel scrolls). Same optimistic scheme as the faders: a
+  local preview, writes throttled to 10 Hz, back to the server's values once it has them.
 - **Channel colours** (`web/src/lib/colors.ts`): fixed by position (inputs and outputs have
   their own palettes), shown on strips, chips, headers, the response graph's overlays and the
   link groups. Linked channels take the colour of the lowest-numbered channel of their group.

@@ -136,6 +136,13 @@ export function logIndexStep(
   return min * (max / min) ** (next / steps);
 }
 
+/** Nearest value a raw index 0..steps on a log scale from min to max can hold (clamped). */
+export function logSnap(value: number, min: number, max: number, steps: number): number {
+  const clamped = Math.min(max, Math.max(min, value));
+  const index = Math.round((Math.log(clamped / min) / Math.log(max / min)) * steps);
+  return min * (max / min) ** (index / steps);
+}
+
 /** A delay stored in samples: one sample more or less. */
 export function sampleStep(ms: number, sampleRateHz: number, dir: Direction): number {
   const samples = Math.max(0, Math.round((ms * sampleRateHz) / 1000) + dir);

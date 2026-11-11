@@ -6,6 +6,7 @@ import {
   gainStep,
   GEQ_FREQS,
   logIndexStep,
+  logSnap,
   meterDbToPos,
   meterFill,
   meterGradient,
@@ -133,5 +134,16 @@ describe("meter zones", () => {
     expect(meterFill("zones", false, true)).toBe(COMP_COLOR);
     expect(meterFill("zones", true, false)).toBe(LIMIT_COLOR);
     expect(meterFill("zones", true, true)).toBe(LIMIT_COLOR);
+  });
+});
+
+describe("logSnap", () => {
+  it("snaps to the nearest index of the log scale, clamped", () => {
+    // 20 Hz .. 20 kHz in 300 steps: 1 kHz is index 170.0..., held exactly by a step
+    const step = (i: number) => 20 * 1000 ** (i / 300);
+    expect(logSnap(1000, 20, 20000, 300)).toBeCloseTo(step(Math.round(300 * Math.log(50) / Math.log(1000))), 9);
+    expect(logSnap(step(42) * 1.001, 20, 20000, 300)).toBeCloseTo(step(42), 9);
+    expect(logSnap(5, 20, 20000, 300)).toBe(20);
+    expect(logSnap(50000, 20, 20000, 300)).toBeCloseTo(20000, 9);
   });
 });

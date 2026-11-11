@@ -1,5 +1,6 @@
 <script lang="ts">
   import { app } from "../lib/app.svelte";
+  import { usesGain as typeUsesGain } from "../lib/response";
   import { formatDb, formatHz, formatQ, logIndexStep } from "../lib/scale";
   import type { Channel, PeqBand } from "../lib/types";
   import Field from "./Field.svelte";
@@ -23,7 +24,7 @@
 
   // Gain only matters for peak and shelf filters.
   function usesGain(type: number): boolean {
-    return /peak|shelf/i.test(types[type] ?? "Peak");
+    return typeUsesGain(types[type] ?? "Peak");
   }
 
   function setBand(n: number, change: Partial<PeqBand>) {

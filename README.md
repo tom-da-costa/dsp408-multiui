@@ -51,7 +51,8 @@ On a phone, in landscape:
 - A colour per channel, the same in every view; linked channels share the colour of the
   lowest-numbered channel of their group
 - Frequency response graph on each channel page (filters, PEQ, GEQ), with other channels' curves
-  as an overlay
+  as an overlay. The PEQ bands are edited on it: drag a band's marker for its frequency
+  (horizontally) and gain (vertically), turn the mouse wheel over it for its Q
 - Limiter calculator: compressor and limiter thresholds from the amplifier gain and the speaker
   power, impedance and load
 - DSP presets U01–U20: recall, store, rename, with an "unsaved changes" indicator
