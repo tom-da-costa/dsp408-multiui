@@ -2,8 +2,9 @@
   // One channel of the Live view: big CLIP / CMP / LIM indicators, a graduated meter with the
   // dynamics thresholds, the gain fader with − / +, and MUTE.
   import { app } from "../lib/app.svelte";
+  import { links } from "../lib/links.svelte";
   import { METER_COLORS } from "../lib/scale";
-  import { nav, slotLabel } from "../lib/nav.svelte";
+  import { nav } from "../lib/nav.svelte";
   import type { InputChannel, OutputChannel } from "../lib/types";
   import BigMeter, { LIMIT_COLOR } from "./BigMeter.svelte";
   import Fader from "./Fader.svelte";
@@ -25,11 +26,12 @@
     isOutput ? (app.device?.outputs[index] as OutputChannel | undefined) : undefined,
   );
   const channel = $derived(input ?? output);
-  const meterIndex = $derived(isOutput ? (app.hello?.profile.input_count ?? 4) + index : index);
-  const level = $derived(app.meters?.levels?.[meterIndex] ?? null);
-  const clipNow = $derived(app.meters?.clip?.[meterIndex] ?? false);
-  const comp = $derived(isOutput ? (app.meters?.comp?.[index] ?? false) : false);
-  const limit = $derived(isOutput ? (app.meters?.limit?.[index] ?? false) : false);
+  // Merged over the link group when "Merge linked channels" is on.
+  const meter = $derived(links.meter(path));
+  const level = $derived(meter.level);
+  const clipNow = $derived(meter.clip);
+  const comp = $derived(meter.comp ?? false);
+  const limit = $derived(meter.limit ?? false);
 
   // CLIP stays lit for 2 s so that a short overload is seen.
   let clipUntil = $state(0);
@@ -49,8 +51,8 @@
 {#if channel}
   <section class="strip" class:muted={channel.mute} style:--ch={app.color(path)}>
     <button class="name" onclick={() => nav.open(path)} title="Open this channel">
-      <span class="slot">{slotLabel(path)}{channel.linked.length ? " 🔗" : ""}</span>
-      <strong>{channel.name || "—"}</strong>
+      <span class="slot">{links.slot(path)}{links.mark(path)}</span>
+      <strong>{links.name(path)}</strong>
     </button>
 
     <div class="leds">
@@ -70,7 +72,7 @@
       />
       <Fader
         value={channel.gain_db}
-        label={channel.name}
+        label={links.name(path)}
         disabled={!app.editable("gain_db")}
         onchange={(db) => app.set(`${path}.gain_db`, db)}
       />

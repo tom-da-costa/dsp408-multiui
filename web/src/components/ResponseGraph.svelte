@@ -2,7 +2,7 @@
   // Frequency response of one channel (filters + PEQ + GEQ), computed from its settings, with
   // the total curves of other channels picked in the "Compare with" row.
   import { app } from "../lib/app.svelte";
-  import { slotLabel } from "../lib/nav.svelte";
+  import { links } from "../lib/links.svelte";
   import { overlays } from "../lib/overlays.svelte";
   import { channelResponse, F_MAX, F_MIN } from "../lib/response";
   import type { Channel, InputChannel, OutputChannel } from "../lib/types";
@@ -26,18 +26,21 @@
     channel && profile ? channelResponse(channel, profile.peq_types, profile.slopes) : null,
   );
 
-  // Other channels to overlay (their total curve only).
-  const allChannels = $derived<[string, Channel][]>([
-    ...(app.device?.inputs ?? []).map((c, i) => [`inputs.${i}`, c] as [string, Channel]),
-    ...(app.device?.outputs ?? []).map((c, i) => [`outputs.${i}`, c] as [string, Channel]),
-  ]);
+  // Other channels to overlay (their total curve only); one per link group when merging (the
+  // members share their filters and EQ).
+  const allChannels = $derived<[string, Channel][]>(
+    [
+      ...(app.device?.inputs ?? []).map((c, i) => [`inputs.${i}`, c] as [string, Channel]),
+      ...(app.device?.outputs ?? []).map((c, i) => [`outputs.${i}`, c] as [string, Channel]),
+    ].filter(([p]) => links.isShown(p)),
+  );
   const others = $derived(
     profile
       ? allChannels
           .filter(([p]) => p !== path && overlays.paths.includes(p))
           .map(([p, c]) => ({
             path: p,
-            name: `${slotLabel(p)} ${c.name}`.trim(),
+            name: `${links.slot(p)} ${links.name(p)}`.trim(),
             color: app.color(p),
             total: channelResponse(c, profile.peq_types, profile.slopes).total,
           }))
@@ -105,7 +108,7 @@
     <ChipBar
       items={allChannels
         .filter(([p]) => p !== path)
-        .map(([p]) => ({ key: p, label: slotLabel(p), color: app.color(p) }))}
+        .map(([p]) => ({ key: p, label: links.slot(p), color: app.color(p) }))}
       selected={overlays.paths.filter((p) => p !== path)}
       onselect={(p) => overlays.toggle(p)}
       label="Channels to overlay"

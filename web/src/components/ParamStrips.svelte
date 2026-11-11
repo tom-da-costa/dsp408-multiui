@@ -2,8 +2,9 @@
   // A setting of the Params tab (delay, filters, dynamics) as one strip per channel, like the
   // mixer: the fields stand up as vertical sliders (lib/layout.ts).
   import { app } from "../lib/app.svelte";
+  import { links } from "../lib/links.svelte";
   import { setStripLayout } from "../lib/layout";
-  import { nav, slotLabel, type Param } from "../lib/nav.svelte";
+  import { nav, type Param } from "../lib/nav.svelte";
   import type { ChannelSelection } from "../lib/selection.svelte";
   import ChannelPicker from "./ChannelPicker.svelte";
   import ParamBlock from "./ParamBlock.svelte";
@@ -41,8 +42,8 @@
       {/if}
       <section class="strip" class:muted={channel.mute} style:--ch={app.color(path)}>
         <button class="name" onclick={() => nav.open(path)} title="Open this channel">
-          <span class="slot">{slotLabel(path)}{channel.linked.length ? " 🔗" : ""}</span>
-          <strong>{channel.name || "—"}</strong>
+          <span class="slot">{links.slot(path)}{links.mark(path)}</span>
+          <strong>{links.name(path)}</strong>
         </button>
         <ParamBlock {param} {path} />
       </section>

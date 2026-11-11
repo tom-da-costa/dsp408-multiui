@@ -1,6 +1,7 @@
 <script lang="ts">
   import { app } from "../lib/app.svelte";
-  import { nav, slotLabel } from "../lib/nav.svelte";
+  import { links } from "../lib/links.svelte";
+  import { nav } from "../lib/nav.svelte";
   import type { Channel } from "../lib/types";
   import Fader from "./Fader.svelte";
   import Meter from "./Meter.svelte";
@@ -8,43 +9,38 @@
   interface Props {
     channel: Channel;
     path: string; // "inputs.0" / "outputs.3"
-    meterIndex: number;
-    outputIndex: number | null; // index among outputs, for LIM/COMP flags
   }
 
-  let { channel, path, meterIndex, outputIndex }: Props = $props();
+  let { channel, path }: Props = $props();
 
-  const meters = $derived(app.meters);
-  const level = $derived(meters?.levels ? (meters.levels[meterIndex] ?? null) : null);
-  const clip = $derived(meters?.clip?.[meterIndex] ?? false);
-  const limit = $derived(
-    outputIndex === null ? null : meters?.limit ? (meters.limit[outputIndex] ?? false) : null,
-  );
-  const comp = $derived(
-    outputIndex === null ? null : meters?.comp ? (meters.comp[outputIndex] ?? false) : null,
-  );
+  // Merged over the link group when "Merge linked channels" is on.
+  const meter = $derived(links.meter(path));
+  const level = $derived(meter.level);
+  const clip = $derived(meter.clip);
+  const limit = $derived(meter.limit);
+  const comp = $derived(meter.comp);
   const floor = $derived(app.hello?.profile.meter_floor_db ?? -90);
 </script>
 
 <section class="strip" class:muted={channel.mute} style:--ch={app.color(path)}>
   <button
     class="name"
-    title={`${slotLabel(path)} ${channel.name}: open the channel settings`}
+    title={`${links.slot(path)} ${links.name(path)}: open the channel settings`}
     onclick={() => nav.open(path)}
   >
     <span class="slot"
-      >{slotLabel(path)}{#if channel.linked.length}<span
+      >{links.slot(path)}{#if links.mark(path)}<span
           class="link"
           title="Linked: changes also apply to the other channels of the group">🔗</span
         >{/if}</span
     >
-    <span class="label">{channel.name || "—"}</span>
+    <span class="label">{links.name(path)}</span>
   </button>
   <div class="body">
     <Meter {level} {clip} {limit} {comp} {floor} />
     <Fader
       value={channel.gain_db}
-      label={channel.name}
+      label={links.name(path)}
       disabled={app.readOnly}
       onchange={(db) => app.set(`${path}.gain_db`, db)}
     />

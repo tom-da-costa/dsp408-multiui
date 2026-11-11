@@ -3,7 +3,8 @@
   // the row below (as in Live and All-in-one; one choice for every setting, remembered in
   // this browser).
   import { app } from "../lib/app.svelte";
-  import { nav, PARAM_SCOPE, PARAMS, slotLabel } from "../lib/nav.svelte";
+  import { links } from "../lib/links.svelte";
+  import { nav, PARAM_SCOPE, PARAMS } from "../lib/nav.svelte";
   import { ChannelSelection } from "../lib/selection.svelte";
   import ChannelPicker from "./ChannelPicker.svelte";
   import ChipBar from "./ChipBar.svelte";
@@ -17,16 +18,13 @@
   const STRIPS = new Set(["delay", "filters", "comp", "limit", "gate"]);
 
   const selection = new ChannelSelection("dsp408.params.hidden");
-  const device = $derived(app.device);
   const scope = $derived(PARAM_SCOPE[nav.param]);
   /** The setting exists on one side only (compressor on outputs, gate on inputs…). */
   const side = $derived(scope === "all" ? undefined : scope);
   const paths = $derived(selection.shown.filter((p) => !side || p.startsWith(`${side}.`)));
 
   function title(path: string): string {
-    const index = Number(path.split(".")[1]);
-    const channel = path.startsWith("inputs.") ? device?.inputs[index] : device?.outputs[index];
-    return `${slotLabel(path)} · ${channel?.name || "—"}${channel?.linked.length ? " 🔗" : ""}`;
+    return `${links.slot(path)} · ${links.name(path)}${links.mark(path)}`;
   }
 </script>
 

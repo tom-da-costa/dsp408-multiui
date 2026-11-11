@@ -1,16 +1,17 @@
 <script lang="ts">
   // Name editor of one channel. Saves on Enter, on Save and on blur; Escape gives the device's
-  // name back. Without `label`, the field has no "Name" label (it sits in a "Name" section).
+  // name back. `label` is shown before the field ("Name"; a slot such as "Out 5" in a merged
+  // link group); empty, the field has none (it sits in a "Name" section).
   import { app } from "../lib/app.svelte";
   import type { Channel } from "../lib/types";
 
   interface Props {
     channel: Channel;
     path: string;
-    label?: boolean;
+    label?: string;
   }
 
-  let { channel, path, label = true }: Props = $props();
+  let { channel, path, label = "Name" }: Props = $props();
 
   let draft = $state("");
   let focused = $state(false);
@@ -51,7 +52,7 @@
 </script>
 
 <form class="rename" class:bare={!label} onsubmit={submit}>
-  {#if label}<label for={inputId} class="muted">Name</label>{/if}
+  {#if label}<label for={inputId} class="muted">{label}</label>{/if}
   <input
     id={inputId}
     bind:this={field}
