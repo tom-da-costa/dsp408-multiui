@@ -1,41 +1,28 @@
 <script lang="ts">
   // Name editor of one channel. Saves on Enter, on Save and on blur; Escape gives the device's
-  // name back. `compact` drops the label and the hint (the All-in-one column header).
-  import { onMount, tick } from "svelte";
+  // name back. Without `label`, the field has no "Name" label (it sits in a "Name" section).
   import { app } from "../lib/app.svelte";
   import type { Channel } from "../lib/types";
 
   interface Props {
     channel: Channel;
     path: string;
-    compact?: boolean;
-    /** Focus the field when shown. */
-    autofocus?: boolean;
-    /** Called once the edit is over (saved, unchanged or cancelled). */
-    ondone?: () => void;
+    label?: boolean;
   }
 
-  let { channel, path, compact = false, autofocus = false, ondone }: Props = $props();
+  let { channel, path, label = true }: Props = $props();
 
   let draft = $state("");
   let focused = $state(false);
   let field: HTMLInputElement | undefined = $state();
   const maxLength = $derived(app.hello?.limits.channel_name_length ?? 8);
   const valid = $derived(/^[\x20-\x7e]*$/.test(draft) && draft.length <= maxLength);
-  const inputId = $derived(`name-${path}${compact ? "-compact" : ""}`);
+  const inputId = $derived(`name-${path}`);
 
   $effect(() => {
     // Follow the device's name unless the user is typing.
     const name = channel.name;
     if (!focused) draft = name;
-  });
-
-  onMount(async () => {
-    if (!autofocus) return;
-    // Wait for the draft to reach the field, so that typing replaces the whole name.
-    await tick();
-    field?.focus();
-    field?.select();
   });
 
   // Set by Escape so that the blur which follows does not save.
@@ -46,7 +33,6 @@
     const name = draft;
     const changed = !cancelled && valid && name !== channel.name;
     cancelled = false;
-    ondone?.();
     if (changed) await app.set(`${path}.name`, name);
   }
 
@@ -64,8 +50,8 @@
   }
 </script>
 
-<form class="rename" class:compact onsubmit={submit}>
-  {#if !compact}<label for={inputId} class="muted">Name</label>{/if}
+<form class="rename" class:bare={!label} onsubmit={submit}>
+  {#if label}<label for={inputId} class="muted">Name</label>{/if}
   <input
     id={inputId}
     bind:this={field}
@@ -73,7 +59,7 @@
     maxlength={maxLength}
     autocomplete="off"
     enterkeyhint="done"
-    aria-label={compact ? "Channel name" : undefined}
+    aria-label={label ? undefined : "Channel name"}
     bind:value={draft}
     class:invalid={!valid}
     disabled={!app.editable("name")}
@@ -88,7 +74,7 @@
     >Save</button
   >
 </form>
-{#if !compact}<p class="hint muted">{maxLength} characters max, plain ASCII.</p>{/if}
+<p class="hint muted">{maxLength} characters max, plain ASCII.</p>
 
 <style>
   .rename {
@@ -97,9 +83,8 @@
     align-items: center;
     gap: 8px;
   }
-  .rename.compact {
+  .rename.bare {
     grid-template-columns: 1fr auto;
-    gap: 4px;
   }
   .rename input {
     min-height: 40px;

@@ -1,6 +1,7 @@
 <script lang="ts">
-  // "All-in-one" tab: one column per channel with the settings picked in the chip row, for the
-  // channels picked in the row below (as in the Live tab). Both are remembered in this browser.
+  // "All-in-one" tab: one column per channel with the settings picked in the chip row (the
+  // channel name, then the settings of the Params tab), for the channels picked in the row below
+  // (as in the Live tab). Both are remembered in this browser.
   import { app } from "../lib/app.svelte";
   import { nav, PARAM_SCOPE, PARAMS, slotLabel, type Param } from "../lib/nav.svelte";
   import { ChannelSelection } from "../lib/selection.svelte";
@@ -9,26 +10,35 @@
   import LevelBar from "./LevelBar.svelte";
   import NameEditor from "./NameEditor.svelte";
   import ParamBlock from "./ParamBlock.svelte";
+  import Section from "./Section.svelte";
+
+  /** A block of a column: the channel name or a setting of the Params tab. */
+  type Item = "name" | Param;
+  const ITEMS: (readonly [Item, string])[] = [
+    ["name", "Name"],
+    ...PARAMS.filter(([key]) => key !== "link"),
+  ];
+  const ORDER: Item[] = ITEMS.map(([key]) => key);
 
   const STORAGE_KEY = "dsp408.aio.params";
-  const DEFAULT: Param[] = ["gain", "delay", "filters", "comp", "limit", "gate", "matrix"];
+  const DEFAULT: Item[] = ["gain", "delay", "filters", "comp", "limit", "gate", "matrix"];
 
-  function load(): Param[] {
+  function load(): Item[] {
     try {
       const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? "null") as unknown;
-      if (Array.isArray(saved)) return PARAMS.map(([k]) => k).filter((k) => saved.includes(k));
+      if (Array.isArray(saved)) return ORDER.filter((k) => saved.includes(k));
     } catch {
       // storage unavailable or corrupt: use the default
     }
     return DEFAULT;
   }
 
-  let shown = $state<Param[]>(load());
+  let shown = $state<Item[]>(load());
 
   function toggle(key: string) {
-    const param = key as Param;
-    // Keep the PARAMS order whatever the click order.
-    shown = PARAMS.map(([k]) => k).filter((k) => (k === param ? !shown.includes(k) : shown.includes(k)));
+    const item = key as Item;
+    // Keep the ITEMS order whatever the click order.
+    shown = ORDER.filter((k) => (k === item ? !shown.includes(k) : shown.includes(k)));
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(shown));
     } catch {
@@ -46,17 +56,15 @@
     }),
   );
 
-  /** Channel whose name is being edited in its column header. */
-  let renaming = $state<string | null>(null);
-
-  function applies(param: Param, path: string): boolean {
-    const scope = PARAM_SCOPE[param];
+  function applies(item: Item, path: string): boolean {
+    if (item === "name") return true;
+    const scope = PARAM_SCOPE[item];
     return scope === "all" || path.startsWith(scope);
   }
 </script>
 
 <ChipBar
-  items={PARAMS.filter(([key]) => key !== "link").map(([key, label]) => ({ key, label }))}
+  items={ITEMS.map(([key, label]) => ({ key, label }))}
   selected={shown}
   onselect={toggle}
   label="Settings shown"
@@ -69,26 +77,19 @@
       <div class="divider"></div>
     {/if}
     <section class="strip" class:muted={channel.mute} style:--ch={app.color(path)}>
-      {#if renaming === path}
-        <NameEditor {channel} {path} compact autofocus ondone={() => (renaming = null)} />
-      {:else}
-        <div class="head">
-          <button class="open" onclick={() => nav.open(path)} title="Open this channel">
-            <span class="slot">{slotLabel(path)}{channel.linked.length ? " 🔗" : ""}</span>
-            <strong>{channel.name || "—"}</strong>
-          </button>
-          <button
-            class="edit"
-            disabled={!app.editable("name")}
-            onclick={() => (renaming = path)}
-            title="Rename this channel"
-            aria-label={`Rename ${slotLabel(path)}`}>✎</button
-          >
-        </div>
-      {/if}
+      <button class="head" onclick={() => nav.open(path)} title="Open this channel">
+        <span class="slot">{slotLabel(path)}{channel.linked.length ? " 🔗" : ""}</span>
+        <strong>{channel.name || "—"}</strong>
+      </button>
       <LevelBar {path} compact />
-      {#each shown.filter((p) => applies(p, path)) as param (param)}
-        <ParamBlock {param} {path} />
+      {#each shown.filter((item) => applies(item, path)) as item (item)}
+        {#if item === "name"}
+          <Section id={`name@${path}`} title="Name" kind="name">
+            <NameEditor {channel} {path} label={false} />
+          </Section>
+        {:else}
+          <ParamBlock param={item} {path} />
+        {/if}
       {/each}
     </section>
   {:else}
@@ -130,27 +131,15 @@
     background: var(--panel-2);
   }
   .head {
-    display: grid;
-    grid-template-columns: 1fr auto;
-    gap: 4px;
-  }
-  .head button {
     border: 2px solid var(--ch);
     color: var(--ch);
-    min-height: 40px;
-    background: none;
-  }
-  .open {
     display: grid;
     justify-items: start;
-    min-width: 0;
+    min-height: 40px;
     padding: 2px 8px;
     line-height: 1.15;
     text-align: left;
-  }
-  .edit {
-    min-width: 40px;
-    padding: 0 8px;
+    background: none;
   }
   .slot {
     font-size: 0.75rem;
