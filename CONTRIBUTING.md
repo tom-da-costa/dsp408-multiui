@@ -64,8 +64,8 @@ make web       # rebuild the committed UI (UI changes)
 - Frame on the `LEN` byte, never by searching for `10 03` (the payload can contain those bytes).
 - Fully offline: no CDN, web fonts, telemetry or any other external request, at runtime or in the
   built UI.
-- Mobile first: check your UI change at 360 px width. A fader only moves on a drag that starts on
-  its knob.
+- Phone-compatible: check your UI change on a computer and on a phone (360 px width, portrait and
+  landscape). A fader only moves on a drag that starts on its knob.
 
 ## Device safety
 

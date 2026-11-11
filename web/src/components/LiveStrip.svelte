@@ -151,11 +151,11 @@
     box-shadow: 0 0 10px var(--c);
   }
   .body {
+    /* No shrinking below the fader's own height: it would overflow under MUTE and hide −. */
     flex: 1;
     display: flex;
     justify-content: center;
     gap: 6px;
-    min-height: 0;
   }
   .mute {
     min-height: 52px;

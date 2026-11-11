@@ -5,8 +5,8 @@ Guidance for Claude Code working in this repository.
 ## Project
 
 A web app that controls one t.racks DSP 408, 206 or 204 over TCP (port 9761); the model is detected
-from the device's identity (`--model auto`). Several browsers (phones
-first) control it at the same time with live meters. A single Python process owns the DSP
+from the device's identity (`--model auto`). Several browsers (computers,
+tablets, phones) control it at the same time with live meters. A single Python process owns the DSP
 connection and serves the API, the WebSocket and the static UI.
 
 Read these before doing anything substantial:
@@ -43,7 +43,7 @@ credentials). Release notes come from the merged PRs (`gh release create --gener
   recall or store a preset without the owner's explicit approval in the current session**, and
   never touch the preset they flag as live. When writes are approved, work on a copy of a preset
   in a free slot, dump the config first, and restore and compare at the end.
-- Mobile-first UI. A fader only moves on a drag that starts on its knob.
+- The UI must also work on a phone (360 px wide, touch). A fader only moves on a drag that starts on its knob.
 
 ## Architecture rules
 

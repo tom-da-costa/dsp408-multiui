@@ -19,6 +19,7 @@
 </script>
 
 {#if device}
+<div class="view">
   <ChannelPicker {selection} />
   <div class="strips">
     {#each paths as path, i (path)}
@@ -40,17 +41,26 @@
       <p class="muted">No channel selected: pick some above.</p>
     {/each}
   </div>
+</div>
 {/if}
 
 <style>
+  /* The page minus the setting row above (as in ParamStrips). Below the minimum height (the
+     picker and a strip with its fader at its minimum height), the page scrolls. */
+  .view {
+    height: calc(100% - 46px);
+    min-height: 484px;
+    display: flex;
+    flex-direction: column;
+  }
   .strips {
+    flex: 1;
+    min-height: 0;
     display: flex;
     gap: 6px;
     overflow-x: auto;
     overscroll-behavior-x: contain;
     padding-bottom: 6px;
-    height: calc(100% - 46px);
-    min-height: 380px;
   }
   .divider {
     flex: 0 0 2px;
