@@ -22,6 +22,18 @@ every client on the local network and keeps them in sync in real time. It works 
 Try it without a DSP: `uv run tracks-dsp-controller --demo`, then open http://localhost:8080 (code
 `0000`).
 
+## Screenshots
+
+Taken in demo mode (simulated DSP 408).
+
+![Live view on a computer: meters, faders and mute for the 4 inputs and 8 outputs](docs/screenshots/desktop-live.png)
+
+| Live | Params (gain strips) | Channel page |
+| :---: | :---: | :---: |
+| <img src="docs/screenshots/phone-live.png" width="250" alt="Live view on a phone: meters and faders"> | <img src="docs/screenshots/phone-params.png" width="250" alt="Params view: the gain of every channel as vertical strips"> | <img src="docs/screenshots/phone-channel.png" width="250" alt="Channel page of Out 1: frequency response graph and channel settings"> |
+| **All-in-one** | **Presets** | **Limiter calculator** |
+| <img src="docs/screenshots/phone-all-in-one.png" width="250" alt="All-in-one view: one column per channel with gain, delay and filters"> | <img src="docs/screenshots/phone-presets.png" width="250" alt="Presets: recall and store U01 to U20"> | <img src="docs/screenshots/phone-limiter.png" width="250" alt="Limiter calculator: thresholds computed from the amplifier and speaker"> |
+
 ## Features
 
 - Gain, mute, phase, 4 → 8 routing matrix, PEQ (8 bands on inputs, 9 on outputs), high/low-pass
