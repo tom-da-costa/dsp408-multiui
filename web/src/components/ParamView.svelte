@@ -73,8 +73,8 @@
 
 <style>
   .graphs {
+    /* one graph per row, the whole width */
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(min(100%, 460px), 1fr));
     gap: 10px;
   }
   .graph-block > :global(.graph h2) {
