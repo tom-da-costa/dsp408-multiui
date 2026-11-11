@@ -24,7 +24,8 @@
   const clip = $derived(meter.clip);
   const limit = $derived(meter.limit);
   const comp = $derived(meter.comp);
-  const floor = $derived(app.hello?.profile.meter_floor_db ?? -90);
+  // From -60 dBu, as the Live meters (the device's floor is lower: shown as empty).
+  const floor = $derived(Math.max(-60, app.hello?.profile.meter_floor_db ?? -90));
   const top = 20; // full scale, +20 dBu
   const zones = $derived(meterGradient("to right", (db) => meterPos(db, floor, top)));
   const pos = $derived(meterPos(level, floor, top));
