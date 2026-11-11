@@ -11,6 +11,7 @@
   import NameEditor from "./NameEditor.svelte";
   import ParamBlock from "./ParamBlock.svelte";
   import Section from "./Section.svelte";
+  import SideDivider from "./SideDivider.svelte";
 
   /** A block of a column: the channel name or a setting of the Params tab. */
   type Item = "name" | Param;
@@ -74,7 +75,7 @@
 <div class="strips">
   {#each channels as { path, channel }, i (path)}
     {#if i > 0 && path.startsWith("outputs.") && channels[i - 1]?.path.startsWith("inputs.")}
-      <div class="divider"></div>
+      <SideDivider />
     {/if}
     <section class="strip" class:muted={channel.mute} style:--ch={app.color(path)}>
       <button class="head" onclick={() => nav.open(path)} title="Open this channel">
@@ -109,12 +110,6 @@
     overscroll-behavior-x: contain;
     scroll-snap-type: x proximity;
     padding-bottom: 8px;
-  }
-  .divider {
-    flex: 0 0 2px;
-    align-self: stretch;
-    background: var(--line);
-    border-radius: 1px;
   }
   .strip {
     flex: 0 0 min(300px, calc(100vw - 110px));
