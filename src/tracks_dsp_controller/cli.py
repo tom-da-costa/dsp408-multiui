@@ -2,8 +2,7 @@
 
 ``serve`` (the default) runs the web application; ``sim`` runs a simulated DSP on the network
 (``simulator/cli.py``, also installed as ``tracks-dsp-sim``); ``probe`` and ``proxy`` are
-developer tools. Every option can also come from a ``TDSP_<NAME>`` environment variable
-(``DSP408_<NAME>`` before 0.8: still read, with a warning; see ``envvars.py``).
+developer tools. Every option can also come from a ``TDSP_<NAME>`` environment variable.
 """
 
 from __future__ import annotations
@@ -31,7 +30,7 @@ from tracks_dsp_controller.protocol.profile import (
 DSP_PORT = 9761
 
 
-ENV = Env("TDSP_", legacy_prefix="DSP408_")
+ENV = Env("TDSP_")
 _env = ENV.get
 _env_float = ENV.float
 _env_flag = ENV.flag
@@ -382,7 +381,6 @@ def main(argv: Sequence[str] | None = None) -> int:
         level=args.log_level.upper(),
         format="%(asctime)s %(levelname)-7s %(name)s: %(message)s",
     )
-    ENV.warn_legacy(logging.getLogger(__name__))
     if args.command is None:
         parser.print_help()
         return 0

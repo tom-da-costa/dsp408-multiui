@@ -2,8 +2,7 @@
 
 It plays a DSP 408 (default), 206 or 204 (``--model``) and listens on TCP port 9761 like the real
 device. Point ``tracks-dsp-controller --dsp-host``, the probe tools or the official editor at it.
-Every option can also come from a ``TDSP_SIM_<NAME>`` environment variable
-(``TRACKS_DSP_SIM_<NAME>`` before 0.8: still read, with a warning).
+Every option can also come from a ``TDSP_SIM_<NAME>`` environment variable.
 """
 
 from __future__ import annotations
@@ -28,7 +27,7 @@ from tracks_dsp_controller.simulator.scenarios import SCENARIOS, apply_scenario
 from tracks_dsp_controller.simulator.server import DEFAULT_PORT, SecondClient, SimulatorServer
 from tracks_dsp_controller.simulator.storage import PresetStore, read_config
 
-ENV = Env("TDSP_SIM_", legacy_prefix="TRACKS_DSP_SIM_")
+ENV = Env("TDSP_SIM_")
 _env = ENV.get
 _env_float = ENV.float
 _env_flag = ENV.flag
@@ -223,7 +222,6 @@ def main(argv: Sequence[str] | None = None, prog: str = "tracks-dsp-sim") -> int
         level=args.log_level.upper(),
         format="%(asctime)s %(levelname)-7s %(name)s: %(message)s",
     )
-    ENV.warn_legacy(logging.getLogger(__name__))
     try:
         profile = load_profile(args.profile, model=args.model)
     except (OSError, ValueError) as exc:

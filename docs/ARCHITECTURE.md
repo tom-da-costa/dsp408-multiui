@@ -305,9 +305,8 @@ The threat model is a trusted private LAN; the goal is to stop casual or acciden
 
 ## 9. Command line
 
-Every option also reads `TDSP_<NAME>` from the environment (the simulator: `TDSP_SIM_<NAME>`).
-The names of versions before 0.8 (`DSP408_<NAME>`, `TRACKS_DSP_SIM_<NAME>`) are still read, with a
-warning (`envvars.py`), and the compose files fall back to them.
+Every option also reads `TDSP_<NAME>` from the environment (the simulator: `TDSP_SIM_<NAME>`;
+`envvars.py`).
 
 ```
 tracks-dsp-controller [serve] --dsp-host 192.168.1.50 [options]   # "serve" is the default sub-command

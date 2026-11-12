@@ -182,8 +182,8 @@ set `TDSP_TLS_CERT` / `TDSP_TLS_KEY`.
 
 `tracks-dsp-controller [options]` runs the web app (the `serve` command, the default). Most
 options can also be set with an environment variable (used by Docker and `.env`); a command-line
-option wins over its variable. Before 0.8 the variables were named `DSP408_*`; those names
-still work for now, with a warning in the log.
+option wins over its variable. The old `DSP408_*` names (read with a warning in 0.8) are no
+longer read: rename them to `TDSP_*`.
 
 | Option | Variable | Default | What it does |
 |---|---|---|---|
