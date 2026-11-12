@@ -101,34 +101,70 @@ On a phone, in landscape:
 
 ## Usage
 
+Pick one way to run the server, then open `http://<server-ip>:8080` from any device on the LAN
+and enter the access code (`--pin`, default `0000`: change it).
+
+### Standalone executable (nothing to install)
+
+Download the file for your system from the
+[latest release](https://github.com/tom-da-costa/tracks-dsp-controller/releases/latest)
+(linux-amd64, linux-arm64 for a Raspberry Pi 64-bit, windows-amd64), then run it with the DSP's
+address:
+
 ```bash
-# From a clone (needs only uv)
-git clone https://github.com/tom-da-costa/tracks-dsp-controller.git && cd tracks-dsp-controller
-uv run tracks-dsp-controller --dsp-host 192.168.1.50 --pin 1234
-# The DSP model is detected; --model 408|206|204 enforces one (refused if the device differs)
-# The DSP's ID number (front panel, 1-250) is searched for; --device-id N skips the search
+# Linux
+chmod +x tracks-dsp-controller-<version>-linux-amd64
+./tracks-dsp-controller-<version>-linux-amd64 --dsp-host 192.168.1.50 --pin 1234
 
 # Demo without a DSP (a simulated DSP runs inside the app)
-uv run tracks-dsp-controller --demo
+./tracks-dsp-controller-<version>-linux-amd64 --demo
 
-# Docker
+# Read-only checks of the DSP, without the web app
+./tracks-dsp-controller-<version>-linux-amd64 probe --dsp-host 192.168.1.50 info
+```
+
+```powershell
+# Windows (PowerShell); Windows may ask to allow it on the network the first time
+.\tracks-dsp-controller-<version>-windows-amd64.exe --dsp-host 192.168.1.50 --pin 1234
+```
+
+The latest build of `main` is always available as the
+[**main** pre-release](https://github.com/tom-da-costa/tracks-dsp-controller/releases/tag/main-latest),
+with fixed file names (`tracks-dsp-controller-main-linux-amd64` …), rebuilt on every push.
+
+### From a clone, with uv
+
+[uv](https://docs.astral.sh/uv/) installs the right Python by itself; Node is not needed. Install
+it with one command:
+
+```bash
+# Linux, macOS
+curl -LsSf https://astral.sh/uv/install.sh | sh
+# Windows (PowerShell)
+powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
+```
+
+Then:
+
+```bash
+git clone https://github.com/tom-da-costa/tracks-dsp-controller.git && cd tracks-dsp-controller
+uv run tracks-dsp-controller --dsp-host 192.168.1.50 --pin 1234
+uv run tracks-dsp-controller --demo   # demo without a DSP
+```
+
+### Docker
+
+```bash
 docker run -d -p 8080:8080 -e DSP408_PIN=1234 ghcr.io/tom-da-costa/tracks-dsp-controller --dsp-host 192.168.1.50
 
-# Docker Compose
+# Or Docker Compose
 cp .env.example .env   # set DSP408_HOST, DSP408_PIN …
 docker compose up -d
 ```
 
-Standalone executables (linux-amd64, linux-arm64, windows-amd64) are attached to each
-[release](https://github.com/tom-da-costa/tracks-dsp-controller/releases): download one and run
-`./tracks-dsp-controller-<version>-linux-amd64 --dsp-host 192.168.1.50`. The latest build of `main` is
-always available as the
-[**main** pre-release](https://github.com/tom-da-costa/tracks-dsp-controller/releases/tag/main-latest)
-(fixed file names, rebuilt on every push).
+### HTTPS
 
-Then open `http://<server-ip>:8080` from any device on the LAN.
-
-**HTTPS** (optional, same port; typing the address in `http://` redirects to `https://`):
+Optional, on the same port; typing the address in `http://` redirects to `https://`.
 
 ```bash
 # Your own certificate (PEM files)
@@ -140,9 +176,51 @@ uv run tracks-dsp-controller --dsp-host 192.168.1.50 --tls-self-signed --tls-nam
 
 With Docker Compose: `DSP408_TLS_SELF_SIGNED=true` and `DSP408_TLS_NAMES=<this host's IP>` in
 `.env` (the certificate is kept in the `tracks-dsp-tls` volume), or mount your certificate and
-set `DSP408_TLS_CERT` / `DSP408_TLS_KEY`. Run
-`tracks-dsp-controller --help` for every option; each one can also be set with a `DSP408_<NAME>`
-environment variable.
+set `DSP408_TLS_CERT` / `DSP408_TLS_KEY`.
+
+### Command-line options
+
+`tracks-dsp-controller [options]` runs the web app (the `serve` command, the default). Most
+options can also be set with an environment variable (used by Docker and `.env`); a command-line
+option wins over its variable.
+
+| Option | Variable | Default | What it does |
+|---|---|---|---|
+| `--dsp-host IP` | `DSP408_HOST` | | The DSP's IP address (required, unless `--demo`) |
+| `--dsp-port N` | `DSP408_PORT` | `9761` | The DSP's TCP port |
+| `--model auto\|408\|206\|204` | `DSP408_MODEL` | `auto` | `auto` detects the model; a number enforces it (refused if the device differs) |
+| `--device-id N` | `DSP408_DEVICE_ID` | searched for | The ID number set on the DSP's front panel (1-250); setting it skips the search |
+| `--pin CODE` | `DSP408_PIN` | `0000` | Access code asked by the web UI |
+| `--host IP` | `DSP408_LISTEN_HOST` | `0.0.0.0` | Address the web server listens on |
+| `--port N` | `DSP408_LISTEN_PORT` | `8080` | Port of the web UI |
+| `--meter-rate HZ` | `DSP408_METER_RATE` | `5` | Meter refresh rate, 1-10 Hz (also in the app's Settings) |
+| `--lock-idle-timeout S` | `DSP408_LOCK_IDLE_TIMEOUT` | `120` | Seconds of inactivity before the control lock is released |
+| `--resync-interval S` | `DSP408_RESYNC_INTERVAL` | `0` (off) | Re-read the whole DSP config every S seconds |
+| `--command-timeout S` | | `0.5` | Floor of the adaptive command timeout; it grows on a slow link |
+| `--experimental` | `DSP408_EXPERIMENTAL` | off | Allow parameters not yet verified on a real DSP 408 |
+| `--demo` | `DSP408_DEMO` | off | No DSP: a simulated one runs inside the app |
+| `--demo-scenario NAME` | `DSP408_DEMO_SCENARIO` | `demo` | Presets and signals of the demo: `demo`, `silent`, `clipping`, `stress` |
+| `--tls-cert FILE`, `--tls-key FILE` | `DSP408_TLS_CERT`, `DSP408_TLS_KEY` | | HTTPS with your certificate and key (PEM) |
+| `--tls-self-signed` | `DSP408_TLS_SELF_SIGNED` | off | HTTPS with a generated self-signed certificate |
+| `--tls-names NAMES` | `DSP408_TLS_NAMES` | | Extra names or addresses for that certificate, comma-separated |
+| `--tls-dir DIR` | `DSP408_TLS_DIR` | the user's data directory | Where the self-signed certificate is kept |
+| `--log-level LEVEL` | `DSP408_LOG_LEVEL` | `info` | `debug`, `info`, `warning` or `error` |
+| `--profile FILE` | `DSP408_PROFILE` | | Protocol profile (TOML) overriding the model's built-in one |
+| `--version` | | | Print the version |
+
+Other commands, for diagnostics (`tracks-dsp-controller <command> --help` for their options):
+
+| Command | What it does |
+|---|---|
+| `probe --dsp-host IP info` | Identity, status, active preset and preset names |
+| `probe --dsp-host IP meters [--watch]` | Raw meter frames with their decodings |
+| `probe --dsp-host IP dump-config -o FILE` | Save the live config to a file (raw config blob) |
+| `probe --dsp-host IP export-preset -o FILE.prs` | Save the live setup as a preset file of the official editor |
+| `probe diff-config A B` | Compare two config dumps or `.prs` files (offline) |
+| `proxy --dsp-host IP --listen HOST:PORT --log FILE` | Sit between the official editor and the DSP and log every frame ([docs/captures.md](docs/captures.md)) |
+
+The `probe` commands only read from the DSP (except `probe raw`, which sends any payload: avoid
+it on a DSP in use). The DSP accepts one client at a time: stop the app before probing.
 
 ## Using the app
 
@@ -168,46 +246,17 @@ environment variable.
   on localhost); over plain `http://` on the LAN, use the full-screen button, or put the app
   behind an HTTPS reverse proxy with a valid certificate to get *Install app*.
 
-## Testing without a DSP: `tracks-dsp-sim`
+## Testing without a DSP
 
-`tracks-dsp-sim` is a separate program that behaves like a t.racks DSP on the network (TCP port
-9761). The app connects to it exactly as to the real device, so the whole path is tested:
-connection, init sequence, timeouts, reconnects, several clients.
-
-```bash
-# Terminal 1: the simulated DSP (listens on 0.0.0.0:9761, like a real one)
-uv run tracks-dsp-sim --state-dir sim-state
-# Terminal 2: the app, pointed at it (or at the IP of the machine running tracks-dsp-sim)
-uv run tracks-dsp-controller --dsp-host 127.0.0.1
-
-# Both in Docker; `docker attach tracks-dsp-sim` opens the simulator console
-docker compose -f compose.sim.yaml up -d
-```
-
-- `--model 408|206|204` picks the simulated device (default 408). The 206 follows captures of a
-  real DSP 206, the 204 the protocol notes of BetterDSPControl, tested on a real 204
-  ([docs/PROTOCOL.md §10](docs/PROTOCOL.md)). The app detects the model it is connected to.
-- `--state-dir DIR` keeps stored presets and the active preset across restarts (one `Uxx.bin`
-  per preset, the same format as `tracks-dsp-controller probe dump-config`).
-- `--preset 8=u08.bin` loads a config dumped from a real DSP (`probe dump-config`), or a preset
-  file of the official editor (`.prs`), of the same model, into U08.
-- `--scenario demo|silent|clipping|stress` sets the initial presets and input signals.
-- `--fast` answers preset recall and store at once (the real DSP takes about 3 s and 7 s).
-- `--device-id N`: the simulated DSP's front-panel ID; it only answers frames sent to it.
-- `--second-client queue|accept|refuse|kick`: what a second TCP client gets. `queue` (the
-  default) is what a DSP 408 does: it waits, unanswered, until the first client leaves.
-- `--latency-ms`, `--drop-rate`, `--corrupt-rate` and `--nan-rate` inject faults.
-- Console (when run in a terminal; type `help`): `status`, `presets`, `recall N` (front-panel
-  recall), `kick` (drop the connections), `offline 10` (unreachable for 10 s), `latency 200`,
-  `drop 0.1`, `signal A steady -3`, `quit`.
-
-Every option also reads a `TRACKS_DSP_SIM_<NAME>` environment variable (`TRACKS_DSP_SIM_MODEL=206`).
-A `tracks-dsp-sim` executable is attached to each release next to the app's.
+`tracks-dsp-controller --demo` runs a simulated DSP inside the app. To test the whole network
+path, `tracks-dsp-sim` is a separate program that behaves like a DSP on TCP port 9761, with
+fault injection and a console: see [docs/SIMULATOR.md](docs/SIMULATOR.md).
 
 ## Documentation
 
 | Document | Content |
 |---|---|
+| [docs/SIMULATOR.md](docs/SIMULATOR.md) | The simulated DSP (`tracks-dsp-sim`): options, console, fidelity |
 | [CONTRIBUTING.md](CONTRIBUTING.md) | Development setup, checks, code rules, device safety |
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | Components, state model, command pipeline, simulator, client/server API, security |
 | [docs/PROTOCOL.md](docs/PROTOCOL.md) | The DSP 408 network protocol, with a confidence level for each item and the open questions |
