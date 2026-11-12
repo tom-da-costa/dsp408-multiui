@@ -358,7 +358,8 @@
       Les voies liées bougent ensemble : un changement sur l'une s'applique à toutes (gain,
       mute, EQ, filtres, dynamiques, delay…), sauf leurs noms et leur routage. Au moment du lien,
       la première voie (le plus petit numéro) est la maîtresse : ses réglages sont copiés sur
-      les autres. Sert aux paires stéréo (par exemple les subs gauche et droit).
+      les autres. Sert aux paires stéréo (par exemple les subs gauche et droit). Sous les voies,
+      <em>Channel names</em> permet de renommer chacune en même temps.
     </dd>
   </dl>
 </section>

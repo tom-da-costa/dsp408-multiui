@@ -322,7 +322,8 @@
       Linked channels move together: a change to one applies to all (gain, mute, EQ, filters,
       dynamics, delay…), except their names and routing. When channels are linked, the first
       one (the lowest number) is the master: its settings are copied to the others. Used for
-      stereo pairs (e.g. left and right subs).
+      stereo pairs (e.g. left and right subs). Under the channels, <em>Channel names</em> lets you
+      rename each one at the same time.
     </dd>
   </dl>
 </section>

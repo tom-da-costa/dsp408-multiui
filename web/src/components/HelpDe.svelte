@@ -355,7 +355,8 @@
       Verlinkte Kanäle bewegen sich gemeinsam: Eine Änderung an einem gilt für alle (Gain, Mute,
       EQ, Filter, Dynamik, Delay…), außer Namen und Routing. Beim Verlinken ist der erste Kanal
       (die kleinste Nummer) der Master: Seine Einstellungen werden auf die anderen kopiert. Für
-      Stereopaare (z. B. linker und rechter Subwoofer).
+      Stereopaare (z. B. linker und rechter Subwoofer). Unter den Kanälen lässt sich mit
+      <em>Channel names</em> jeder Kanal gleich umbenennen.
     </dd>
   </dl>
 </section>
