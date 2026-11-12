@@ -66,6 +66,7 @@
     <div
       class="fill"
       class:clipping={clip}
+      class:stepped={step > 0}
       style:background={clip ? undefined : meterFill(ZONES, limit, comp)}
       style:clip-path={`inset(${((1 - pos) * 100).toFixed(2)}% 0 0 0)`}
     ></div>
@@ -134,6 +135,10 @@
   }
   .fill {
     transition: clip-path 120ms linear;
+  }
+  /* Segmented: a segment lights or goes out at once, like an LED. */
+  .fill.stepped {
+    transition: none;
   }
   .fill.clipping {
     background: var(--danger);

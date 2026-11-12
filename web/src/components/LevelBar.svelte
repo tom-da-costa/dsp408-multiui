@@ -79,6 +79,7 @@
   <div
     class="level"
     class:clip
+    class:stepped={step > 0}
     style:background={clip ? undefined : meterFill(zones, limit, comp)}
     style:clip-path={`inset(0 ${((1 - pos) * 100).toFixed(2)}% 0 0)`}
   ></div>
@@ -139,6 +140,10 @@
     inset: 0;
     opacity: 0.65;
     transition: clip-path 0.12s linear;
+  }
+  /* Segmented: a segment lights or goes out at once, like an LED. */
+  .level.stepped {
+    transition: none;
   }
   .level.clip {
     background: var(--danger);
