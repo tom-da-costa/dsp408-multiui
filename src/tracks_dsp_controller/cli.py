@@ -2,7 +2,8 @@
 
 ``serve`` (the default) runs the web application; ``probe`` and ``proxy`` are developer tools.
 The simulated DSP is a separate program, ``tracks-dsp-sim`` (``simulator/cli.py``). Every option can
-also come from a ``DSP408_<NAME>`` environment variable.
+also come from a ``TDSP_<NAME>`` environment variable (``DSP408_<NAME>`` before 0.8: still read,
+with a warning; see ``envvars.py``).
 """
 
 from __future__ import annotations
@@ -11,7 +12,6 @@ import argparse
 import asyncio
 import contextlib
 import logging
-import os
 import sys
 from collections.abc import Sequence
 from dataclasses import replace
@@ -19,6 +19,7 @@ from pathlib import Path
 from typing import Any
 
 from tracks_dsp_controller import __version__
+from tracks_dsp_controller.envvars import Env
 from tracks_dsp_controller.protocol import config_map as cm
 from tracks_dsp_controller.protocol.profile import (
     MODELS,
@@ -30,17 +31,10 @@ from tracks_dsp_controller.protocol.profile import (
 DSP_PORT = 9761
 
 
-def _env(name: str, default: str | None = None) -> str | None:
-    return os.environ.get(f"DSP408_{name}", default)
-
-
-def _env_float(name: str, default: float) -> float:
-    value = _env(name)
-    return float(value) if value else default
-
-
-def _env_flag(name: str) -> bool:
-    return (_env(name) or "").lower() in ("1", "true", "yes", "on")
+ENV = Env("TDSP_", legacy_prefix="DSP408_")
+_env = ENV.get
+_env_float = ENV.float
+_env_flag = ENV.flag
 
 
 def _common(suppress: bool) -> argparse.ArgumentParser:
@@ -119,7 +113,7 @@ def build_parser() -> argparse.ArgumentParser:
     serve.add_argument(
         "--command-timeout",
         type=float,
-        default=None,
+        default=float(_env("COMMAND_TIMEOUT") or 0) or None,
         help="floor of the adaptive command timeout in s (default 0.5; it grows on a slow link)",
     )
     serve.add_argument(
@@ -372,6 +366,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         level=args.log_level.upper(),
         format="%(asctime)s %(levelname)-7s %(name)s: %(message)s",
     )
+    ENV.warn_legacy(logging.getLogger(__name__))
     if args.command is None:
         parser.print_help()
         return 0

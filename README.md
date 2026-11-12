@@ -155,10 +155,10 @@ uv run tracks-dsp-controller --demo   # demo without a DSP
 ### Docker
 
 ```bash
-docker run -d -p 8080:8080 -e DSP408_PIN=1234 ghcr.io/tom-da-costa/tracks-dsp-controller --dsp-host 192.168.1.50
+docker run -d -p 8080:8080 -e TDSP_PIN=1234 ghcr.io/tom-da-costa/tracks-dsp-controller --dsp-host 192.168.1.50
 
 # Or Docker Compose
-cp .env.example .env   # set DSP408_HOST, DSP408_PIN …
+cp .env.example .env   # set TDSP_HOST, TDSP_PIN …
 docker compose up -d
 ```
 
@@ -174,38 +174,39 @@ uv run tracks-dsp-controller --dsp-host 192.168.1.50 --tls-cert cert.pem --tls-k
 uv run tracks-dsp-controller --dsp-host 192.168.1.50 --tls-self-signed --tls-names 192.168.1.10
 ```
 
-With Docker Compose: `DSP408_TLS_SELF_SIGNED=true` and `DSP408_TLS_NAMES=<this host's IP>` in
+With Docker Compose: `TDSP_TLS_SELF_SIGNED=true` and `TDSP_TLS_NAMES=<this host's IP>` in
 `.env` (the certificate is kept in the `tracks-dsp-tls` volume), or mount your certificate and
-set `DSP408_TLS_CERT` / `DSP408_TLS_KEY`.
+set `TDSP_TLS_CERT` / `TDSP_TLS_KEY`.
 
 ### Command-line options
 
 `tracks-dsp-controller [options]` runs the web app (the `serve` command, the default). Most
 options can also be set with an environment variable (used by Docker and `.env`); a command-line
-option wins over its variable.
+option wins over its variable. Before 0.8 the variables were named `DSP408_*`; those names
+still work for now, with a warning in the log.
 
 | Option | Variable | Default | What it does |
 |---|---|---|---|
-| `--dsp-host IP` | `DSP408_HOST` | | The DSP's IP address (required, unless `--demo`) |
-| `--dsp-port N` | `DSP408_PORT` | `9761` | The DSP's TCP port |
-| `--model auto\|408\|206\|204` | `DSP408_MODEL` | `auto` | `auto` detects the model; a number enforces it (refused if the device differs) |
-| `--device-id N` | `DSP408_DEVICE_ID` | searched for | The ID number set on the DSP's front panel (1-250); setting it skips the search |
-| `--pin CODE` | `DSP408_PIN` | `0000` | Access code asked by the web UI |
-| `--host IP` | `DSP408_LISTEN_HOST` | `0.0.0.0` | Address the web server listens on |
-| `--port N` | `DSP408_LISTEN_PORT` | `8080` | Port of the web UI |
-| `--meter-rate HZ` | `DSP408_METER_RATE` | `5` | Meter refresh rate, 1-10 Hz (also in the app's Settings) |
-| `--lock-idle-timeout S` | `DSP408_LOCK_IDLE_TIMEOUT` | `120` | Seconds of inactivity before the control lock is released |
-| `--resync-interval S` | `DSP408_RESYNC_INTERVAL` | `0` (off) | Re-read the whole DSP config every S seconds |
-| `--command-timeout S` | | `0.5` | Floor of the adaptive command timeout; it grows on a slow link |
-| `--experimental` | `DSP408_EXPERIMENTAL` | off | Allow parameters not yet verified on a real DSP 408 |
-| `--demo` | `DSP408_DEMO` | off | No DSP: a simulated one runs inside the app |
-| `--demo-scenario NAME` | `DSP408_DEMO_SCENARIO` | `demo` | Presets and signals of the demo: `demo`, `silent`, `clipping`, `stress` |
-| `--tls-cert FILE`, `--tls-key FILE` | `DSP408_TLS_CERT`, `DSP408_TLS_KEY` | | HTTPS with your certificate and key (PEM) |
-| `--tls-self-signed` | `DSP408_TLS_SELF_SIGNED` | off | HTTPS with a generated self-signed certificate |
-| `--tls-names NAMES` | `DSP408_TLS_NAMES` | | Extra names or addresses for that certificate, comma-separated |
-| `--tls-dir DIR` | `DSP408_TLS_DIR` | the user's data directory | Where the self-signed certificate is kept |
-| `--log-level LEVEL` | `DSP408_LOG_LEVEL` | `info` | `debug`, `info`, `warning` or `error` |
-| `--profile FILE` | `DSP408_PROFILE` | | Protocol profile (TOML) overriding the model's built-in one |
+| `--dsp-host IP` | `TDSP_HOST` | | The DSP's IP address (required, unless `--demo`) |
+| `--dsp-port N` | `TDSP_PORT` | `9761` | The DSP's TCP port |
+| `--model auto\|408\|206\|204` | `TDSP_MODEL` | `auto` | `auto` detects the model; a number enforces it (refused if the device differs) |
+| `--device-id N` | `TDSP_DEVICE_ID` | searched for | The ID number set on the DSP's front panel (1-250); setting it skips the search |
+| `--pin CODE` | `TDSP_PIN` | `0000` | Access code asked by the web UI |
+| `--host IP` | `TDSP_LISTEN_HOST` | `0.0.0.0` | Address the web server listens on |
+| `--port N` | `TDSP_LISTEN_PORT` | `8080` | Port of the web UI |
+| `--meter-rate HZ` | `TDSP_METER_RATE` | `5` | Meter refresh rate, 1-10 Hz (also in the app's Settings) |
+| `--lock-idle-timeout S` | `TDSP_LOCK_IDLE_TIMEOUT` | `120` | Seconds of inactivity before the control lock is released |
+| `--resync-interval S` | `TDSP_RESYNC_INTERVAL` | `0` (off) | Re-read the whole DSP config every S seconds |
+| `--command-timeout S` | `TDSP_COMMAND_TIMEOUT` | `0.5` | Floor of the adaptive command timeout; it grows on a slow link |
+| `--experimental` | `TDSP_EXPERIMENTAL` | off | Allow parameters not yet verified on a real DSP 408 |
+| `--demo` | `TDSP_DEMO` | off | No DSP: a simulated one runs inside the app |
+| `--demo-scenario NAME` | `TDSP_DEMO_SCENARIO` | `demo` | Presets and signals of the demo: `demo`, `silent`, `clipping`, `stress` |
+| `--tls-cert FILE`, `--tls-key FILE` | `TDSP_TLS_CERT`, `TDSP_TLS_KEY` | | HTTPS with your certificate and key (PEM) |
+| `--tls-self-signed` | `TDSP_TLS_SELF_SIGNED` | off | HTTPS with a generated self-signed certificate |
+| `--tls-names NAMES` | `TDSP_TLS_NAMES` | | Extra names or addresses for that certificate, comma-separated |
+| `--tls-dir DIR` | `TDSP_TLS_DIR` | the user's data directory | Where the self-signed certificate is kept |
+| `--log-level LEVEL` | `TDSP_LOG_LEVEL` | `info` | `debug`, `info`, `warning` or `error` |
+| `--profile FILE` | `TDSP_PROFILE` | | Protocol profile (TOML) overriding the model's built-in one |
 | `--version` | | | Print the version |
 
 Other commands, for diagnostics (`tracks-dsp-controller <command> --help` for their options):

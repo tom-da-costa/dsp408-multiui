@@ -28,8 +28,9 @@ A `tracks-dsp-sim` executable is attached to each
 
 ## Options
 
-Every option also reads a `TRACKS_DSP_SIM_<NAME>` environment variable
-(`TRACKS_DSP_SIM_MODEL=206`). `tracks-dsp-sim --help` lists them all.
+Every option also reads a `TDSP_SIM_<NAME>` environment variable
+(`TDSP_SIM_MODEL=206`); the `TRACKS_DSP_SIM_<NAME>` names of versions before 0.8 still work,
+with a warning. `tracks-dsp-sim --help` lists them all.
 
 | Option | Default | What it does |
 |---|---|---|

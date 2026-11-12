@@ -2,7 +2,8 @@
 
 It plays a DSP 408 (default), 206 or 204 (``--model``) and listens on TCP port 9761 like the real
 device. Point ``tracks-dsp-controller --dsp-host``, the probe tools or the official editor at it.
-Every option can also come from a ``TRACKS_DSP_SIM_<NAME>`` environment variable.
+Every option can also come from a ``TDSP_SIM_<NAME>`` environment variable
+(``TRACKS_DSP_SIM_<NAME>`` before 0.8: still read, with a warning).
 """
 
 from __future__ import annotations
@@ -11,13 +12,13 @@ import argparse
 import asyncio
 import contextlib
 import logging
-import os
 import signal
 import sys
 from collections.abc import Sequence
 from pathlib import Path
 
 from tracks_dsp_controller import __version__
+from tracks_dsp_controller.envvars import Env
 from tracks_dsp_controller.protocol.profile import ProtocolProfile, load_profile
 from tracks_dsp_controller.simulator.console import Console
 from tracks_dsp_controller.simulator.device import SimulatedDevice
@@ -27,18 +28,10 @@ from tracks_dsp_controller.simulator.scenarios import SCENARIOS, apply_scenario
 from tracks_dsp_controller.simulator.server import DEFAULT_PORT, SecondClient, SimulatorServer
 from tracks_dsp_controller.simulator.storage import PresetStore, read_config
 
-
-def _env(name: str, default: str | None = None) -> str | None:
-    return os.environ.get(f"TRACKS_DSP_SIM_{name}", default)
-
-
-def _env_float(name: str, default: float) -> float:
-    value = _env(name)
-    return float(value) if value else default
-
-
-def _env_flag(name: str) -> bool:
-    return (_env(name) or "").lower() in ("1", "true", "yes", "on")
+ENV = Env("TDSP_SIM_", legacy_prefix="TRACKS_DSP_SIM_")
+_env = ENV.get
+_env_float = ENV.float
+_env_flag = ENV.flag
 
 
 def _preset_arg(value: str) -> tuple[int, Path]:
@@ -228,6 +221,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         level=args.log_level.upper(),
         format="%(asctime)s %(levelname)-7s %(name)s: %(message)s",
     )
+    ENV.warn_legacy(logging.getLogger(__name__))
     try:
         profile = load_profile(args.profile, model=args.model)
     except (OSError, ValueError) as exc:
