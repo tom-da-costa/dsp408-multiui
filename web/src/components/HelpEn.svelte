@@ -87,7 +87,8 @@
     <dd>
       Computes compressor and limiter thresholds that protect your speakers, from the amplifier
       gain, the speaker's power and impedance and the type of box, then applies them to the
-      outputs you pick (see <em>Limiter</em> below).
+      outputs you pick (see <em>Limiter</em> below). The threshold is rounded down to the DSP's
+      0.5 dB step, or up if you choose (up to 0.5 dB above the computed value).
     </dd>
     <dt>☰ Presets</dt>
     <dd>Recall and store the DSP's presets (see <em>Presets</em>).</dd>

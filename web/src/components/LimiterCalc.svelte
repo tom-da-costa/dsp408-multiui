@@ -10,6 +10,7 @@
     type LimiterInput,
     type Load,
     type Mode,
+    type Rounding,
     validate,
   } from "../lib/limiter";
   import { formatDb } from "../lib/scale";
@@ -23,6 +24,7 @@
     ampPowerW: string;
     load: Load;
     mode: Mode;
+    rounding: Rounding;
   }
 
   function load(): Form {
@@ -33,6 +35,7 @@
       ampPowerW: "",
       load: "open",
       mode: "hard",
+      rounding: "down",
     };
     try {
       return { ...fallback, ...(JSON.parse(localStorage.getItem(STORAGE_KEY) ?? "{}") as Form) };
@@ -60,6 +63,7 @@
     ampPowerW: form.ampPowerW.trim() === "" ? null : num(form.ampPowerW),
     load: form.load,
     mode: form.mode,
+    rounding: form.rounding,
   });
   const error = $derived(validate(input));
   const result = $derived(error ? null : computeLimiter(input));
@@ -161,6 +165,17 @@
         <small>2 dB higher</small></label
       >
     </fieldset>
+    <fieldset>
+      <legend>Rounding to the DSP step (0.5 dB)</legend>
+      <label class="choice"
+        ><input type="radio" bind:group={form.rounding} value="down" /> Down
+        <small>never above the computed threshold (safe side)</small></label
+      >
+      <label class="choice"
+        ><input type="radio" bind:group={form.rounding} value="up" /> Up
+        <small>up to 0.5 dB above the computed threshold</small></label
+      >
+    </fieldset>
   </section>
 
   <section class="card result">
@@ -181,7 +196,7 @@
           <dt>Soft threshold (+{result.extraDb} dB)</dt>
           <dd>{dbu(result.thresholdDbu)}</dd>
         {/if}
-        <dt>DSP step (0.5 dB, rounded down)</dt>
+        <dt>DSP step (0.5 dB, rounded {result.rounding})</dt>
         <dd>{dbu(result.compThresholdDbu)}</dd>
       </dl>
       <div class="big">
@@ -304,6 +319,7 @@
     min-height: 36px;
   }
   .choice input {
+    flex: none; /* a long description must not shrink the radio */
     width: 20px;
     height: 20px;
   }

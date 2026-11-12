@@ -98,7 +98,9 @@
     <dd>
       Calcule des seuils de compresseur et de limiteur qui protègent vos enceintes, à partir du
       gain de l'ampli, de la puissance et de l'impédance de l'enceinte et du type de caisson,
-      puis les applique aux sorties choisies (voir <em>Limiteur</em> plus bas).
+      puis les applique aux sorties choisies (voir <em>Limiteur</em> plus bas). Le seuil est
+      arrondi au pas de 0,5 dB du DSP vers le bas, ou vers le haut si vous le choisissez (jusqu'à
+      0,5 dB au-dessus de la valeur calculée).
     </dd>
     <dt>☰ Presets</dt>
     <dd>Rappeler et enregistrer les presets du DSP (voir <em>Presets</em>).</dd>
