@@ -1,6 +1,6 @@
 <script lang="ts">
-  // One channel of the Live view: big SIG / CLIP / CMP / LIM indicators, a graduated meter with the
-  // dynamics thresholds, the gain fader with − / +, and MUTE.
+  // One channel of the Live view: big CLIP / CMP / LIM indicators, a graduated meter with the
+  // dynamics thresholds, the gain fader with − / +, SIG (signal present) and MUTE.
   import { app } from "../lib/app.svelte";
   import { links } from "../lib/links.svelte";
   import { COMP_COLOR, LIMIT_COLOR } from "../lib/scale";
@@ -58,7 +58,6 @@
     </button>
 
     <div class="leds">
-      <span class="led" class:on={sig.lit} style:--c={SIGNAL_COLOR} title="Signal">SIG</span>
       <span class="led" class:on={clip} style:--c="var(--danger)">CLIP</span>
       {#if output}
         <span class="led" class:on={comp} style:--c={COMP_COLOR}>CMP</span>
@@ -82,6 +81,9 @@
         onchange={(db) => app.set(`${path}.gain_db`, db)}
       />
     </div>
+
+    <!-- SIG between the meter and MUTE: is anything coming in / going out? -->
+    <span class="led sig" class:on={sig.lit} style:--c={SIGNAL_COLOR} title="Signal">SIG</span>
 
     <button
       class="mute"
@@ -150,11 +152,6 @@
     background: var(--panel-2);
     color: var(--muted);
     border: 1px solid var(--line);
-  }
-  /* Outputs have four (SIG, CLIP, CMP, LIM): a little smaller so that they fit a narrow strip. */
-  .leds:has(> :nth-child(4)) .led {
-    font-size: 0.64rem;
-    letter-spacing: 0;
   }
   .led.on {
     background: var(--c);
