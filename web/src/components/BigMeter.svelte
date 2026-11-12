@@ -10,7 +10,13 @@
     meterFill,
     meterGradient,
   } from "../lib/scale";
-  import { meterRange, meterTicks } from "../lib/meterrange.svelte";
+  import {
+    meterRange,
+    meterTicks,
+    segmentGaps,
+    segmentLevel,
+    segmentZoneStart,
+  } from "../lib/meterrange.svelte";
 
   interface Props {
     level: number | null; // dBu; null = no data
@@ -36,7 +42,13 @@
   const TOP = $derived(meterRange.max);
   const TICKS = $derived(meterTicks(BOTTOM, TOP));
   const pos = $derived((db: number) => Math.min(1, Math.max(0, (db - BOTTOM) / (TOP - BOTTOM))));
-  const ZONES = $derived(meterGradient("to top", pos));
+  // Segmented (Settings): the level reaches the top of its segment, a zone starts on a segment.
+  const STEP = $derived(meterRange.segment);
+  const ZONES = $derived(
+    meterGradient("to top", (db) => pos(segmentZoneStart(db, BOTTOM, STEP))),
+  );
+  const GAPS = $derived(segmentGaps("to top", BOTTOM, TOP, STEP));
+  const shown = (db: number) => pos(segmentLevel(db, BOTTOM, STEP));
 
   let peak = $state<number | null>(null);
   let peakAt = 0;
@@ -51,7 +63,7 @@
     }
   });
 
-  const fill = $derived(level === null ? 0 : pos(level));
+  const fill = $derived(level === null ? 0 : shown(level));
 </script>
 
 <div class="meter" class:nodata={level === null}>
@@ -66,14 +78,16 @@
     <div
       class="fill"
       class:clipping={clip}
+      class:stepped={STEP > 0}
       style:background={clip ? undefined : meterFill(ZONES, limit, comp)}
       style:clip-path={`inset(${((1 - fill) * 100).toFixed(2)}% 0 0 0)`}
     ></div>
+    {#if GAPS}<div class="gaps" style:background={GAPS}></div>{/if}
     {#each TICKS as db (db)}
       <div class="tick" class:zero={db === 0} style:bottom={`${pos(db) * 100}%`}></div>
     {/each}
-    {#if peak !== null && pos(peak) > 0}
-      <div class="peak" style:bottom={`${pos(peak) * 100}%`}></div>
+    {#if peak !== null && shown(peak) > 0}
+      <div class="peak" style:bottom={`${shown(peak) * 100}%`}></div>
     {/if}
   </div>
   <div class="marks" aria-hidden="true">
@@ -123,12 +137,17 @@
     overflow: hidden;
   }
   .zones,
-  .fill {
+  .fill,
+  .gaps {
     position: absolute;
     inset: 0;
   }
   .fill {
     transition: clip-path 120ms linear;
+  }
+  /* Segmented: a segment lights or goes out at once, like an LED. */
+  .fill.stepped {
+    transition: none;
   }
   .fill.clipping {
     background: var(--danger);

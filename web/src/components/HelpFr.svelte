@@ -262,6 +262,12 @@
       La plage affichée par tous les vumètres, de −40 à +20 dBu par défaut (+20 dBu est le
       maximum du DSP). Les niveaux, CLIP et les couleurs ne changent pas. Cet appareil uniquement.
     </dd>
+    <dt>Meters · Segments</dt>
+    <dd>
+      Affiche les vumètres en barre continue (par défaut) ou en segments de 1, 2, 5 ou 10 dB,
+      comme un vumètre à LED : un segment s'allume quand le niveau l'atteint et prend la couleur
+      de son haut. Cet appareil uniquement.
+    </dd>
     <dt>Display · Merge linked channels</dt>
     <dd>
       Affiche chaque groupe de voies liées comme une seule voie dans toutes les vues (sauf

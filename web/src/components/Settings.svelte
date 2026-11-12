@@ -5,6 +5,7 @@
     METER_MAX_RANGE,
     METER_MIN_RANGE,
     METER_RANGE_STEP,
+    METER_SEGMENTS,
     meterRange,
   } from "../lib/meterrange.svelte";
   import { SIGNAL_DEFAULT_DB, SIGNAL_RANGE_DB, signal } from "../lib/signal.svelte";
@@ -99,8 +100,22 @@
       live
       onchange={(db) => meterRange.setMax(db)}
     />
+    <div class="setting-row">
+      <label for="meter-segments">Segments:</label>
+      <select
+        id="meter-segments"
+        value={meterRange.segment}
+        disabled={app.screenLocked}
+        onchange={(e) => meterRange.setSegment(Number(e.currentTarget.value))}
+      >
+        {#each METER_SEGMENTS as step (step)}
+          <option value={step}>{step ? `${step} dB` : "Continuous"}</option>
+        {/each}
+      </select>
+    </div>
     <p class="muted">
-      The range every meter shows (−40 to +20 dBu by default; the DSP's full scale is +20 dBu).
+      The range every meter shows (−40 to +20 dBu by default; the DSP's full scale is +20 dBu),
+      as a continuous bar or as segments (LED style; a segment takes the colour of its top).
       Levels, CLIP and the colour zones do not change. This browser only.
       {#if !meterRange.isDefault}
         <button class="link" disabled={app.screenLocked} onclick={() => meterRange.reset()}
@@ -260,6 +275,17 @@
     width: 22px;
     height: 22px;
     margin: 0;
+  }
+  .setting-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    margin: 12px 0 8px;
+  }
+  .setting-row select {
+    flex: 1;
+    min-height: var(--tap);
   }
   .link {
     min-height: 0;

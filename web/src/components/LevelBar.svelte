@@ -4,7 +4,13 @@
   // `indicators`, as a row under the meter like the Live view's (SIG first, CLIP held 2 s).
   import { app } from "../lib/app.svelte";
   import { links } from "../lib/links.svelte";
-  import { meterRange, meterTicks } from "../lib/meterrange.svelte";
+  import {
+    meterRange,
+    meterTicks,
+    segmentGaps,
+    segmentLevel,
+    segmentZoneStart,
+  } from "../lib/meterrange.svelte";
   import { SIGNAL_COLOR, signalLit } from "../lib/signal.svelte";
   import {
     COMP_COLOR,
@@ -51,8 +57,15 @@
   // The range set in Settings, as the Live meters (below the device's floor: shown as empty).
   const floor = $derived(Math.max(meterRange.min, app.hello?.profile.meter_floor_db ?? -90));
   const top = $derived(meterRange.max);
-  const zones = $derived(meterGradient("to right", (db) => meterPos(db, floor, top)));
-  const pos = $derived(meterPos(level, floor, top));
+  // Segmented (Settings): the level reaches the top of its segment, a zone starts on a segment.
+  const step = $derived(meterRange.segment);
+  const zones = $derived(
+    meterGradient("to right", (db) => meterPos(segmentZoneStart(db, floor, step), floor, top)),
+  );
+  const gaps = $derived(segmentGaps("to right", floor, top, step));
+  const pos = $derived(
+    meterPos(level === null ? null : segmentLevel(level, floor, step), floor, top),
+  );
 
   // Graduations strictly inside the bar, every 10 dB.
   const ticks = $derived(meterTicks(floor, top).filter((db) => db > floor && db < top));
@@ -66,9 +79,11 @@
   <div
     class="level"
     class:clip
+    class:stepped={step > 0}
     style:background={clip ? undefined : meterFill(zones, limit, comp)}
     style:clip-path={`inset(0 ${((1 - pos) * 100).toFixed(2)}% 0 0)`}
   ></div>
+  {#if gaps}<div class="gaps" style:background={gaps}></div>{/if}
   {#each ticks as db (db)}
     <span class="tick" class:zero={db === 0} style:left={at(db)} aria-hidden="true"></span>
   {/each}
@@ -115,7 +130,8 @@
     gap: 4px;
     padding: 0 6px;
   }
-  .zones {
+  .zones,
+  .gaps {
     position: absolute;
     inset: 0;
   }
@@ -124,6 +140,10 @@
     inset: 0;
     opacity: 0.65;
     transition: clip-path 0.12s linear;
+  }
+  /* Segmented: a segment lights or goes out at once, like an LED. */
+  .level.stepped {
+    transition: none;
   }
   .level.clip {
     background: var(--danger);
