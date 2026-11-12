@@ -5,6 +5,7 @@
     meterFill,
     meterGradient,
   } from "../lib/scale";
+  import { signalLit } from "../lib/signal.svelte";
 
   // Fixed colour zones, dimmed behind the level; the fill reveals them up to the level, turns to
   // the limiter's or the compressor's colour while it acts, and all red on clip.
@@ -31,6 +32,7 @@
   const pos = $derived(level === null || level <= floor ? 0 : dbToPos(level));
   const peakPos = $derived(peak === null || peak <= floor ? 0 : dbToPos(peak));
   const clipLit = $derived(clip || clipUntil > now);
+  const sig = signalLit(() => level);
 
   $effect(() => {
     const t = performance.now();
@@ -45,6 +47,7 @@
 
 <div class="meter" class:nodata={level === null} aria-label="level meter">
   <div class="leds">
+    <span class="led sig" class:on={sig.lit} title="Signal">SIG</span>
     <span class="led clip" class:on={clipLit} title="Clip">CLIP</span>
     {#if limit !== null}<span class="led lim" class:on={limit} title="Limiter">LIM</span>{/if}
     {#if comp !== null}<span class="led comp" class:on={comp} title="Compressor">CMP</span>{/if}
@@ -85,6 +88,10 @@
     background: var(--panel-2);
     color: var(--muted);
     text-align: center;
+  }
+  .sig.on {
+    background: var(--accent);
+    color: var(--accent-text);
   }
   .clip.on {
     background: var(--danger);

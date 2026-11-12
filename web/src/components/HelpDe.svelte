@@ -255,6 +255,11 @@
       Matrix und Link). Eine Änderung gilt für die ganze Gruppe; Namen und Routing bleiben pro
       Kanal. Nur dieses Gerät.
     </dd>
+    <dt>Display · Signal indicator (SIG)</dt>
+    <dd>
+      Der Pegel, ab dem SIG leuchtet (Standard −60 dBu). Ein nicht angeschlossener Eingang zeigt
+      etwa −86 dBu. Nur dieses Gerät.
+    </dd>
     <dt>Connected clients</dt>
     <dd>Alle, die die App gerade benutzen, und wer die Kontrolle hat.</dd>
     <dt>Device</dt>
@@ -284,6 +289,8 @@
       <strong>CLIP</strong> leuchtet, wenn ein Signal es erreicht und verzerrt. Farben: grün
       bis 0 dBu, gelb bis +6, orange bis +12, rot darüber. Der Pegel wird orange, wenn ein
       Kompressor arbeitet, dunkelorange, wenn ein Limiter arbeitet, rot bei Clipping.
+      <strong>SIG</strong> leuchtet, solange ein Kanal Signal führt (über −60 dBu, einstellbar
+      unter Settings).
     </dd>
     <dt>Gain</dt>
     <dd>Die Lautstärke des Kanals in dB (−60 bis +12). 0 dB lässt den Pegel unverändert.</dd>

@@ -1,6 +1,7 @@
 <script lang="ts">
   import { app } from "../lib/app.svelte";
   import { links } from "../lib/links.svelte";
+  import { SIGNAL_DEFAULT_DB, SIGNAL_RANGE_DB, signal } from "../lib/signal.svelte";
 
   let rate = $state(app.settings?.meter_rate_hz ?? 5);
 
@@ -79,6 +80,22 @@
       Linked channels show as one (e.g. "Out 1+5") in every view except Params › Matrix and
       Link: a change applies to all of them, as the DSP does. Names and routing stay per channel;
       meters show the loudest. This browser only.
+    </p>
+    <label>
+      Signal indicator (SIG) above: <strong>{signal.threshold} dBu</strong>
+      <input
+        type="range"
+        min={SIGNAL_RANGE_DB[0]}
+        max={SIGNAL_RANGE_DB[1]}
+        step="1"
+        value={signal.threshold}
+        disabled={app.screenLocked}
+        oninput={(e) => signal.setThreshold(Number(e.currentTarget.value))}
+      />
+    </label>
+    <p class="muted">
+      SIG lights while a channel's level is above this ({SIGNAL_DEFAULT_DB} dBu by default; an
+      unconnected input reads about −86 dBu). This browser only.
     </p>
   </section>
 
