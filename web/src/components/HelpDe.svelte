@@ -98,7 +98,9 @@
     <dd>
       Berechnet Kompressor- und Limiter-Schwellen, die Ihre Lautsprecher schützen, aus der
       Verstärkung der Endstufe, Leistung und Impedanz des Lautsprechers und der Gehäuseart, und
-      überträgt sie auf die gewählten Ausgänge (siehe <em>Limiter</em> unten).
+      überträgt sie auf die gewählten Ausgänge (siehe <em>Limiter</em> unten). Die Schwelle wird
+      auf den 0,5-dB-Schritt des DSP abgerundet oder, wenn gewählt, aufgerundet (bis zu 0,5 dB
+      über dem berechneten Wert).
     </dd>
     <dt>☰ Presets</dt>
     <dd>Presets des DSP laden und speichern (siehe <em>Presets</em>).</dd>
