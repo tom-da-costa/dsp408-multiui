@@ -222,10 +222,23 @@ def test_meters_follow_parameters(device: SimulatedDevice) -> None:
     assert levels[4] == pytest.approx(-19.03, abs=0.05)
 
     ask(device, c.SetMute(4, True))
-    ask(device, c.SetMute(1, True))
     levels = meters(device)
-    assert levels[4] == P.meter_floor_db
-    assert levels[1] == P.meter_floor_db
+    assert levels[4] == P.meter_floor_db  # a muted output reads zero (HW)
+
+
+def test_a_muted_input_keeps_its_meter_but_feeds_no_output(device: SimulatedDevice) -> None:
+    device.meters.sources = [Source(Shape.STEADY, -20.0) for _ in range(4)]
+    ask(device, c.SetGain(0, 220))  # In A -6 dB
+    ask(device, c.SetMatrix(4, 0b0011))  # Out1 <- In A + In B
+    ask(device, c.SetMatrix(5, 0b0010))  # Out2 <- In B only
+    ask(device, c.SetMute(1, True))  # mute In B
+    levels = meters(device)
+    # The DSP 408 measures an input after its gain and before its mute (PROTOCOL.md §6).
+    assert levels[1] == pytest.approx(-20.0, abs=0.05)
+    assert levels[4] == pytest.approx(-26.0, abs=0.05)  # only In A reaches Out1
+    assert levels[5] == P.meter_floor_db  # Out2 gets nothing
+    ask(device, c.SetMute(0, True))  # the input gain still applies to a muted input
+    assert meters(device)[0] == pytest.approx(-26.0, abs=0.05)
 
 
 def test_limiter_flag_follows_threshold(device: SimulatedDevice) -> None:
