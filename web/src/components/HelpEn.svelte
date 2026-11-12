@@ -231,6 +231,12 @@
       The range every meter shows, −40 to +20 dBu by default (+20 dBu is the DSP's full scale).
       Levels, CLIP and the colours do not change. This device only.
     </dd>
+    <dt>Meters · Segments</dt>
+    <dd>
+      Draws the meters as a continuous bar (the default) or as segments of 1, 2, 5 or 10 dB, like
+      an LED meter: a segment lights when the level reaches it and takes the colour of its top.
+      This device only.
+    </dd>
     <dt>Display · Merge linked channels</dt>
     <dd>
       Shows each group of linked channels as one channel in every view (except Matrix

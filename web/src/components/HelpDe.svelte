@@ -263,6 +263,12 @@
       Der Bereich aller Pegelanzeigen, standardmäßig −40 bis +20 dBu (+20 dBu ist das Maximum des
       DSP). Pegel, CLIP und Farben ändern sich nicht. Nur dieses Gerät.
     </dd>
+    <dt>Meters · Segments</dt>
+    <dd>
+      Zeigt die Pegelanzeigen als durchgehenden Balken (Standard) oder in Segmenten von 1, 2, 5
+      oder 10 dB wie eine LED-Anzeige: Ein Segment leuchtet, sobald der Pegel es erreicht, in der
+      Farbe seiner Oberkante. Nur dieses Gerät.
+    </dd>
     <dt>Display · Merge linked channels</dt>
     <dd>
       Zeigt jede Gruppe verlinkter Kanäle als einen Kanal in allen Ansichten (außer Matrix und

@@ -1,5 +1,10 @@
 <script lang="ts">
-  import { meterRange } from "../lib/meterrange.svelte";
+  import {
+    meterRange,
+    segmentGaps,
+    segmentLevel,
+    segmentZoneStart,
+  } from "../lib/meterrange.svelte";
   import { METER_BACKGROUND_OPACITY, meterFill, meterGradient, meterPos } from "../lib/scale";
   import { signalLit } from "../lib/signal.svelte";
 
@@ -27,9 +32,14 @@
 
   const bottom = $derived(Math.max(meterRange.min, floor));
   const dbToPos = $derived((db: number) => meterPos(db, bottom, meterRange.max));
-  const ZONES = $derived(meterGradient("to top", dbToPos));
-  const pos = $derived(level === null ? 0 : dbToPos(level));
-  const peakPos = $derived(peak === null ? 0 : dbToPos(peak));
+  // Segmented (Settings): the level reaches the top of its segment, a zone starts on a segment.
+  const step = $derived(meterRange.segment);
+  const ZONES = $derived(
+    meterGradient("to top", (db) => dbToPos(segmentZoneStart(db, bottom, step))),
+  );
+  const gaps = $derived(segmentGaps("to top", bottom, meterRange.max, step));
+  const pos = $derived(level === null ? 0 : dbToPos(segmentLevel(level, bottom, step)));
+  const peakPos = $derived(peak === null ? 0 : dbToPos(segmentLevel(peak, bottom, step)));
   const clipLit = $derived(clip || clipUntil > now);
   const sig = signalLit(() => level);
 
@@ -59,6 +69,7 @@
       style:background={clip ? undefined : meterFill(ZONES, limit, comp)}
       style:clip-path={`inset(${((1 - pos) * 100).toFixed(2)}% 0 0 0)`}
     ></div>
+    {#if gaps}<div class="gaps" style:background={gaps}></div>{/if}
     {#if peakPos > 0}<div class="peak" style:bottom={`${peakPos * 100}%`}></div>{/if}
     <!-- 0 dBu (compressor / limiter / gate thresholds are on the same scale) -->
     {#if bottom < 0 && meterRange.max > 0}
@@ -116,7 +127,8 @@
     overflow: hidden;
   }
   .zones,
-  .fill {
+  .fill,
+  .gaps {
     position: absolute;
     inset: 0;
   }
