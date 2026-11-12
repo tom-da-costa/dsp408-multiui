@@ -193,3 +193,28 @@ def test_serve_is_the_default_command() -> None:
 def test_serve_requires_a_dsp_host(capsys: pytest.CaptureFixture[str]) -> None:
     assert cli.main(["--port", "0"]) == 1
     assert "dsp-host" in capsys.readouterr().err
+
+
+def test_options_read_tracks_dsp_environment_variables(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("TRACKS_DSP_HOST", "10.0.0.9")
+    monkeypatch.setenv("TRACKS_DSP_PIN", "4321")
+    monkeypatch.setenv("TRACKS_DSP_COMMAND_TIMEOUT", "0.8")
+    args = cli.build_parser().parse_args(["serve"])
+    assert (args.dsp_host, args.pin, args.command_timeout) == ("10.0.0.9", "4321", 0.8)
+    # an option on the command line wins over its variable
+    assert cli.build_parser().parse_args(["serve", "--pin", "1111"]).pin == "1111"
+
+
+def test_legacy_dsp408_variables_still_work_with_a_warning(
+    monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+) -> None:
+    monkeypatch.setattr(cli, "_legacy_env", set())
+    monkeypatch.setenv("DSP408_HOST", "10.0.0.8")
+    monkeypatch.setenv("DSP408_PIN", "1234")
+    monkeypatch.setenv("TRACKS_DSP_PIN", "4321")  # the new name wins
+    args = cli.build_parser().parse_args(["serve"])
+    assert (args.dsp_host, args.pin) == ("10.0.0.8", "4321")
+    with caplog.at_level("WARNING"):
+        cli._warn_legacy_env()
+    assert "DSP408_HOST is deprecated: rename it to TRACKS_DSP_HOST" in caplog.text
+    assert "DSP408_PIN" not in caplog.text

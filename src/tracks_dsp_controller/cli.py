@@ -2,7 +2,8 @@
 
 ``serve`` (the default) runs the web application; ``probe`` and ``proxy`` are developer tools.
 The simulated DSP is a separate program, ``tracks-dsp-sim`` (``simulator/cli.py``). Every option can
-also come from a ``DSP408_<NAME>`` environment variable.
+also come from a ``TRACKS_DSP_<NAME>`` environment variable (``DSP408_<NAME>`` before 0.8: still
+read, with a warning).
 """
 
 from __future__ import annotations
@@ -30,8 +31,29 @@ from tracks_dsp_controller.protocol.profile import (
 DSP_PORT = 9761
 
 
+ENV_PREFIX = "TRACKS_DSP_"
+LEGACY_ENV_PREFIX = "DSP408_"  # the prefix before 0.8: still read, with a warning
+_legacy_env: set[str] = set()  # the legacy variables read so far
+
+
 def _env(name: str, default: str | None = None) -> str | None:
-    return os.environ.get(f"DSP408_{name}", default)
+    value = os.environ.get(ENV_PREFIX + name)
+    if value is None:
+        value = os.environ.get(LEGACY_ENV_PREFIX + name)
+        if value is not None:
+            _legacy_env.add(name)
+    return default if value is None else value
+
+
+def _warn_legacy_env() -> None:
+    for name in sorted(_legacy_env):
+        logging.getLogger(__name__).warning(
+            "%s%s is deprecated: rename it to %s%s",
+            LEGACY_ENV_PREFIX,
+            name,
+            ENV_PREFIX,
+            name,
+        )
 
 
 def _env_float(name: str, default: float) -> float:
@@ -119,7 +141,7 @@ def build_parser() -> argparse.ArgumentParser:
     serve.add_argument(
         "--command-timeout",
         type=float,
-        default=None,
+        default=float(_env("COMMAND_TIMEOUT") or 0) or None,
         help="floor of the adaptive command timeout in s (default 0.5; it grows on a slow link)",
     )
     serve.add_argument(
@@ -372,6 +394,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         level=args.log_level.upper(),
         format="%(asctime)s %(levelname)-7s %(name)s: %(message)s",
     )
+    _warn_legacy_env()
     if args.command is None:
         parser.print_help()
         return 0

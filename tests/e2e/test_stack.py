@@ -5,8 +5,9 @@ tests then drive the app as the browser does (HTTP login, WebSocket) and check t
 simulated DSP over TCP, as a second client of it.
 
 Run with ``uv run pytest -m e2e`` (or ``make e2e``); excluded from the default run.
-The programs default to ``python -m …``; ``DSP408_E2E_SIM_CMD`` / ``DSP408_E2E_APP_CMD`` select
-other commands, e.g. the built executables. ``DSP408_E2E_LOG_DIR`` keeps the programs' output.
+The programs default to ``python -m …``; ``TRACKS_DSP_E2E_SIM_CMD`` / ``TRACKS_DSP_E2E_APP_CMD``
+select other commands, e.g. the built executables. ``TRACKS_DSP_E2E_LOG_DIR`` keeps the programs'
+output.
 """
 
 from __future__ import annotations
@@ -81,7 +82,7 @@ class Stack:
         self.sim = self._spawn(
             "tracks-dsp-sim",
             [
-                *command("DSP408_E2E_SIM_CMD", "tracks_dsp_controller.simulator"),
+                *command("TRACKS_DSP_E2E_SIM_CMD", "tracks_dsp_controller.simulator"),
                 "--host", "127.0.0.1", "--port", str(self.sim_port),
                 "--state-dir", str(self.state_dir), "--fast", "--console", "off",
                 # the tests read the DSP as a second client (a real 408 queues it)
@@ -94,7 +95,7 @@ class Stack:
         self.app = self._spawn(
             "tracks-dsp-controller",
             [
-                *command("DSP408_E2E_APP_CMD", "tracks_dsp_controller"),
+                *command("TRACKS_DSP_E2E_APP_CMD", "tracks_dsp_controller"),
                 "--dsp-host", "127.0.0.1", "--dsp-port", str(self.sim_port),
                 "--host", "127.0.0.1", "--port", str(self.app_port), "--pin", PIN,
                 "--meter-rate", "10",
@@ -149,7 +150,7 @@ def _stop(proc: subprocess.Popen[bytes] | None) -> None:
 @pytest.fixture(scope="module")
 def stack(tmp_path_factory: pytest.TempPathFactory) -> Iterator[Stack]:
     base = tmp_path_factory.mktemp("e2e")
-    log_dir = Path(os.environ.get("DSP408_E2E_LOG_DIR") or base / "logs")
+    log_dir = Path(os.environ.get("TRACKS_DSP_E2E_LOG_DIR") or base / "logs")
     log_dir.mkdir(parents=True, exist_ok=True)
     s = Stack(log_dir=log_dir, state_dir=base / "sim-state")
     s.start_sim()

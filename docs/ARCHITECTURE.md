@@ -285,7 +285,7 @@ WebSocket `/ws` (cookie auth plus an `Origin` check). JSON messages `{type, ...}
 
 The threat model is a trusted private LAN; the goal is to stop casual or accidental access.
 
-- One shared code (`--pin`, or `DSP408_PIN` so that it does not show in `ps` or
+- One shared code (`--pin`, or `TRACKS_DSP_PIN` so that it does not show in `ps` or
   `docker inspect`); a warning is logged while the default `0000` is in use.
 - Sessions are random 256-bit tokens kept in memory; they end on logout or server restart.
 - Login rate limit: 5 failures per IP, then a 30 s cool-down; the screen unlock shares it.
@@ -305,7 +305,9 @@ The threat model is a trusted private LAN; the goal is to stop casual or acciden
 
 ## 9. Command line
 
-Every option also reads `DSP408_<NAME>` from the environment.
+Every option also reads `TRACKS_DSP_<NAME>` from the environment (the simulator:
+`TRACKS_DSP_SIM_<NAME>`). The `DSP408_<NAME>` names of versions before 0.8 are still read, with
+a warning, and `compose.yaml` falls back to them.
 
 ```
 tracks-dsp-controller [serve] --dsp-host 192.168.1.50 [options]   # "serve" is the default sub-command

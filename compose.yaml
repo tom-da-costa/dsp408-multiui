@@ -1,33 +1,34 @@
 # docker compose up -d   (settings come from .env, see .env.example)
+# Each ${TRACKS_DSP_X:-${DSP408_X:-…}} also accepts the DSP408_* names of versions before 0.8.
 services:
   dsp408:
-    image: ${DSP408_IMAGE:-tracks-dsp-controller:latest}
+    image: ${TRACKS_DSP_IMAGE:-${DSP408_IMAGE:-tracks-dsp-controller:latest}}
     build: .
     container_name: tracks-dsp-controller
     # on-failure: a crash restarts it, "Disconnect from DSP and shutdown" (exit 0) keeps it stopped
     restart: on-failure
     ports:
-      - "${DSP408_LISTEN_PORT:-8080}:8080"
+      - "${TRACKS_DSP_LISTEN_PORT:-${DSP408_LISTEN_PORT:-8080}}:8080"
     environment:
-      DSP408_HOST: ${DSP408_HOST:-}
-      DSP408_PORT: ${DSP408_PORT:-9761}
-      DSP408_PIN: ${DSP408_PIN:-0000}
-      DSP408_METER_RATE: ${DSP408_METER_RATE:-5}
-      DSP408_LOCK_IDLE_TIMEOUT: ${DSP408_LOCK_IDLE_TIMEOUT:-120}
-      DSP408_RESYNC_INTERVAL: ${DSP408_RESYNC_INTERVAL:-0}
-      DSP408_EXPERIMENTAL: ${DSP408_EXPERIMENTAL:-false}
-      DSP408_DEMO: ${DSP408_DEMO:-false}
-      DSP408_MODEL: ${DSP408_MODEL:-auto}
-      DSP408_DEVICE_ID: ${DSP408_DEVICE_ID:-}
-      DSP408_LOG_LEVEL: ${DSP408_LOG_LEVEL:-info}
+      TRACKS_DSP_HOST: ${TRACKS_DSP_HOST:-${DSP408_HOST:-}}
+      TRACKS_DSP_PORT: ${TRACKS_DSP_PORT:-${DSP408_PORT:-9761}}
+      TRACKS_DSP_PIN: ${TRACKS_DSP_PIN:-${DSP408_PIN:-0000}}
+      TRACKS_DSP_METER_RATE: ${TRACKS_DSP_METER_RATE:-${DSP408_METER_RATE:-5}}
+      TRACKS_DSP_LOCK_IDLE_TIMEOUT: ${TRACKS_DSP_LOCK_IDLE_TIMEOUT:-${DSP408_LOCK_IDLE_TIMEOUT:-120}}
+      TRACKS_DSP_RESYNC_INTERVAL: ${TRACKS_DSP_RESYNC_INTERVAL:-${DSP408_RESYNC_INTERVAL:-0}}
+      TRACKS_DSP_EXPERIMENTAL: ${TRACKS_DSP_EXPERIMENTAL:-${DSP408_EXPERIMENTAL:-false}}
+      TRACKS_DSP_DEMO: ${TRACKS_DSP_DEMO:-${DSP408_DEMO:-false}}
+      TRACKS_DSP_MODEL: ${TRACKS_DSP_MODEL:-${DSP408_MODEL:-auto}}
+      TRACKS_DSP_DEVICE_ID: ${TRACKS_DSP_DEVICE_ID:-${DSP408_DEVICE_ID:-}}
+      TRACKS_DSP_LOG_LEVEL: ${TRACKS_DSP_LOG_LEVEL:-${DSP408_LOG_LEVEL:-info}}
       # HTTPS: a self-signed certificate (kept in the tls volume), or your own (mount it)
-      DSP408_TLS_SELF_SIGNED: ${DSP408_TLS_SELF_SIGNED:-false}
-      DSP408_TLS_CERT: ${DSP408_TLS_CERT:-}
-      DSP408_TLS_KEY: ${DSP408_TLS_KEY:-}
-      DSP408_TLS_NAMES: ${DSP408_TLS_NAMES:-}    # e.g. 192.168.1.10,dsp.local: this host's address
+      TRACKS_DSP_TLS_SELF_SIGNED: ${TRACKS_DSP_TLS_SELF_SIGNED:-${DSP408_TLS_SELF_SIGNED:-false}}
+      TRACKS_DSP_TLS_CERT: ${TRACKS_DSP_TLS_CERT:-${DSP408_TLS_CERT:-}}
+      TRACKS_DSP_TLS_KEY: ${TRACKS_DSP_TLS_KEY:-${DSP408_TLS_KEY:-}}
+      TRACKS_DSP_TLS_NAMES: ${TRACKS_DSP_TLS_NAMES:-${DSP408_TLS_NAMES:-}}    # e.g. 192.168.1.10,dsp.local: this host's address
     volumes:
       - tracks-dsp-tls:/app/tls
-      # your own certificate: mount it and set DSP408_TLS_CERT / DSP408_TLS_KEY to these paths
+      # your own certificate: mount it and set TRACKS_DSP_TLS_CERT / TRACKS_DSP_TLS_KEY to these paths
       # - ./certs:/certs:ro
 
 volumes:

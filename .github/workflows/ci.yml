@@ -55,7 +55,7 @@ jobs:
 
       - name: Simulator + app end to end
         env:
-          DSP408_E2E_LOG_DIR: e2e-logs
+          TRACKS_DSP_E2E_LOG_DIR: e2e-logs
         run: uv run pytest -m e2e -v
 
       - name: Keep the logs of a failed run
