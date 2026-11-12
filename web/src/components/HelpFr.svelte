@@ -255,6 +255,11 @@
       Params › Matrix et Link). Un changement s'applique à tout le groupe ; les noms et le
       routage restent par voie. Cet appareil uniquement.
     </dd>
+    <dt>Display · Signal indicator (SIG)</dt>
+    <dd>
+      Le niveau au-dessus duquel SIG s'allume (−60 dBu par défaut). Une entrée non branchée lit
+      environ −86 dBu. Cet appareil uniquement.
+    </dd>
     <dt>Connected clients</dt>
     <dd>Toutes les personnes qui utilisent l'application en ce moment, et qui a le contrôle.</dd>
     <dt>Device</dt>
@@ -288,7 +293,8 @@
       supporte : <strong>CLIP</strong> s'allume quand un signal l'atteint et sature. Couleurs :
       vert jusqu'à 0 dBu, jaune jusqu'à +6, orange jusqu'à +12, rouge au-delà. Le niveau passe
       en orange quand un compresseur agit, en orange foncé quand un limiteur agit, en rouge en
-      cas de clip.
+      cas de clip. <strong>SIG</strong> s'allume tant qu'une voie porte du signal (au-dessus de
+      −60 dBu, réglable dans Settings).
     </dd>
     <dt>Gain</dt>
     <dd>Le volume de la voie, en dB (−60 à +12). 0 dB laisse le niveau tel quel.</dd>

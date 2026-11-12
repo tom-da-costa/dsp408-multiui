@@ -1,10 +1,11 @@
 <script lang="ts">
   // One channel of the Live view: big CLIP / CMP / LIM indicators, a graduated meter with the
-  // dynamics thresholds, the gain fader with − / +, and MUTE.
+  // dynamics thresholds, the gain fader with − / +, SIG (signal present) and MUTE.
   import { app } from "../lib/app.svelte";
   import { links } from "../lib/links.svelte";
   import { COMP_COLOR, LIMIT_COLOR } from "../lib/scale";
   import { nav } from "../lib/nav.svelte";
+  import { SIGNAL_COLOR, signalLit } from "../lib/signal.svelte";
   import type { InputChannel, OutputChannel } from "../lib/types";
   import BigMeter from "./BigMeter.svelte";
   import Fader from "./Fader.svelte";
@@ -46,6 +47,7 @@
     return () => clearTimeout(timer);
   });
   const clip = $derived(clipNow || clipUntil > now);
+  const sig = signalLit(() => level);
 </script>
 
 {#if channel}
@@ -79,6 +81,9 @@
         onchange={(db) => app.set(`${path}.gain_db`, db)}
       />
     </div>
+
+    <!-- SIG between the meter and MUTE: is anything coming in / going out? -->
+    <span class="led sig" class:on={sig.lit} style:--c={SIGNAL_COLOR} title="Signal">SIG</span>
 
     <button
       class="mute"

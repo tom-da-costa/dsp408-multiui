@@ -228,6 +228,11 @@
       and Link). A change applies to the whole group; names and routing stay per channel.
       This device only.
     </dd>
+    <dt>Display · Signal indicator (SIG)</dt>
+    <dd>
+      The level above which SIG lights (−60 dBu by default). An unconnected input reads about
+      −86 dBu. This device only.
+    </dd>
     <dt>Connected clients</dt>
     <dd>Everyone using the app right now, and who has control.</dd>
     <dt>Device</dt>
@@ -257,6 +262,8 @@
       <strong>CLIP</strong> lights when a signal reaches it and distorts. Colours: green up to
       0 dBu, yellow up to +6, orange up to +12, red above. The level turns orange when a
       compressor acts, dark orange when a limiter acts, red on clip.
+      <strong>SIG</strong> lights while a channel carries signal (above −60 dBu, adjustable in
+      Settings).
     </dd>
     <dt>Gain</dt>
     <dd>The channel's volume, in dB (−60 to +12). 0 dB leaves the level as it is.</dd>
