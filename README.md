@@ -226,8 +226,9 @@ it on a DSP in use). The DSP accepts one client at a time: stop the app before p
 ## Using the app
 
 - **Live** view (first tab): per channel, CLIP / CMP / LIM indicators, a meter graduated every
-  10 dB with the compressor (C) and limiter (L) thresholds, the gain fader with − / +, SIG
-  (signal above a threshold set in Settings, −60 dBu by default) and MUTE.
+  10 dB (range set in Settings, −40 to +20 dBu by default) with the compressor (C) and limiter
+  (L) thresholds, the gain fader with − / +, SIG (signal above a threshold set in Settings,
+  −60 dBu by default) and MUTE.
 - **Params** view: one setting on the channels you pick. Gain, delay, filters, compressor,
   limiter and gate are shown as one strip per channel, with vertical faders; EQ as one frequency
   response graph per channel, on which the bands are edited.

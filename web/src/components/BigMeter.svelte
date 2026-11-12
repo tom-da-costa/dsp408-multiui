@@ -1,5 +1,6 @@
 <script lang="ts">
-  // Vertical meter of the Live view: linear dBu scale graduated every 10 dB, colour zones
+  // Vertical meter of the Live view: linear dBu scale over the range set in Settings (−40 to
+  // +20 dBu by default), graduated every 10 dB, colour zones
   // (dimmed behind the level), peak hold, and markers at the compressor and limiter thresholds.
   // The level turns to the limiter's or the compressor's colour while it acts, red on clip.
   import {
@@ -9,6 +10,7 @@
     meterFill,
     meterGradient,
   } from "../lib/scale";
+  import { meterRange, meterTicks } from "../lib/meterrange.svelte";
 
   interface Props {
     level: number | null; // dBu; null = no data
@@ -28,13 +30,13 @@
     limitThreshold = null,
   }: Props = $props();
 
-  const BOTTOM = -60;
-  const TOP = 20; // full scale, +20 dBu
-  const TICKS = [20, 10, 0, -10, -20, -30, -40, -50, -60];
   const PEAK_HOLD_MS = 1500;
 
-  const pos = (db: number) => Math.min(1, Math.max(0, (db - BOTTOM) / (TOP - BOTTOM)));
-  const ZONES = meterGradient("to top", pos);
+  const BOTTOM = $derived(meterRange.min);
+  const TOP = $derived(meterRange.max);
+  const TICKS = $derived(meterTicks(BOTTOM, TOP));
+  const pos = $derived((db: number) => Math.min(1, Math.max(0, (db - BOTTOM) / (TOP - BOTTOM))));
+  const ZONES = $derived(meterGradient("to top", pos));
 
   let peak = $state<number | null>(null);
   let peakAt = 0;

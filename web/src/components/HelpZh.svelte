@@ -170,6 +170,8 @@
   <dl>
     <dt>Meters · Refresh rate</dt>
     <dd>电平表的刷新频率（每秒 1 到 10 次）。对所有已连接的设备生效。</dd>
+    <dt>Meters · Scale bottom / top</dt>
+    <dd>所有电平表显示的范围，默认 −40 到 +20 dBu（+20 dBu 为 DSP 的满刻度）。电平、CLIP 和颜色不变。仅对本设备有效。</dd>
     <dt>Display · Merge linked channels</dt>
     <dd>
       在所有视图中（Params › Matrix 和 Link 除外）将每组联动通道显示为一个通道。修改会作用于整个编组；名称和路由仍按通道分别设置。仅对本设备有效。

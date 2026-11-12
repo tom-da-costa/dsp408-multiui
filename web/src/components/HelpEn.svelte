@@ -223,6 +223,11 @@
   <dl>
     <dt>Meters · Refresh rate</dt>
     <dd>How often the meters update (1–10 times a second). It applies to every connected device.</dd>
+    <dt>Meters · Scale bottom / top</dt>
+    <dd>
+      The range every meter shows, −40 to +20 dBu by default (+20 dBu is the DSP's full scale).
+      Levels, CLIP and the colours do not change. This device only.
+    </dd>
     <dt>Display · Merge linked channels</dt>
     <dd>
       Shows each group of linked channels as one channel in every view (except Params › Matrix

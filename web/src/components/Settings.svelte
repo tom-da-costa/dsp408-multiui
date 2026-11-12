@@ -1,7 +1,14 @@
 <script lang="ts">
   import { app } from "../lib/app.svelte";
   import { links } from "../lib/links.svelte";
+  import {
+    METER_MAX_RANGE,
+    METER_MIN_RANGE,
+    METER_RANGE_STEP,
+    meterRange,
+  } from "../lib/meterrange.svelte";
   import { SIGNAL_DEFAULT_DB, SIGNAL_RANGE_DB, signal } from "../lib/signal.svelte";
+  import Stepper from "./Stepper.svelte";
 
   let rate = $state(app.settings?.meter_rate_hz ?? 5);
 
@@ -12,16 +19,13 @@
   const RATE_RANGE = [1, 10] as const;
   const rateLocked = $derived(app.lockedByOther || app.screenLocked);
 
-  async function saveRate() {
-    await app.run({ type: "settings.set", meter_rate_hz: rate });
+  async function saveRate(hz: number) {
+    rate = hz;
+    await app.run({ type: "settings.set", meter_rate_hz: hz });
   }
 
-  function stepRate(delta: number) {
-    const next = Math.min(RATE_RANGE[1], Math.max(RATE_RANGE[0], rate + delta));
-    if (next === rate) return;
-    rate = next;
-    void saveRate();
-  }
+  // Whole dB, with a sign above 0 (formatDb would show −∞ at the gain floor, −60).
+  const dbu = (db: number) => `${db > 0 ? "+" : ""}${db} dBu`;
 
   const otherMaster = $derived(!!app.master?.owner_id && !app.iAmMaster);
 
@@ -60,32 +64,50 @@
 <div class="grid">
   <section class="card">
     <h2>Meters</h2>
-    <div class="setting">
-      <label for="meter-rate">Refresh rate: <strong>{rate} Hz</strong></label>
-      <div class="stepper">
-        <button
-          disabled={rateLocked || rate <= RATE_RANGE[0]}
-          aria-label="Refresh rate down"
-          onclick={() => stepRate(-1)}>−</button
-        >
-        <input
-          id="meter-rate"
-          type="range"
-          min={RATE_RANGE[0]}
-          max={RATE_RANGE[1]}
-          step="1"
-          bind:value={rate}
-          onchange={saveRate}
-          disabled={rateLocked}
-        />
-        <button
-          disabled={rateLocked || rate >= RATE_RANGE[1]}
-          aria-label="Refresh rate up"
-          onclick={() => stepRate(1)}>+</button
-        >
-      </div>
-    </div>
+    <Stepper
+      id="meter-rate"
+      label="Refresh rate"
+      value={rate}
+      min={RATE_RANGE[0]}
+      max={RATE_RANGE[1]}
+      format={(hz) => `${hz} Hz`}
+      disabled={rateLocked}
+      onchange={saveRate}
+    />
     <p class="muted">Applies to every connected client.</p>
+    <Stepper
+      id="meter-min"
+      label="Scale bottom"
+      value={meterRange.min}
+      min={METER_MIN_RANGE[0]}
+      max={METER_MIN_RANGE[1]}
+      step={METER_RANGE_STEP}
+      format={dbu}
+      disabled={app.screenLocked}
+      live
+      onchange={(db) => meterRange.setMin(db)}
+    />
+    <Stepper
+      id="meter-max"
+      label="Scale top"
+      value={meterRange.max}
+      min={METER_MAX_RANGE[0]}
+      max={METER_MAX_RANGE[1]}
+      step={METER_RANGE_STEP}
+      format={dbu}
+      disabled={app.screenLocked}
+      live
+      onchange={(db) => meterRange.setMax(db)}
+    />
+    <p class="muted">
+      The range every meter shows (−40 to +20 dBu by default; the DSP's full scale is +20 dBu).
+      Levels, CLIP and the colour zones do not change. This browser only.
+      {#if !meterRange.isDefault}
+        <button class="link" disabled={app.screenLocked} onclick={() => meterRange.reset()}
+          >Reset</button
+        >
+      {/if}
+    </p>
   </section>
 
   <section class="card">
@@ -104,33 +126,17 @@
       Link: a change applies to all of them, as the DSP does. Names and routing stay per channel;
       meters show the loudest. This browser only.
     </p>
-    <div class="setting">
-      <label for="signal-threshold"
-        >Signal indicator (SIG) above: <strong>{signal.threshold} dBu</strong></label
-      >
-      <div class="stepper">
-        <button
-          disabled={app.screenLocked || signal.threshold <= SIGNAL_RANGE_DB[0]}
-          aria-label="Signal threshold down"
-          onclick={() => signal.setThreshold(signal.threshold - 1)}>−</button
-        >
-        <input
-          id="signal-threshold"
-          type="range"
-          min={SIGNAL_RANGE_DB[0]}
-          max={SIGNAL_RANGE_DB[1]}
-          step="1"
-          value={signal.threshold}
-          disabled={app.screenLocked}
-          oninput={(e) => signal.setThreshold(Number(e.currentTarget.value))}
-        />
-        <button
-          disabled={app.screenLocked || signal.threshold >= SIGNAL_RANGE_DB[1]}
-          aria-label="Signal threshold up"
-          onclick={() => signal.setThreshold(signal.threshold + 1)}>+</button
-        >
-      </div>
-    </div>
+    <Stepper
+      id="signal-threshold"
+      label="Signal indicator (SIG) above"
+      value={signal.threshold}
+      min={SIGNAL_RANGE_DB[0]}
+      max={SIGNAL_RANGE_DB[1]}
+      format={dbu}
+      disabled={app.screenLocked}
+      live
+      onchange={(db) => signal.setThreshold(db)}
+    />
     <p class="muted">
       SIG lights while a channel's level is above this ({SIGNAL_DEFAULT_DB} dBu by default; an
       unconnected input reads about −86 dBu). This browser only.
@@ -255,24 +261,13 @@
     height: 22px;
     margin: 0;
   }
-  input[type="range"] {
-    width: 100%;
-    min-height: var(--tap);
-  }
-  .setting {
-    display: grid;
-    gap: 8px;
-  }
-  /* − slider + */
-  .stepper {
-    display: grid;
-    grid-template-columns: var(--tap) 1fr var(--tap);
-    align-items: center;
-    gap: 8px;
-  }
-  .stepper button {
-    padding: 0;
-    font-size: 1.1rem;
+  .link {
+    min-height: 0;
+    padding: 0 4px;
+    border: none;
+    background: none;
+    color: var(--accent);
+    text-decoration: underline;
   }
   ul {
     margin: 0;
