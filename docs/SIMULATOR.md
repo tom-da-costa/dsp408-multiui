@@ -33,8 +33,7 @@ Up to 0.7 the simulator was a separate executable, `tracks-dsp-sim-<version>-…
 ## Options
 
 Every option also reads a `TDSP_SIM_<NAME>` environment variable
-(`TDSP_SIM_MODEL=206`); the `TRACKS_DSP_SIM_<NAME>` names of versions before 0.8 still work,
-with a warning. `tracks-dsp-controller sim --help` lists them all.
+(`TDSP_SIM_MODEL=206`). `tracks-dsp-controller sim --help` lists them all.
 The options go after `sim`.
 
 | Option | Default | What it does |

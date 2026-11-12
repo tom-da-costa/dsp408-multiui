@@ -28,6 +28,6 @@ WORKDIR /app
 EXPOSE 8080 9761
 # HTTPS first (a self-signed certificate is fine here), then plain HTTP.
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s \
-  CMD ["python", "-c", "import os, ssl, urllib.request as u; e = os.environ; p = e.get('TDSP_LISTEN_PORT') or e.get('DSP408_LISTEN_PORT') or '8080'; c = ssl._create_unverified_context()\ntry: u.urlopen(f'https://127.0.0.1:{p}/api/health', timeout=2, context=c)\nexcept Exception: u.urlopen(f'http://127.0.0.1:{p}/api/health', timeout=2)"]
+  CMD ["python", "-c", "import os, ssl, urllib.request as u; p = os.environ.get('TDSP_LISTEN_PORT') or '8080'; c = ssl._create_unverified_context()\ntry: u.urlopen(f'https://127.0.0.1:{p}/api/health', timeout=2, context=c)\nexcept Exception: u.urlopen(f'http://127.0.0.1:{p}/api/health', timeout=2)"]
 ENTRYPOINT ["tracks-dsp-controller"]
 CMD ["serve"]

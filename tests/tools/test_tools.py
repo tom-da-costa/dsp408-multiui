@@ -2,7 +2,6 @@
 
 import asyncio
 import json
-import logging
 from collections.abc import AsyncIterator
 from pathlib import Path
 
@@ -207,33 +206,19 @@ def test_options_read_tracks_dsp_environment_variables(monkeypatch: pytest.Monke
     assert cli.build_parser().parse_args(["serve", "--pin", "1111"]).pin == "1111"
 
 
-def test_legacy_dsp408_variables_still_work_with_a_warning(
-    monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
-) -> None:
-    monkeypatch.setattr(cli.ENV, "legacy_used", set())
+def test_old_variable_names_are_no_longer_read(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv("TDSP_HOST", raising=False)
     monkeypatch.setenv("DSP408_HOST", "10.0.0.8")
-    monkeypatch.setenv("DSP408_PIN", "1234")
-    monkeypatch.setenv("TDSP_PIN", "4321")  # the new name wins
-    args = cli.build_parser().parse_args(["serve"])
-    assert (args.dsp_host, args.pin) == ("10.0.0.8", "4321")
-    with caplog.at_level("WARNING"):
-        cli.ENV.warn_legacy(logging.getLogger("test"))
-    assert "DSP408_HOST is deprecated: rename it to TDSP_HOST" in caplog.text
-    assert "DSP408_PIN" not in caplog.text
-
-
-def test_simulator_reads_tdsp_sim_and_its_legacy_names(
-    monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
-) -> None:
-    monkeypatch.setattr(sim_cli.ENV, "legacy_used", set())
-    monkeypatch.setenv("TDSP_SIM_MODEL", "206")
     monkeypatch.setenv("TRACKS_DSP_SIM_SCENARIO", "silent")
+    assert cli.build_parser().parse_args(["serve"]).dsp_host is None
+    assert sim_cli.build_parser().parse_args([]).scenario == "demo"
+
+
+def test_simulator_reads_tdsp_sim_variables(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("TDSP_SIM_MODEL", "206")
+    monkeypatch.setenv("TDSP_SIM_SCENARIO", "silent")
     args = sim_cli.build_parser().parse_args([])
     assert (args.model, args.scenario) == ("206", "silent")
-    with caplog.at_level("WARNING"):
-        sim_cli.ENV.warn_legacy(logging.getLogger("test"))
-    assert "TRACKS_DSP_SIM_SCENARIO is deprecated: rename it to TDSP_SIM_SCENARIO" in caplog.text
-    assert "MODEL" not in caplog.text
 
 
 def test_sim_command_runs_the_simulator_cli(capsys: pytest.CaptureFixture[str]) -> None:
