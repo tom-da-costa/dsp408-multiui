@@ -1,4 +1,4 @@
-"""``tracks-dsp-sim``: a simulated t.racks DSP on the network, as a program of its own.
+"""``tracks-dsp-controller sim`` (or ``tracks-dsp-sim``): a simulated t.racks DSP on the network.
 
 It plays a DSP 408 (default), 206 or 204 (``--model``) and listens on TCP port 9761 like the real
 device. Point ``tracks-dsp-controller --dsp-host``, the probe tools or the official editor at it.
@@ -41,12 +41,12 @@ def _preset_arg(value: str) -> tuple[int, Path]:
     return int(slot.strip().upper().lstrip("U")), Path(path)
 
 
-def build_parser() -> argparse.ArgumentParser:
+def build_parser(prog: str = "tracks-dsp-sim") -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
-        prog="tracks-dsp-sim",
+        prog=prog,
         description="Simulated t.racks DSP (408, 206 or 204) on TCP, for testing "
         "tracks-dsp-controller without a device.",
-        epilog="Example: tracks-dsp-sim --state-dir sim-state   then   "
+        epilog=f"Example: {prog} --state-dir sim-state   then   "
         "tracks-dsp-controller --dsp-host 127.0.0.1",
     )
     p.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
@@ -197,8 +197,9 @@ async def run(args: argparse.Namespace, profile: ProtocolProfile) -> int:
     await server.start()
     slot = "F00" if device.active_slot == 0 else f"U{device.active_slot:02d}"
     print(
-        f"tracks-dsp-sim {__version__}: simulated DSP {device.model.key} '{device.identity}' on "
-        f"{args.host}:{server.bound_port}, preset {slot} {device.live.preset_name!r}",
+        f"tracks-dsp-controller sim {__version__}: simulated DSP {device.model.key} "
+        f"'{device.identity}' on {args.host}:{server.bound_port}, "
+        f"preset {slot} {device.live.preset_name!r}",
         flush=True,
     )
     console_task = None
@@ -215,8 +216,9 @@ async def run(args: argparse.Namespace, profile: ProtocolProfile) -> int:
     return 0
 
 
-def main(argv: Sequence[str] | None = None) -> int:
-    args = build_parser().parse_args(argv)
+def main(argv: Sequence[str] | None = None, prog: str = "tracks-dsp-sim") -> int:
+    """``tracks-dsp-sim``, also run as ``tracks-dsp-controller sim``."""
+    args = build_parser(prog).parse_args(argv)
     logging.basicConfig(
         level=args.log_level.upper(),
         format="%(asctime)s %(levelname)-7s %(name)s: %(message)s",

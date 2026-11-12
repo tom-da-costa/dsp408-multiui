@@ -419,7 +419,7 @@ test preset (what the hardware session did).
 
 ## 10. Other models: DSP 206 and DSP 204
 
-The simulator can play a DSP 206 or 204 (`tracks-dsp-sim --model 206|204`). Their protocol
+The simulator can play a DSP 206 or 204 (`tracks-dsp-controller sim --model 206|204`). Their protocol
 profiles are `protocol/profiles/dsp206.toml` and `dsp204.toml`, layered on top of the 408's.
 
 **DSP 206 (2 inputs, 6 outputs).** Everything below comes from the Wireshark captures published

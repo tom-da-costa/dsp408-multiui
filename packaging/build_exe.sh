@@ -1,13 +1,10 @@
 #!/usr/bin/env sh
-# Build the standalone executables for the current platform into dist/:
-#   <name>                 the web application (tracks-dsp-controller)
-#   <name with tracks-dsp-sim> the simulated DSP (tracks-dsp-sim), e.g. tracks-dsp-sim-v1.0.0-linux-amd64
+# Build the standalone executable for the current platform into dist/<name>. It holds the web
+# application and the simulated DSP (`<name> sim`).
 # Usage: packaging/build_exe.sh <output-name>     (run from the repository root)
 # Needs Python >= 3.12 and uv; on Windows, run it under Git Bash or adapt the commands.
 set -eu
 NAME="${1:-tracks-dsp-controller}"
-SIM_NAME="$(echo "$NAME" | sed 's/^tracks-dsp-controller/tracks-dsp-sim/')"
-[ "$SIM_NAME" != "$NAME" ] || SIM_NAME="$NAME-sim"
 SEP=":"
 case "$(uname -s 2>/dev/null || echo Windows)" in
   MINGW*|MSYS*|CYGWIN*|Windows) SEP=";" ;;
@@ -25,8 +22,3 @@ pyinstaller --name "$NAME" \
   --add-data "src/tracks_dsp_controller/web${SEP}tracks_dsp_controller/web" \
   --add-data "$PROFILES" \
   packaging/entry.py
-pyinstaller --name "$SIM_NAME" \
-  --collect-submodules tracks_dsp_controller.simulator \
-  --collect-submodules tracks_dsp_controller.protocol \
-  --add-data "$PROFILES" \
-  packaging/entry_sim.py

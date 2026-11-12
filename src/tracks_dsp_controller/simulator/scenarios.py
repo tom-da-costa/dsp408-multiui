@@ -1,4 +1,4 @@
-"""Named simulator setups (``tracks-dsp-sim --scenario NAME``, ``serve --demo-scenario NAME``)."""
+"""Named simulator setups (``sim --scenario NAME``, ``serve --demo-scenario NAME``)."""
 
 from __future__ import annotations
 

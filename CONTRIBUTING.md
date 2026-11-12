@@ -21,7 +21,7 @@ make dev                             # UI with hot reload on :5173, backend --de
 To test the real network path, run the simulator as a separate program:
 
 ```bash
-uv run tracks-dsp-sim --host 127.0.0.1             # simulated DSP 408 on :9761, with a console
+uv run tracks-dsp-controller sim --host 127.0.0.1  # simulated DSP 408 on :9761, with a console
 uv run tracks-dsp-controller --dsp-host 127.0.0.1  # the app, connected to it like to a real DSP
 ```
 

@@ -8,8 +8,7 @@ services:
     image: ${TDSP_IMAGE:-${DSP408_IMAGE:-tracks-dsp-controller:latest}}
     build: .
     container_name: tracks-dsp-sim
-    entrypoint: ["tracks-dsp-sim"]
-    command: ["--state-dir", "/app/state"]
+    command: ["sim", "--state-dir", "/app/state"]
     stdin_open: true   # with tty: `docker attach tracks-dsp-sim` opens the console
     tty: true
     healthcheck:

@@ -1,8 +1,9 @@
-# Testing without a DSP: `tracks-dsp-sim`
+# Testing without a DSP: `tracks-dsp-controller sim`
 
-`tracks-dsp-sim` is a separate program that behaves like a t.racks DSP on the network (TCP port
-9761). The app connects to it exactly as to the real device, so the whole path is tested:
-connection, init sequence, timeouts, reconnects, several clients.
+`tracks-dsp-controller sim` runs a simulated t.racks DSP on the network (TCP port 9761), in a
+process of its own. The app, started as a second process, connects to it exactly as to the real
+device, so the whole path is tested: connection, init sequence, timeouts, reconnects, several
+clients. From a clone, `uv run tracks-dsp-sim` is the same command.
 
 For a quick look, `tracks-dsp-controller --demo` runs the same simulated device inside the app,
 with no second program.
@@ -11,26 +12,30 @@ with no second program.
 
 ```bash
 # Terminal 1: the simulated DSP (listens on 0.0.0.0:9761, like a real one)
-uv run tracks-dsp-sim --state-dir sim-state
-# Terminal 2: the app, pointed at it (or at the IP of the machine running tracks-dsp-sim)
+uv run tracks-dsp-controller sim --state-dir sim-state
+# Terminal 2: the app, pointed at it (or at the IP of the machine running the simulator)
 uv run tracks-dsp-controller --dsp-host 127.0.0.1
 
 # Both in Docker; `docker attach tracks-dsp-sim` opens the simulator console
 docker compose -f compose.sim.yaml up -d
 ```
 
-A `tracks-dsp-sim` executable is attached to each
-[release](https://github.com/tom-da-costa/tracks-dsp-controller/releases) next to the app's:
+The standalone executable of each
+[release](https://github.com/tom-da-costa/tracks-dsp-controller/releases) includes it:
 
 ```bash
-./tracks-dsp-sim-<version>-linux-amd64 --model 206
+./tracks-dsp-controller-<version>-linux-amd64 sim --model 206           # terminal 1
+./tracks-dsp-controller-<version>-linux-amd64 --dsp-host 127.0.0.1      # terminal 2
 ```
+
+Up to 0.7 the simulator was a separate executable, `tracks-dsp-sim-<version>-…`.
 
 ## Options
 
 Every option also reads a `TDSP_SIM_<NAME>` environment variable
 (`TDSP_SIM_MODEL=206`); the `TRACKS_DSP_SIM_<NAME>` names of versions before 0.8 still work,
-with a warning. `tracks-dsp-sim --help` lists them all.
+with a warning. `tracks-dsp-controller sim --help` lists them all.
+The options go after `sim`.
 
 | Option | Default | What it does |
 |---|---|---|
