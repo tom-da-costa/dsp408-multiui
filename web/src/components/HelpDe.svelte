@@ -249,6 +249,11 @@
       Wie oft die Pegelanzeigen aktualisiert werden (1 bis 10 Mal pro Sekunde). Gilt für alle
       verbundenen Geräte.
     </dd>
+    <dt>Meters · Scale bottom / top</dt>
+    <dd>
+      Der Bereich aller Pegelanzeigen, standardmäßig −60 bis +20 dBu (+20 dBu ist das Maximum des
+      DSP). Pegel, CLIP und Farben ändern sich nicht. Nur dieses Gerät.
+    </dd>
     <dt>Display · Merge linked channels</dt>
     <dd>
       Zeigt jede Gruppe verlinkter Kanäle als einen Kanal in allen Ansichten (außer Params ›

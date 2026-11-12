@@ -4,6 +4,7 @@
   // `indicators`, as a row under the meter like the Live view's (SIG first, CLIP held 2 s).
   import { app } from "../lib/app.svelte";
   import { links } from "../lib/links.svelte";
+  import { meterRange, meterTicks } from "../lib/meterrange.svelte";
   import { SIGNAL_COLOR, signalLit } from "../lib/signal.svelte";
   import {
     COMP_COLOR,
@@ -47,18 +48,14 @@
   const clipHeld = $derived(clip || clipUntil > now);
   const sig = signalLit(() => level);
 
-  // From -60 dBu, as the Live meters (the device's floor is lower: shown as empty).
-  const floor = $derived(Math.max(-60, app.hello?.profile.meter_floor_db ?? -90));
-  const top = 20; // full scale, +20 dBu
+  // The range set in Settings, as the Live meters (below the device's floor: shown as empty).
+  const floor = $derived(Math.max(meterRange.min, app.hello?.profile.meter_floor_db ?? -90));
+  const top = $derived(meterRange.max);
   const zones = $derived(meterGradient("to right", (db) => meterPos(db, floor, top)));
   const pos = $derived(meterPos(level, floor, top));
 
   // Graduations strictly inside the bar, every 10 dB.
-  const ticks = $derived(
-    Array.from({ length: Math.floor((top - floor) / 10) }, (_, i) => top - 10 * (i + 1)).filter(
-      (db) => db > floor,
-    ),
-  );
+  const ticks = $derived(meterTicks(floor, top).filter((db) => db > floor && db < top));
   const labels = $derived(ticks.filter((db) => !compact || db % 20 === 0));
   const at = (db: number) => `${(meterPos(db, floor, top) * 100).toFixed(2)}%`;
 </script>

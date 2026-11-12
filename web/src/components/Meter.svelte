@@ -1,15 +1,11 @@
 <script lang="ts">
-  import {
-    METER_BACKGROUND_OPACITY,
-    meterDbToPos as dbToPos,
-    meterFill,
-    meterGradient,
-  } from "../lib/scale";
+  import { meterRange } from "../lib/meterrange.svelte";
+  import { METER_BACKGROUND_OPACITY, meterFill, meterGradient, meterPos } from "../lib/scale";
   import { signalLit } from "../lib/signal.svelte";
 
-  // Fixed colour zones, dimmed behind the level; the fill reveals them up to the level, turns to
-  // the limiter's or the compressor's colour while it acts, and all red on clip.
-  const ZONES = meterGradient("to top", dbToPos);
+  // Colour zones, dimmed behind the level; the fill reveals them up to the level, turns to
+  // the limiter's or the compressor's colour while it acts, and all red on clip. Linear in dBu
+  // over the range set in Settings (−60 to +20 dBu by default).
 
   interface Props {
     level: number | null; // dB; null = no data
@@ -29,8 +25,11 @@
   let clipUntil = $state(0);
   let now = $state(performance.now());
 
-  const pos = $derived(level === null || level <= floor ? 0 : dbToPos(level));
-  const peakPos = $derived(peak === null || peak <= floor ? 0 : dbToPos(peak));
+  const bottom = $derived(Math.max(meterRange.min, floor));
+  const dbToPos = $derived((db: number) => meterPos(db, bottom, meterRange.max));
+  const ZONES = $derived(meterGradient("to top", dbToPos));
+  const pos = $derived(level === null ? 0 : dbToPos(level));
+  const peakPos = $derived(peak === null ? 0 : dbToPos(peak));
   const clipLit = $derived(clip || clipUntil > now);
   const sig = signalLit(() => level);
 
@@ -62,7 +61,9 @@
     ></div>
     {#if peakPos > 0}<div class="peak" style:bottom={`${peakPos * 100}%`}></div>{/if}
     <!-- 0 dBu (compressor / limiter / gate thresholds are on the same scale) -->
-    <div class="tick" style:bottom={`${dbToPos(0) * 100}%`} title="0 dBu"></div>
+    {#if bottom < 0 && meterRange.max > 0}
+      <div class="tick" style:bottom={`${dbToPos(0) * 100}%`} title="0 dBu"></div>
+    {/if}
   </div>
 </div>
 

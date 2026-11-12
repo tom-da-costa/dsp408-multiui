@@ -57,15 +57,6 @@ export function meterPos(db: number | null, floor: number, top = 20): number {
   return Math.min(1, (db - floor) / (top - floor));
 }
 
-// Vertical meters: levels in dBu (like the dynamics thresholds), full scale (CLIP) = +20 dBu.
-const METER_POINTS: [number, number][] = [
-  [0, -60],
-  [0.2, -40],
-  [0.45, -20],
-  [0.7, 0],
-  [1, 20],
-];
-
 /** Meter colour zones (dBu): green up to 0, yellow up to +6, orange up to +12, red above. */
 export const METER_ZONES = { yellow: 0, orange: 6, red: 12 } as const;
 export const METER_COLORS = {
@@ -98,19 +89,6 @@ export function meterGradient(direction: string, pos: (db: number) => number): s
   );
   const c = METER_COLORS;
   return `linear-gradient(${direction}, ${c.green} 0 ${y}, ${c.yellow} ${y} ${o}, ${c.orange} ${o} ${r}, ${c.red} ${r} 100%)`;
-}
-
-/** Position of a level on a vertical meter (0 = bottom, 1 = full scale). */
-export function meterDbToPos(db: number): number {
-  const [first, last] = [METER_POINTS[0]!, METER_POINTS[METER_POINTS.length - 1]!];
-  if (db <= first[1]) return 0;
-  if (db >= last[1]) return 1;
-  for (let i = 1; i < METER_POINTS.length; i++) {
-    const [p1, d1] = METER_POINTS[i]!;
-    const [p0, d0] = METER_POINTS[i - 1]!;
-    if (db <= d1) return p0 + ((db - d0) / (d1 - d0)) * (p1 - p0);
-  }
-  return 1;
 }
 
 // --- one device step (the − / + buttons) ----------------------------------------------------------

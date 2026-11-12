@@ -7,7 +7,7 @@ import {
   GEQ_FREQS,
   logIndexStep,
   logSnap,
-  meterDbToPos,
+  meterPos,
   meterFill,
   meterGradient,
   COMP_COLOR,
@@ -73,18 +73,14 @@ describe("GEQ", () => {
   });
 });
 
-describe("meterDbToPos", () => {
-  it("spans -60 dB to full scale (+20 dB) and is monotonic", () => {
-    expect(meterDbToPos(-90)).toBe(0);
-    expect(meterDbToPos(0)).toBeCloseTo(0.7);
-    expect(meterDbToPos(20)).toBe(1);
-    expect(meterDbToPos(30)).toBe(1);
-    let last = -1;
-    for (let db = -60; db <= 20; db += 0.5) {
-      const pos = meterDbToPos(db);
-      expect(pos).toBeGreaterThan(last);
-      last = pos;
-    }
+describe("meterPos", () => {
+  it("is linear in dB between the bottom and the top of the range, clamped", () => {
+    expect(meterPos(null, -60, 20)).toBe(0);
+    expect(meterPos(-90, -60, 20)).toBe(0);
+    expect(meterPos(-20, -60, 20)).toBe(0.5);
+    expect(meterPos(0, -60, 20)).toBe(0.75);
+    expect(meterPos(30, -60, 20)).toBe(1);
+    expect(meterPos(-40, -80, 0)).toBe(0.5);
   });
 });
 
@@ -121,10 +117,10 @@ describe("device steps", () => {
 
 describe("meter zones", () => {
   it("green to 0 dBu, yellow to +6, orange to +12, red above", () => {
-    const css = meterGradient("to top", meterDbToPos);
+    const css = meterGradient("to top", (db) => meterPos(db, -60, 20));
     expect(css).toBe(
-      "linear-gradient(to top, #2bbf7f 0 70.00%, #ffd23f 70.00% 79.00%, " +
-        "#ff8c1a 79.00% 88.00%, #ff4d5e 88.00% 100%)",
+      "linear-gradient(to top, #2bbf7f 0 75.00%, #ffd23f 75.00% 82.50%, " +
+        "#ff8c1a 82.50% 90.00%, #ff4d5e 90.00% 100%)",
     );
   });
 
