@@ -38,7 +38,7 @@
 
 <main>
   <form class="card" onsubmit={submit}>
-    <h1>DSP 408</h1>
+    <h1>t.racks DSP controller</h1>
     <label>
       Access code
       <input
