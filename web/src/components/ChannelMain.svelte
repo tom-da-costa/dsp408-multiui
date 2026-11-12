@@ -1,5 +1,6 @@
 <script lang="ts">
-  // Gain, mute and phase of one channel, plus its name editor when `rename` is set.
+  // Gain, mute (unless `mute` is false) and phase of one channel, plus its name editor when
+  // `rename` is set.
   import { app } from "../lib/app.svelte";
   import { formatDb, gainStep } from "../lib/scale";
   import type { Channel } from "../lib/types";
@@ -10,9 +11,10 @@
     channel: Channel;
     path: string;
     rename?: boolean;
+    mute?: boolean;
   }
 
-  let { channel, path, rename = false }: Props = $props();
+  let { channel, path, rename = false, mute = true }: Props = $props();
 
   const limits = $derived(app.hello?.limits);
 </script>
@@ -32,14 +34,16 @@
     onchange={(v) => app.set(`${path}.gain_db`, v)}
   />
 {/if}
-<div class="toggles">
-  <button
-    class="switch danger"
-    class:on={channel.mute}
-    disabled={!app.editable("mute")}
-    aria-pressed={channel.mute}
-    onclick={() => app.set(`${path}.mute`, !channel.mute)}>Mute</button
-  >
+<div class="toggles" class:single={!mute}>
+  {#if mute}
+    <button
+      class="switch danger"
+      class:on={channel.mute}
+      disabled={!app.editable("mute")}
+      aria-pressed={channel.mute}
+      onclick={() => app.set(`${path}.mute`, !channel.mute)}>Mute</button
+    >
+  {/if}
   <button
     class="switch"
     class:on={channel.phase}
@@ -59,5 +63,8 @@
     grid-template-columns: 1fr 1fr;
     gap: 8px;
     margin: 8px 0;
+  }
+  .toggles.single {
+    grid-template-columns: 1fr;
   }
 </style>

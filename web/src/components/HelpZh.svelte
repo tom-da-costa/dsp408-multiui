@@ -61,7 +61,8 @@
     </dd>
     <dt>▥ All-in-one</dt>
     <dd>
-      每个通道一列，显示顶部一行中选中的设置（Name、Gain、Delay、EQ、Filters、Comp、Limit、Gate、GEQ、Matrix）。适合在电脑上纵览整个系统。
+      每个通道一列，按调试系统的顺序显示顶部一行中选中的设置：Name、Link、Matrix、Filters、Comp、Limit、Gain、EQ、Delay，然后是
+      Gate 和 GEQ（仅输入，默认隐藏）。<strong>Mute</strong> 位于每个电平表下方。适合在电脑上纵览整个系统。
     </dd>
     <dt>🚨 Too loud</dt>
     <dd>

@@ -1,7 +1,8 @@
 <script lang="ts">
-  // "All-in-one" tab: one column per channel with the settings picked in the chip row (the
-  // channel name, then the settings of the Params tab), for the channels picked in the row below
-  // (as in the Live tab). Both are remembered in this browser.
+  // "All-in-one" tab: one column per channel with the settings picked in the chip row, for the
+  // channels picked in the row below (as in the Live tab). Both are remembered in this browser.
+  // The blocks follow the order a system is set up in (name, link, routing, crossover, dynamics,
+  // gain, EQ, delay, then the input-only gate and GEQ). MUTE sits under the meter of each column.
   import { app } from "../lib/app.svelte";
   import { links } from "../lib/links.svelte";
   import { nav, PARAM_SCOPE, PARAMS, slotLabel, type Param } from "../lib/nav.svelte";
@@ -16,14 +17,25 @@
 
   /** A block of a column: the channel name or a setting of the Params tab. */
   type Item = "name" | Param;
-  const ITEMS: (readonly [Item, string])[] = [
-    ["name", "Name"],
-    ...PARAMS.filter(([key]) => key !== "link"),
+  const ORDER: Item[] = [
+    "name",
+    "link",
+    "matrix",
+    "filters",
+    "comp",
+    "limit",
+    "gain",
+    "eq",
+    "delay",
+    "gate",
+    "geq",
   ];
-  const ORDER: Item[] = ITEMS.map(([key]) => key);
+  const LABELS = Object.fromEntries([["name", "Name"], ...PARAMS]) as Record<Item, string>;
+  const ITEMS = ORDER.map((key) => [key, LABELS[key]] as const);
 
   const STORAGE_KEY = "dsp408.aio.params";
-  const DEFAULT: Item[] = ["gain", "delay", "filters", "comp", "limit", "gate", "matrix"];
+  // Everything but the input-only gate and GEQ, which are set less often.
+  const DEFAULT: Item[] = ORDER.filter((key) => key !== "gate" && key !== "geq");
 
   function load(): Item[] {
     try {
@@ -61,6 +73,12 @@
     }),
   );
 
+  function linkedWith(path: string): string {
+    const [side] = path.split(".");
+    const others = (channelAt(path)?.linked ?? []).map((i) => slotLabel(`${side}.${i}`));
+    return others.join(", ");
+  }
+
   function applies(item: Item, path: string): boolean {
     if (item === "name") return true;
     const scope = PARAM_SCOPE[item];
@@ -87,6 +105,13 @@
         <strong>{links.name(path)}</strong>
       </button>
       <LevelBar {path} compact indicators />
+      <button
+        class="switch danger mute"
+        class:on={channel.mute}
+        disabled={!app.editable("mute")}
+        aria-pressed={channel.mute}
+        onclick={() => app.set(`${path}.mute`, !channel.mute)}>Mute</button
+      >
       {#each shown.filter((item) => applies(item, path)) as item (item)}
         {@const members = links.members(path)}
         {#if item === "name"}
@@ -103,13 +128,23 @@
               {/if}
             {/each}
           </Section>
+        {:else if item === "link"}
+          <!-- Links are edited for a whole side at once, in Params › Link. -->
+          <Section id={`link@${path}`} title="Link" kind="link">
+            <div class="link">
+              <span class:muted={!channel.linked.length}>
+                {channel.linked.length ? `🔗 Linked with ${linkedWith(path)}` : "Not linked"}
+              </span>
+              <button onclick={() => nav.selectParam("link")}>Edit links</button>
+            </div>
+          </Section>
         {:else if item === "matrix" && members.length > 1}
           <!-- So does the routing: one block per member. -->
           {#each members as member (member)}
             <ParamBlock param="matrix" path={member} title={`Matrix · ${slotLabel(member)}`} />
           {/each}
         {:else}
-          <ParamBlock param={item} {path} />
+          <ParamBlock param={item} {path} mute={false} />
         {/if}
       {/each}
     </section>
@@ -140,6 +175,16 @@
     background: var(--panel);
     border: 1px solid var(--line);
     border-radius: var(--radius);
+  }
+  .mute {
+    width: 100%;
+  }
+  .link {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
   }
   .strip :global(section.card) {
     margin: 0;
