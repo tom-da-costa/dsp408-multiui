@@ -82,9 +82,10 @@
     </dd>
     <dt>▥ All-in-one</dt>
     <dd>
-      Eine Spalte pro Kanal mit den Einstellungen, die oben gewählt sind (Name, Gain, Delay, EQ,
-      Filters, Comp, Limit, Gate, GEQ, Matrix). Praktisch am Computer, um ein ganzes System zu
-      überblicken.
+      Eine Spalte pro Kanal mit den Einstellungen, die oben gewählt sind, in der Reihenfolge, in
+      der man ein System einstellt: Name, Link, Matrix, Filters, Comp, Limit, Gain, EQ, Delay,
+      dann Gate und GEQ (nur Eingänge, anfangs ausgeblendet). <strong>Mute</strong> steht unter
+      jeder Pegelanzeige. Praktisch am Computer, um ein ganzes System zu überblicken.
     </dd>
     <dt>🚨 Too loud</dt>
     <dd>

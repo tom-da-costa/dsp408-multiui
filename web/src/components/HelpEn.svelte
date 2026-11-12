@@ -72,8 +72,10 @@
     </dd>
     <dt>▥ All-in-one</dt>
     <dd>
-      One column per channel with the settings you pick in the top row (Name, Gain, Delay, EQ,
-      Filters, Comp, Limit, Gate, GEQ, Matrix). Handy on a computer to see a whole system.
+      One column per channel with the settings you pick in the top row, in the order a system is
+      set up: Name, Link, Matrix, Filters, Comp, Limit, Gain, EQ, Delay, then Gate and GEQ (inputs
+      only, hidden at first). <strong>Mute</strong> sits under each meter. Handy on a computer to
+      see a whole system.
     </dd>
     <dt>🚨 Too loud</dt>
     <dd>

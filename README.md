@@ -230,8 +230,9 @@ it on a DSP in use). The DSP accepts one client at a time: stop the app before p
 - **Params** view: one setting on the channels you pick. Gain, delay, filters, compressor,
   limiter and gate are shown as one strip per channel, with vertical faders; EQ as one frequency
   response graph per channel, on which the bands are edited.
-- **All-in-one** view: one column per channel with the settings you pick, including the
-  channel name (*Name*).
+- **All-in-one** view: one column per channel with the settings you pick, in the order a system
+  is set up (name, link, routing, filters, compressor, limiter, gain, EQ, delay, then the
+  inputs' gate and GEQ), with MUTE under each meter.
 - In Live, Params and All-in-one, a row picks the channels shown (all, inputs, outputs or any
   set); each view remembers its choice in the browser (Params: one choice for every setting).
 - **Too loud** view: one indicator that fills the screen, for whoever sets the volume. It lights

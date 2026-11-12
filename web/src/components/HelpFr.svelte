@@ -83,9 +83,10 @@
     </dd>
     <dt>▥ All-in-one</dt>
     <dd>
-      Une colonne par voie avec les réglages choisis dans la rangée du haut (Name, Gain, Delay,
-      EQ, Filters, Comp, Limit, Gate, GEQ, Matrix). Pratique sur un ordinateur pour voir tout un
-      système.
+      Une colonne par voie avec les réglages choisis dans la rangée du haut, dans l'ordre où l'on
+      règle un système : Name, Link, Matrix, Filters, Comp, Limit, Gain, EQ, Delay, puis Gate et
+      GEQ (entrées seulement, masqués au départ). <strong>Mute</strong> est sous chaque
+      vu-mètre. Pratique sur un ordinateur pour voir tout un système.
     </dd>
     <dt>🚨 Too loud</dt>
     <dd>

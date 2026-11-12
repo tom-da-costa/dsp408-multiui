@@ -17,9 +17,11 @@
     param: Param;
     path: string;
     title?: string;
+    /** Show MUTE in the Gain block (the All-in-one view has it under the meter instead). */
+    mute?: boolean;
   }
 
-  let { param, path, title }: Props = $props();
+  let { param, path, title, mute = true }: Props = $props();
 
   const isOutput = $derived(path.startsWith("outputs."));
   const index = $derived(Number(path.split(".")[1]));
@@ -35,7 +37,7 @@
 
 {#if channel}
   {#if param === "gain"}
-    <Section {id} title={title ?? "Gain"}><ChannelMain {channel} {path} /></Section>
+    <Section {id} title={title ?? "Gain"}><ChannelMain {channel} {path} {mute} /></Section>
   {:else if param === "delay"}
     <DelaySection {channel} {path} {id} {title} />
   {:else if param === "eq"}
