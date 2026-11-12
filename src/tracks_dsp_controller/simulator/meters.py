@@ -1,8 +1,10 @@
 """Synthetic meters that follow the simulated device's parameters.
 
 Each input has a signal source (a level in dB relative to the meter reference, plus a shape).
-Levels then go through the live config: input gain and mute, the routing matrix (power sum of
-the routed inputs plus crosspoint gain), output gain and mute. Limiter and compressor activity
+Levels then go through the live config: input gain, input mute, the routing matrix (power sum
+of the routed inputs plus crosspoint gain), output gain and mute. As on the DSP 408, an input
+meter reads before the input mute (a muted input still shows its level but feeds no output),
+while a muted output reads zero. Limiter and compressor activity
 is raised when an output exceeds the corresponding threshold.
 """
 
@@ -72,16 +74,19 @@ class MeterSimulator:
         ``None`` here means silence; it is rendered at the meter floor.
         """
         now = self._now()
-        inputs: list[float | None] = []
+        inputs: list[float | None] = []  # the input meters: after the gain, before the mute
+        routed: list[float | None] = []  # what each input sends to the matrix
         for i, ch in enumerate(config.inputs):
             level = self.source_level(i, now)
-            inputs.append(None if level is None or ch.mute else level + gain_raw_to_db(ch.gain))
+            metered = None if level is None else level + gain_raw_to_db(ch.gain)
+            inputs.append(metered)
+            routed.append(None if ch.mute else metered)
         outputs: list[float | None] = []
         limit: list[bool] = []
         comp: list[bool] = []
         for out in config.outputs:
             power = 0.0
-            for i, level in enumerate(inputs):
+            for i, level in enumerate(routed):
                 if level is not None and out.matrix >> i & 1:
                     power += 10 ** ((level + gain_raw_to_db(out.crosspoints[i])) / 10)
             level_out = (
