@@ -167,7 +167,7 @@ varies and can exceed the 0.5 s that a DSP on the LAN needs.
   their own palettes), shown on strips, chips, headers, the response graph's overlays and the
   link groups. Linked channels take the colour of the lowest-numbered channel of their group.
 - **Merge linked channels** (Settings, per browser; `web/src/lib/links.svelte.ts`): every view
-  except Params › Matrix and Link shows a link group as its lowest-numbered member, labelled with
+  except the Matrix and Link tabs shows a link group as its lowest-numbered member, labelled with
   all members ("Out 1+5", "SubL / SubR"). Writes go to that member and the DSP applies them to
   the group; names and routing, which links do not share, keep one control per member. Meters
   show the loudest member; an indicator is lit if any member's is.

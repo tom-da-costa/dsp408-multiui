@@ -1,15 +1,13 @@
 <script lang="ts">
   // "Params" tab: one sub-tab per setting, each showing that setting on the channels picked in
   // the row below (as in Live and All-in-one; one choice for every setting, remembered in
-  // this browser).
+  // this browser). Link and Matrix have tabs of their own.
   import { app } from "../lib/app.svelte";
   import { links } from "../lib/links.svelte";
-  import { nav, PARAM_SCOPE, PARAMS } from "../lib/nav.svelte";
+  import { nav, PARAM_SCOPE, PARAM_TABS } from "../lib/nav.svelte";
   import { ChannelSelection } from "../lib/selection.svelte";
   import ChannelPicker from "./ChannelPicker.svelte";
   import ChipBar from "./ChipBar.svelte";
-  import LinkEditor from "./LinkEditor.svelte";
-  import Matrix from "./Matrix.svelte";
   import Mixer from "./Mixer.svelte";
   import ParamBlock from "./ParamBlock.svelte";
   import ParamStrips from "./ParamStrips.svelte";
@@ -31,7 +29,7 @@
 </script>
 
 <ChipBar
-  items={PARAMS.map(([key, label]) => ({ key, label }))}
+  items={PARAM_TABS.map(([key, label]) => ({ key, label }))}
   selected={nav.param}
   onselect={(k) => nav.selectParam(k as typeof nav.param)}
   label="Setting"
@@ -39,10 +37,6 @@
 
 {#if nav.param === "gain"}
   <Mixer {selection} {paths} />
-{:else if nav.param === "matrix"}
-  <Matrix />
-{:else if nav.param === "link"}
-  <LinkEditor />
 {:else if nav.param === "eq"}
   <ChannelPicker {selection} />
   <div class="graphs">

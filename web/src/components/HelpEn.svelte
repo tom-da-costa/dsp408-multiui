@@ -57,12 +57,15 @@
       (with markers at the compressor <em>C</em> and limiter <em>L</em> thresholds and a white
       peak line), the gain fader and MUTE. Tap a channel's name to open its page.
     </dd>
+    <dt>🔗 Link</dt>
+    <dd>Groups channels so that they move together, and renames them (see <em>Link</em> below).</dd>
+    <dt>🔀 Matrix</dt>
+    <dd>The routing grid: which inputs go to each output.</dd>
     <dt>🎚 Params</dt>
     <dd>
       One setting at a time, on all the channels you pick: Gain, Delay, EQ, Filters, Comp,
-      Limit, Gate, GEQ, Matrix and Link. Most are shown as one strip per channel, side by side,
-      to compare and adjust them together. EQ shows one frequency graph per channel with its
-      band list; Matrix is the routing grid; Link groups channels.
+      Limit, Gate and GEQ. Most are shown as one strip per channel, side by side, to compare and
+      adjust them together. EQ shows one frequency graph per channel with its band list.
     </dd>
     <dt>🔈 Channels</dt>
     <dd>
@@ -230,7 +233,7 @@
     </dd>
     <dt>Display · Merge linked channels</dt>
     <dd>
-      Shows each group of linked channels as one channel in every view (except Params › Matrix
+      Shows each group of linked channels as one channel in every view (except Matrix
       and Link). A change applies to the whole group; names and routing stay per channel.
       This device only.
     </dd>

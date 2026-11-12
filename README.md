@@ -47,7 +47,7 @@ On a phone, in landscape:
   gate and 31-band GEQ on inputs, channel names
 - Channel links, as on the DSP: linked channels follow each other. Optionally (Settings ›
   *Merge linked channels*), a link group shows as one channel ("Out 1+5") in every view except
-  Params › Matrix and Link; names and routing stay per channel
+  the Matrix and Link tabs; names and routing stay per channel
 - A colour per channel, the same in every view; linked channels share the colour of the
   lowest-numbered channel of their group
 - Frequency response graph on each channel page (filters, PEQ, GEQ), with other channels' curves
@@ -229,6 +229,8 @@ it on a DSP in use). The DSP accepts one client at a time: stop the app before p
   10 dB (range set in Settings, −40 to +20 dBu by default) with the compressor (C) and limiter
   (L) thresholds, the gain fader with − / +, SIG (signal above a threshold set in Settings,
   −60 dBu by default) and MUTE.
+- **Link** and **Matrix** tabs: channel links (with each channel's name) and the routing grid,
+  for the whole system at once.
 - **Params** view: one setting on the channels you pick. Gain, delay, filters, compressor,
   limiter and gate are shown as one strip per channel, with vertical faders; EQ as one frequency
   response graph per channel, on which the bands are edited.

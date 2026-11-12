@@ -1,11 +1,15 @@
 // Navigation: main tab plus the sub-tab of "Params" (a setting) and "Channels" (a channel),
 // mirrored in the URL hash (#params/gain, #channels/outputs.3, #aio …) so that reloads and the
-// browser's back button (or a phone's back gesture) work. The screen lock freezes it.
+// browser's back button (or a phone's back gesture) work. The screen lock freezes it. Link and
+// Matrix, edited for a whole side or the whole system, have tabs of their own (#link, #matrix);
+// #params/link and #params/matrix, their old addresses, lead there.
 
 import { app } from "./app.svelte";
 
 export const TABS = [
   ["live", "Live", "🎛"],
+  ["link", "Link", "🔗"],
+  ["matrix", "Matrix", "🔀"],
   ["params", "Params", "🎚"],
   ["channels", "Channels", "🔈"],
   ["aio", "All-in-one", "▥"],
@@ -17,7 +21,7 @@ export const TABS = [
 ] as const;
 export type Tab = (typeof TABS)[number][0];
 
-/** The settings, as sub-tabs of "Params" and as the blocks of the all-in-one view. */
+/** The settings, as the blocks of the all-in-one view (Params shows those of PARAM_TABS). */
 export const PARAMS = [
   ["gain", "Gain"],
   ["delay", "Delay"],
@@ -31,6 +35,13 @@ export const PARAMS = [
   ["link", "Link"],
 ] as const;
 export type Param = (typeof PARAMS)[number][0];
+
+/** The sub-tabs of "Params": every setting but Matrix and Link, which have their own tabs. */
+export type ParamTab = Exclude<Param, "matrix" | "link">;
+type ParamTabEntry = Extract<(typeof PARAMS)[number], readonly [ParamTab, string]>;
+export const PARAM_TABS = PARAMS.filter(
+  (entry): entry is ParamTabEntry => entry[0] !== "matrix" && entry[0] !== "link",
+);
 
 /** Which channels a setting exists on. */
 export const PARAM_SCOPE: Record<Param, "all" | "inputs" | "outputs"> = {
@@ -60,8 +71,8 @@ export function slotLabel(path: string): string {
   return match[1] === "inputs" ? `In ${String.fromCharCode(65 + n)}` : `Out ${n + 1}`;
 }
 
-function isParam(text: string): text is Param {
-  return PARAMS.some(([key]) => key === text);
+function isParamTab(text: string): text is ParamTab {
+  return PARAM_TABS.some(([key]) => key === text);
 }
 
 function isTab(text: string): text is Tab {
@@ -70,7 +81,7 @@ function isTab(text: string): text is Tab {
 
 class Nav {
   tab = $state<Tab>("live");
-  param = $state<Param>("gain");
+  param = $state<ParamTab>("gain");
   channel = $state("inputs.0");
   /** Open/closed state of collapsible sections, by section id. */
   sections = $state<Record<string, boolean>>({});
@@ -96,16 +107,21 @@ class Nav {
       return;
     }
     const [head = "", sub = ""] = location.hash.slice(1).split("/");
-    if (isTab(head)) {
+    if (head === "params" && (sub === "link" || sub === "matrix")) {
+      this.tab = sub; // their address before they had tabs of their own
+      this.go(false);
+    } else if (isTab(head)) {
       this.tab = head;
-      if (head === "params" && isParam(sub)) this.param = sub;
+      if (head === "params" && isParamTab(sub)) this.param = sub;
       if (head === "channels" && isChannelPath(sub)) this.channel = sub;
     } else if (isChannelPath(head)) {
       this.tab = "channels"; // links of the previous UI (#outputs.3)
       this.channel = head;
-    } else if (head === "mixer" || head === "matrix") {
-      this.tab = "params";
-      this.param = head === "mixer" ? "gain" : "matrix";
+      this.go(false);
+    } else if (head === "mixer") {
+      this.tab = "params"; // link of the previous UI
+      this.param = "gain";
+      this.go(false);
     }
   }
 
@@ -122,7 +138,7 @@ class Nav {
     this.go(false);
   }
 
-  selectParam(param: Param): void {
+  selectParam(param: ParamTab): void {
     if (this.frozen) return;
     this.tab = "params";
     this.param = param;

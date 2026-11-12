@@ -1,5 +1,5 @@
 // "Merge linked channels" display option (Settings), remembered in this browser. When it is on,
-// every view except Params › Matrix and Params › Link shows a link group as one channel: the
+// every view except the Matrix and Link tabs shows a link group as one channel: the
 // group's lowest-numbered member (its "lead") stands for the group. A write to the lead reaches
 // every member (the DSP applies it to the group), except the name and the routing, which views
 // keep per member. Meters show the loudest member, and an indicator is lit if any member's is.
