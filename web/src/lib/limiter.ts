@@ -11,10 +11,13 @@
 // 1.9 / 3.7 dB under its AES power. A soft limiter sits 2 dB higher on the speaker side (the
 // amplifier limit stays a ceiling). This matches another calculator the owner uses: 1700 W AES,
 // 8 ohm, 40.5 dB -> hard open 1.1, hard closed -0.7, soft open 3.1 dBu. The compressor gets
-// that value rounded down to the DSP's 0.5 dB step; the limiter goes 6 dB above it.
+// that value on the DSP's 0.5 dB step, rounded down by default (never above the computed limit)
+// or up on request (up to 0.5 dB above it); the limiter goes 6 dB above it.
 
 export type Load = "open" | "closed";
 export type Mode = "hard" | "soft";
+/** How the threshold goes onto the DSP's 0.5 dB step: down is the safe side. */
+export type Rounding = "down" | "up";
 
 export const LOAD_FACTOR: Record<Load, number> = { open: 1.5625, closed: 2.34375 };
 /** dB added on the speaker side: hard = Hornplans, soft = 2 dB above. */
@@ -31,6 +34,7 @@ export interface LimiterInput {
   ampPowerW: number | null; // amp power at that impedance (RMS); null = not taken into account
   load: Load;
   mode: Mode;
+  rounding?: Rounding; // default "down"
 }
 
 export interface LimiterResult {
@@ -41,6 +45,7 @@ export interface LimiterResult {
   extraDb: number; // soft: +2 dB on the speaker side
   thresholdDbu: number; // the hard or soft threshold (rounded down to 0.1), before the DSP step
   compThresholdDbu: number; // what is applied (0.5 dB steps, clamped to the DSP range)
+  rounding: Rounding;
   limitThresholdDbu: number;
   clamped: boolean; // the result was outside the DSP's threshold range
 }
@@ -53,6 +58,11 @@ export function inputDbu(watts: number, ohms: number, gainDb: number): number {
 /** Excel ROUNDDOWN / ROUNDUP as the original sheet uses them: toward the lower value. */
 function floorTo(value: number, step: number): number {
   return Math.floor(value / step + 1e-9) * step;
+}
+
+/** Toward the higher value; a value already on the step stays as it is. */
+function ceilTo(value: number, step: number): number {
+  return Math.ceil(value / step - 1e-9) * step;
 }
 
 function clamp(value: number): number {
@@ -80,7 +90,8 @@ export function computeLimiter(input: LimiterInput): LimiterResult {
   const extraDb = SOFT_EXTRA_DB[input.mode];
   const level = lower(speakerDbu + extraDb);
   const thresholdDbu = Number(floorTo(level, 0.1).toFixed(1));
-  const wanted = floorTo(thresholdDbu, THRESHOLD_STEP);
+  const rounding = input.rounding ?? "down";
+  const wanted = (rounding === "up" ? ceilTo : floorTo)(thresholdDbu, THRESHOLD_STEP);
   const compThresholdDbu = clamp(wanted);
   const limitThresholdDbu = clamp(compThresholdDbu + LIMITER_ABOVE_COMP_DB);
   return {
@@ -91,6 +102,7 @@ export function computeLimiter(input: LimiterInput): LimiterResult {
     extraDb,
     thresholdDbu,
     compThresholdDbu,
+    rounding,
     limitThresholdDbu,
     clamped: compThresholdDbu !== wanted,
   };

@@ -78,6 +78,27 @@ describe("limiter calculator", () => {
     expect(hot.clamped).toBe(true);
   });
 
+  it("rounds to the DSP step down by default, or up on request", () => {
+    // OWNER: hard open 1.1 dBu -> 1.0 down, 1.5 up; the limiter stays 6 dB above
+    const down = computeLimiter(OWNER);
+    expect(down.rounding).toBe("down");
+    expect(down.compThresholdDbu).toBe(1);
+    const up = computeLimiter({ ...OWNER, rounding: "up" });
+    expect(up.compThresholdDbu).toBe(1.5);
+    expect(up.limitThresholdDbu).toBe(7.5);
+    // closed: -0.7 -> -1.0 down, -0.5 up
+    expect(computeLimiter({ ...OWNER, load: "closed" }).compThresholdDbu).toBe(-1);
+    expect(computeLimiter({ ...OWNER, load: "closed", rounding: "up" }).compThresholdDbu).toBe(-0.5);
+  });
+
+  it("leaves a value already on the 0.5 dB step as it is, whichever the rounding", () => {
+    // the gain that puts the hard open threshold exactly on 1.0 dBu
+    const exact = { ...OWNER, ampGainDb: 40.5 + computeLimiter(OWNER).speakerDbu - 1 };
+    expect(computeLimiter(exact).thresholdDbu).toBe(1);
+    expect(computeLimiter(exact).compThresholdDbu).toBe(1);
+    expect(computeLimiter({ ...exact, rounding: "up" }).compThresholdDbu).toBe(1);
+  });
+
   it("validates", () => {
     expect(validate(HORNPLANS_EXAMPLE)).toBeNull();
     expect(validate({ ...HORNPLANS_EXAMPLE, impedanceOhm: 0 })).toMatch(/Impedance/);
