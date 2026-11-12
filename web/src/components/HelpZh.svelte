@@ -49,10 +49,14 @@
       用于演出现场：每个通道一条推子条，带有大号 CLIP / CMP / LIM 指示灯、电平表（标有压缩器 <em>C</em> 和限幅器 <em>L</em>
       的阈值，以及白色峰值线）、增益推子和 MUTE。点击通道名称可打开该通道的页面。
     </dd>
+    <dt>🔗 Link</dt>
+    <dd>将通道编组联动，并可重命名通道（见下文 <em>Link</em>）。</dd>
+    <dt>🔀 Matrix</dt>
+    <dd>路由矩阵：哪些输入送往各个输出。</dd>
     <dt>🎚 Params</dt>
     <dd>
-      一次显示一项设置，作用于所有选中的通道：Gain、Delay、EQ、Filters、Comp、Limit、Gate、GEQ、Matrix 和 Link。大多数设置以每通道一条并排显示，便于比较和统一调整。EQ
-      为每个通道显示一张频率响应图及其频段列表；Matrix 是路由矩阵；Link 用于将通道编组联动。
+      一次显示一项设置，作用于所有选中的通道：Gain、Delay、EQ、Filters、Comp、Limit、Gate 和 GEQ。大多数设置以每通道一条并排显示，便于比较和统一调整。EQ
+      为每个通道显示一张频率响应图及其频段列表。
     </dd>
     <dt>🔈 Channels</dt>
     <dd>
@@ -174,7 +178,7 @@
     <dd>所有电平表显示的范围，默认 −40 到 +20 dBu（+20 dBu 为 DSP 的满刻度）。电平、CLIP 和颜色不变。仅对本设备有效。</dd>
     <dt>Display · Merge linked channels</dt>
     <dd>
-      在所有视图中（Params › Matrix 和 Link 除外）将每组联动通道显示为一个通道。修改会作用于整个编组；名称和路由仍按通道分别设置。仅对本设备有效。
+      在所有视图中（Matrix 和 Link 除外）将每组联动通道显示为一个通道。修改会作用于整个编组；名称和路由仍按通道分别设置。仅对本设备有效。
     </dd>
     <dt>Display · Signal indicator (SIG)</dt>
     <dd>SIG 亮起的电平阈值（默认 −60 dBu）。未连接的输入约为 −86 dBu。仅对本设备有效。</dd>

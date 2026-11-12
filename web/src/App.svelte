@@ -6,8 +6,10 @@
   import ShutdownScreen from "./components/ShutdownScreen.svelte";
   import Help from "./components/Help.svelte";
   import LimiterCalc from "./components/LimiterCalc.svelte";
+  import LinkEditor from "./components/LinkEditor.svelte";
   import LiveView from "./components/LiveView.svelte";
   import Login from "./components/Login.svelte";
+  import Matrix from "./components/Matrix.svelte";
   import ParamView from "./components/ParamView.svelte";
   import Presets from "./components/Presets.svelte";
   import Settings from "./components/Settings.svelte";
@@ -146,6 +148,10 @@
           </p>
         {:else if nav.tab === "live"}
           <LiveView />
+        {:else if nav.tab === "link"}
+          <LinkEditor />
+        {:else if nav.tab === "matrix"}
+          <Matrix />
         {:else if nav.tab === "params"}
           <ParamView />
         {:else if nav.tab === "channels"}

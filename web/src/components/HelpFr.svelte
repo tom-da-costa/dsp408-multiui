@@ -66,13 +66,19 @@
       <em>L</em>, et un trait blanc de crête), le fader de gain et MUTE. Touchez le nom d'une
       voie pour ouvrir sa page.
     </dd>
+    <dt>🔗 Link</dt>
+    <dd>
+      Regroupe des voies pour qu'elles bougent ensemble, et permet de les renommer (voir
+      <em>Link</em> plus bas).
+    </dd>
+    <dt>🔀 Matrix</dt>
+    <dd>La grille de routage : quelles entrées vont vers chaque sortie.</dd>
     <dt>🎚 Params</dt>
     <dd>
       Un réglage à la fois, sur toutes les voies choisies : Gain, Delay, EQ, Filters, Comp,
-      Limit, Gate, GEQ, Matrix et Link. La plupart s'affichent en une tranche par voie, côte à
-      côte, pour les comparer et les régler ensemble. EQ affiche un graphique de fréquence par
-      voie avec la liste de ses bandes ; Matrix est la grille de routage ; Link regroupe des
-      voies.
+      Limit, Gate et GEQ. La plupart s'affichent en une tranche par voie, côte à côte, pour les
+      comparer et les régler ensemble. EQ affiche un graphique de fréquence par voie avec la
+      liste de ses bandes.
     </dd>
     <dt>🔈 Channels</dt>
     <dd>
@@ -259,7 +265,7 @@
     <dt>Display · Merge linked channels</dt>
     <dd>
       Affiche chaque groupe de voies liées comme une seule voie dans toutes les vues (sauf
-      Params › Matrix et Link). Un changement s'applique à tout le groupe ; les noms et le
+      Matrix et Link). Un changement s'applique à tout le groupe ; les noms et le
       routage restent par voie. Cet appareil uniquement.
     </dd>
     <dt>Display · Signal indicator (SIG)</dt>

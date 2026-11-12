@@ -122,8 +122,8 @@
       Merge linked channels
     </label>
     <p class="muted">
-      Linked channels show as one (e.g. "Out 1+5") in every view except Params › Matrix and
-      Link: a change applies to all of them, as the DSP does. Names and routing stay per channel;
+      Linked channels show as one (e.g. "Out 1+5") in every view except the Matrix and Link
+      tabs: a change applies to all of them, as the DSP does. Names and routing stay per channel;
       meters show the loudest. This browser only.
     </p>
     <Stepper

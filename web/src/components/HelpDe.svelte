@@ -67,12 +67,19 @@
       und Limiter <em>L</em> und einer weißen Spitzenwertlinie), dem Gain-Fader und MUTE. Den
       Kanalnamen antippen öffnet die Seite des Kanals.
     </dd>
+    <dt>🔗 Link</dt>
+    <dd>
+      Gruppiert Kanäle, damit sie sich gemeinsam bewegen, und benennt sie um (siehe
+      <em>Link</em> unten).
+    </dd>
+    <dt>🔀 Matrix</dt>
+    <dd>Das Routing-Raster: welche Eingänge auf welchen Ausgang gehen.</dd>
     <dt>🎚 Params</dt>
     <dd>
       Eine Einstellung nach der anderen, auf allen gewählten Kanälen: Gain, Delay, EQ, Filters,
-      Comp, Limit, Gate, GEQ, Matrix und Link. Die meisten erscheinen als ein Kanalzug pro Kanal
-      nebeneinander, um sie zu vergleichen und gemeinsam einzustellen. EQ zeigt pro Kanal einen
-      Frequenzgang mit seiner Bandliste; Matrix ist das Routing-Raster; Link gruppiert Kanäle.
+      Comp, Limit, Gate und GEQ. Die meisten erscheinen als ein Kanalzug pro Kanal nebeneinander,
+      um sie zu vergleichen und gemeinsam einzustellen. EQ zeigt pro Kanal einen Frequenzgang mit
+      seiner Bandliste.
     </dd>
     <dt>🔈 Channels</dt>
     <dd>
@@ -258,8 +265,8 @@
     </dd>
     <dt>Display · Merge linked channels</dt>
     <dd>
-      Zeigt jede Gruppe verlinkter Kanäle als einen Kanal in allen Ansichten (außer Params ›
-      Matrix und Link). Eine Änderung gilt für die ganze Gruppe; Namen und Routing bleiben pro
+      Zeigt jede Gruppe verlinkter Kanäle als einen Kanal in allen Ansichten (außer Matrix und
+      Link). Eine Änderung gilt für die ganze Gruppe; Namen und Routing bleiben pro
       Kanal. Nur dieses Gerät.
     </dd>
     <dt>Display · Signal indicator (SIG)</dt>

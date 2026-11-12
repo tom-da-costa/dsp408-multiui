@@ -129,13 +129,13 @@
             {/each}
           </Section>
         {:else if item === "link"}
-          <!-- Links are edited for a whole side at once, in Params › Link. -->
+          <!-- Links are edited for a whole side at once, in the Link tab. -->
           <Section id={`link@${path}`} title="Link" kind="link">
             <div class="link">
               <span class:muted={!channel.linked.length}>
                 {channel.linked.length ? `🔗 Linked with ${linkedWith(path)}` : "Not linked"}
               </span>
-              <button onclick={() => nav.selectParam("link")}>Edit links</button>
+              <button onclick={() => nav.select("link")}>Edit links</button>
             </div>
           </Section>
         {:else if item === "matrix" && members.length > 1}
