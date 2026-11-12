@@ -1,5 +1,5 @@
 {
-  "name": "t.racks DSP control",
+  "name": "t.racks DSP controller",
   "short_name": "DSP",
   "description": "Multi-client controller for the t.racks DSP 408, 206 and 204",
   "start_url": "/",

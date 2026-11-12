@@ -26,7 +26,7 @@
   );
   const presetTitle = $derived(
     [
-      device ? `${slot} ${device.preset_name}` : "DSP 408",
+      device ? `${slot} ${device.preset_name}` : "DSP",
       device?.modified ? "unsaved changes" : "",
       status === "disconnected"
         ? "no connection to the server"
@@ -51,7 +51,7 @@
       <span class="slot">{slot}</span>
     </span>
     <span class="text">
-      <strong>{device?.preset_name || "DSP 408"}</strong>
+      <strong>{device?.preset_name || "DSP"}</strong>
       <small>
         {#if device?.modified}<span class="unsaved">● unsaved</span>{/if}
         {#if app.hello?.demo}<span class="demo">DEMO</span>{/if}
