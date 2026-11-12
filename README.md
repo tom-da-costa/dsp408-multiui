@@ -155,10 +155,10 @@ uv run tracks-dsp-controller --demo   # demo without a DSP
 ### Docker
 
 ```bash
-docker run -d -p 8080:8080 -e TRACKS_DSP_PIN=1234 ghcr.io/tom-da-costa/tracks-dsp-controller --dsp-host 192.168.1.50
+docker run -d -p 8080:8080 -e TDSP_PIN=1234 ghcr.io/tom-da-costa/tracks-dsp-controller --dsp-host 192.168.1.50
 
 # Or Docker Compose
-cp .env.example .env   # set TRACKS_DSP_HOST, TRACKS_DSP_PIN …
+cp .env.example .env   # set TDSP_HOST, TDSP_PIN …
 docker compose up -d
 ```
 
@@ -174,9 +174,9 @@ uv run tracks-dsp-controller --dsp-host 192.168.1.50 --tls-cert cert.pem --tls-k
 uv run tracks-dsp-controller --dsp-host 192.168.1.50 --tls-self-signed --tls-names 192.168.1.10
 ```
 
-With Docker Compose: `TRACKS_DSP_TLS_SELF_SIGNED=true` and `TRACKS_DSP_TLS_NAMES=<this host's IP>` in
+With Docker Compose: `TDSP_TLS_SELF_SIGNED=true` and `TDSP_TLS_NAMES=<this host's IP>` in
 `.env` (the certificate is kept in the `tracks-dsp-tls` volume), or mount your certificate and
-set `TRACKS_DSP_TLS_CERT` / `TRACKS_DSP_TLS_KEY`.
+set `TDSP_TLS_CERT` / `TDSP_TLS_KEY`.
 
 ### Command-line options
 
@@ -187,26 +187,26 @@ still work for now, with a warning in the log.
 
 | Option | Variable | Default | What it does |
 |---|---|---|---|
-| `--dsp-host IP` | `TRACKS_DSP_HOST` | | The DSP's IP address (required, unless `--demo`) |
-| `--dsp-port N` | `TRACKS_DSP_PORT` | `9761` | The DSP's TCP port |
-| `--model auto\|408\|206\|204` | `TRACKS_DSP_MODEL` | `auto` | `auto` detects the model; a number enforces it (refused if the device differs) |
-| `--device-id N` | `TRACKS_DSP_DEVICE_ID` | searched for | The ID number set on the DSP's front panel (1-250); setting it skips the search |
-| `--pin CODE` | `TRACKS_DSP_PIN` | `0000` | Access code asked by the web UI |
-| `--host IP` | `TRACKS_DSP_LISTEN_HOST` | `0.0.0.0` | Address the web server listens on |
-| `--port N` | `TRACKS_DSP_LISTEN_PORT` | `8080` | Port of the web UI |
-| `--meter-rate HZ` | `TRACKS_DSP_METER_RATE` | `5` | Meter refresh rate, 1-10 Hz (also in the app's Settings) |
-| `--lock-idle-timeout S` | `TRACKS_DSP_LOCK_IDLE_TIMEOUT` | `120` | Seconds of inactivity before the control lock is released |
-| `--resync-interval S` | `TRACKS_DSP_RESYNC_INTERVAL` | `0` (off) | Re-read the whole DSP config every S seconds |
-| `--command-timeout S` | `TRACKS_DSP_COMMAND_TIMEOUT` | `0.5` | Floor of the adaptive command timeout; it grows on a slow link |
-| `--experimental` | `TRACKS_DSP_EXPERIMENTAL` | off | Allow parameters not yet verified on a real DSP 408 |
-| `--demo` | `TRACKS_DSP_DEMO` | off | No DSP: a simulated one runs inside the app |
-| `--demo-scenario NAME` | `TRACKS_DSP_DEMO_SCENARIO` | `demo` | Presets and signals of the demo: `demo`, `silent`, `clipping`, `stress` |
-| `--tls-cert FILE`, `--tls-key FILE` | `TRACKS_DSP_TLS_CERT`, `TRACKS_DSP_TLS_KEY` | | HTTPS with your certificate and key (PEM) |
-| `--tls-self-signed` | `TRACKS_DSP_TLS_SELF_SIGNED` | off | HTTPS with a generated self-signed certificate |
-| `--tls-names NAMES` | `TRACKS_DSP_TLS_NAMES` | | Extra names or addresses for that certificate, comma-separated |
-| `--tls-dir DIR` | `TRACKS_DSP_TLS_DIR` | the user's data directory | Where the self-signed certificate is kept |
-| `--log-level LEVEL` | `TRACKS_DSP_LOG_LEVEL` | `info` | `debug`, `info`, `warning` or `error` |
-| `--profile FILE` | `TRACKS_DSP_PROFILE` | | Protocol profile (TOML) overriding the model's built-in one |
+| `--dsp-host IP` | `TDSP_HOST` | | The DSP's IP address (required, unless `--demo`) |
+| `--dsp-port N` | `TDSP_PORT` | `9761` | The DSP's TCP port |
+| `--model auto\|408\|206\|204` | `TDSP_MODEL` | `auto` | `auto` detects the model; a number enforces it (refused if the device differs) |
+| `--device-id N` | `TDSP_DEVICE_ID` | searched for | The ID number set on the DSP's front panel (1-250); setting it skips the search |
+| `--pin CODE` | `TDSP_PIN` | `0000` | Access code asked by the web UI |
+| `--host IP` | `TDSP_LISTEN_HOST` | `0.0.0.0` | Address the web server listens on |
+| `--port N` | `TDSP_LISTEN_PORT` | `8080` | Port of the web UI |
+| `--meter-rate HZ` | `TDSP_METER_RATE` | `5` | Meter refresh rate, 1-10 Hz (also in the app's Settings) |
+| `--lock-idle-timeout S` | `TDSP_LOCK_IDLE_TIMEOUT` | `120` | Seconds of inactivity before the control lock is released |
+| `--resync-interval S` | `TDSP_RESYNC_INTERVAL` | `0` (off) | Re-read the whole DSP config every S seconds |
+| `--command-timeout S` | `TDSP_COMMAND_TIMEOUT` | `0.5` | Floor of the adaptive command timeout; it grows on a slow link |
+| `--experimental` | `TDSP_EXPERIMENTAL` | off | Allow parameters not yet verified on a real DSP 408 |
+| `--demo` | `TDSP_DEMO` | off | No DSP: a simulated one runs inside the app |
+| `--demo-scenario NAME` | `TDSP_DEMO_SCENARIO` | `demo` | Presets and signals of the demo: `demo`, `silent`, `clipping`, `stress` |
+| `--tls-cert FILE`, `--tls-key FILE` | `TDSP_TLS_CERT`, `TDSP_TLS_KEY` | | HTTPS with your certificate and key (PEM) |
+| `--tls-self-signed` | `TDSP_TLS_SELF_SIGNED` | off | HTTPS with a generated self-signed certificate |
+| `--tls-names NAMES` | `TDSP_TLS_NAMES` | | Extra names or addresses for that certificate, comma-separated |
+| `--tls-dir DIR` | `TDSP_TLS_DIR` | the user's data directory | Where the self-signed certificate is kept |
+| `--log-level LEVEL` | `TDSP_LOG_LEVEL` | `info` | `debug`, `info`, `warning` or `error` |
+| `--profile FILE` | `TDSP_PROFILE` | | Protocol profile (TOML) overriding the model's built-in one |
 | `--version` | | | Print the version |
 
 Other commands, for diagnostics (`tracks-dsp-controller <command> --help` for their options):

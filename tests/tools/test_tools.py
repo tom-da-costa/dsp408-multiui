@@ -2,6 +2,7 @@
 
 import asyncio
 import json
+import logging
 from collections.abc import AsyncIterator
 from pathlib import Path
 
@@ -16,6 +17,7 @@ from tracks_dsp_controller.protocol import preset_file as pf
 from tracks_dsp_controller.protocol import responses as r
 from tracks_dsp_controller.protocol.profile import DEFAULT_PROFILE as P
 from tracks_dsp_controller.simulator import Faults, SimulatedDevice, SimulatorServer, apply_scenario
+from tracks_dsp_controller.simulator import cli as sim_cli
 from tracks_dsp_controller.tools import probe
 from tracks_dsp_controller.tools.proxy import ProxyServer
 
@@ -196,9 +198,9 @@ def test_serve_requires_a_dsp_host(capsys: pytest.CaptureFixture[str]) -> None:
 
 
 def test_options_read_tracks_dsp_environment_variables(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setenv("TRACKS_DSP_HOST", "10.0.0.9")
-    monkeypatch.setenv("TRACKS_DSP_PIN", "4321")
-    monkeypatch.setenv("TRACKS_DSP_COMMAND_TIMEOUT", "0.8")
+    monkeypatch.setenv("TDSP_HOST", "10.0.0.9")
+    monkeypatch.setenv("TDSP_PIN", "4321")
+    monkeypatch.setenv("TDSP_COMMAND_TIMEOUT", "0.8")
     args = cli.build_parser().parse_args(["serve"])
     assert (args.dsp_host, args.pin, args.command_timeout) == ("10.0.0.9", "4321", 0.8)
     # an option on the command line wins over its variable
@@ -208,13 +210,27 @@ def test_options_read_tracks_dsp_environment_variables(monkeypatch: pytest.Monke
 def test_legacy_dsp408_variables_still_work_with_a_warning(
     monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
 ) -> None:
-    monkeypatch.setattr(cli, "_legacy_env", set())
+    monkeypatch.setattr(cli.ENV, "legacy_used", set())
     monkeypatch.setenv("DSP408_HOST", "10.0.0.8")
     monkeypatch.setenv("DSP408_PIN", "1234")
-    monkeypatch.setenv("TRACKS_DSP_PIN", "4321")  # the new name wins
+    monkeypatch.setenv("TDSP_PIN", "4321")  # the new name wins
     args = cli.build_parser().parse_args(["serve"])
     assert (args.dsp_host, args.pin) == ("10.0.0.8", "4321")
     with caplog.at_level("WARNING"):
-        cli._warn_legacy_env()
-    assert "DSP408_HOST is deprecated: rename it to TRACKS_DSP_HOST" in caplog.text
+        cli.ENV.warn_legacy(logging.getLogger("test"))
+    assert "DSP408_HOST is deprecated: rename it to TDSP_HOST" in caplog.text
     assert "DSP408_PIN" not in caplog.text
+
+
+def test_simulator_reads_tdsp_sim_and_its_legacy_names(
+    monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+) -> None:
+    monkeypatch.setattr(sim_cli.ENV, "legacy_used", set())
+    monkeypatch.setenv("TDSP_SIM_MODEL", "206")
+    monkeypatch.setenv("TRACKS_DSP_SIM_SCENARIO", "silent")
+    args = sim_cli.build_parser().parse_args([])
+    assert (args.model, args.scenario) == ("206", "silent")
+    with caplog.at_level("WARNING"):
+        sim_cli.ENV.warn_legacy(logging.getLogger("test"))
+    assert "TRACKS_DSP_SIM_SCENARIO is deprecated: rename it to TDSP_SIM_SCENARIO" in caplog.text
+    assert "MODEL" not in caplog.text

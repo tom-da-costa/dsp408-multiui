@@ -157,9 +157,7 @@ def create_app(
             session.port = ctx.simulator.bound_port
             session.host = "127.0.0.1"
         if config.pin == DEFAULT_PIN:
-            log.warning(
-                "using the default access code %s: set --pin or TRACKS_DSP_PIN", DEFAULT_PIN
-            )
+            log.warning("using the default access code %s: set --pin or TDSP_PIN", DEFAULT_PIN)
         await session.start()
         tasks = [asyncio.create_task(_ticker(lock, master))]
         if config.resync_interval_s > 0:

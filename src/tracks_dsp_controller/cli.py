@@ -2,8 +2,8 @@
 
 ``serve`` (the default) runs the web application; ``probe`` and ``proxy`` are developer tools.
 The simulated DSP is a separate program, ``tracks-dsp-sim`` (``simulator/cli.py``). Every option can
-also come from a ``TRACKS_DSP_<NAME>`` environment variable (``DSP408_<NAME>`` before 0.8: still
-read, with a warning).
+also come from a ``TDSP_<NAME>`` environment variable (``DSP408_<NAME>`` before 0.8: still read,
+with a warning; see ``envvars.py``).
 """
 
 from __future__ import annotations
@@ -12,7 +12,6 @@ import argparse
 import asyncio
 import contextlib
 import logging
-import os
 import sys
 from collections.abc import Sequence
 from dataclasses import replace
@@ -20,6 +19,7 @@ from pathlib import Path
 from typing import Any
 
 from tracks_dsp_controller import __version__
+from tracks_dsp_controller.envvars import Env
 from tracks_dsp_controller.protocol import config_map as cm
 from tracks_dsp_controller.protocol.profile import (
     MODELS,
@@ -31,38 +31,10 @@ from tracks_dsp_controller.protocol.profile import (
 DSP_PORT = 9761
 
 
-ENV_PREFIX = "TRACKS_DSP_"
-LEGACY_ENV_PREFIX = "DSP408_"  # the prefix before 0.8: still read, with a warning
-_legacy_env: set[str] = set()  # the legacy variables read so far
-
-
-def _env(name: str, default: str | None = None) -> str | None:
-    value = os.environ.get(ENV_PREFIX + name)
-    if value is None:
-        value = os.environ.get(LEGACY_ENV_PREFIX + name)
-        if value is not None:
-            _legacy_env.add(name)
-    return default if value is None else value
-
-
-def _warn_legacy_env() -> None:
-    for name in sorted(_legacy_env):
-        logging.getLogger(__name__).warning(
-            "%s%s is deprecated: rename it to %s%s",
-            LEGACY_ENV_PREFIX,
-            name,
-            ENV_PREFIX,
-            name,
-        )
-
-
-def _env_float(name: str, default: float) -> float:
-    value = _env(name)
-    return float(value) if value else default
-
-
-def _env_flag(name: str) -> bool:
-    return (_env(name) or "").lower() in ("1", "true", "yes", "on")
+ENV = Env("TDSP_", legacy_prefix="DSP408_")
+_env = ENV.get
+_env_float = ENV.float
+_env_flag = ENV.flag
 
 
 def _common(suppress: bool) -> argparse.ArgumentParser:
@@ -394,7 +366,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         level=args.log_level.upper(),
         format="%(asctime)s %(levelname)-7s %(name)s: %(message)s",
     )
-    _warn_legacy_env()
+    ENV.warn_legacy(logging.getLogger(__name__))
     if args.command is None:
         parser.print_help()
         return 0

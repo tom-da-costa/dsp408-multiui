@@ -1,7 +1,7 @@
 import { svelte } from "@sveltejs/vite-plugin-svelte";
 import { defineConfig } from "vitest/config";
 
-const backend = process.env.TRACKS_DSP_BACKEND ?? "http://127.0.0.1:8080";
+const backend = process.env.TDSP_BACKEND ?? "http://127.0.0.1:8080";
 
 export default defineConfig({
   plugins: [svelte()],

@@ -110,7 +110,7 @@ def test_cli_model_option(monkeypatch: pytest.MonkeyPatch) -> None:
     assert (device.model.key, device.identity) == ("206", "DSP206 V0104P")
     assert device.active_slot == 3
     assert device.live.outputs[0].name == "TEST"
-    monkeypatch.setenv("TRACKS_DSP_SIM_MODEL", "204")
+    monkeypatch.setenv("TDSP_SIM_MODEL", "204")
     assert sim_cli.build_parser().parse_args([]).model == "204"
     args = sim_cli.build_parser().parse_args(["--model", "206", "--preset", f"3={DSP408_DUMP}"])
     with pytest.raises(ValueError, match="expected 928"):
