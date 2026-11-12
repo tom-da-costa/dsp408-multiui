@@ -4,7 +4,7 @@
 
 const STORAGE_KEY = "dsp408.meterRange";
 
-export const METER_MIN_DEFAULT = -60;
+export const METER_MIN_DEFAULT = -40;
 export const METER_MAX_DEFAULT = 20; // full scale of the DSP
 /** Ranges offered in Settings; they do not overlap, so the bottom is always below the top. */
 export const METER_MIN_RANGE = [-90, -20] as const;

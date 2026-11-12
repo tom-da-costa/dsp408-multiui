@@ -1,5 +1,5 @@
 <script lang="ts">
-  // Vertical meter of the Live view: linear dBu scale over the range set in Settings (−60 to
+  // Vertical meter of the Live view: linear dBu scale over the range set in Settings (−40 to
   // +20 dBu by default), graduated every 10 dB, colour zones
   // (dimmed behind the level), peak hold, and markers at the compressor and limiter thresholds.
   // The level turns to the limiter's or the compressor's colour while it acts, red on clip.

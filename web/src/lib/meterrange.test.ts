@@ -15,8 +15,8 @@ describe("meter range", () => {
     meterRange.reset();
   });
 
-  it("defaults to -60 .. +20 dBu", () => {
-    expect([meterRange.min, meterRange.max]).toEqual([-60, 20]);
+  it("defaults to -40 .. +20 dBu", () => {
+    expect([meterRange.min, meterRange.max]).toEqual([-40, 20]);
     expect(meterRange.isDefault).toBe(true);
   });
 

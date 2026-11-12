@@ -100,7 +100,7 @@
       onchange={(db) => meterRange.setMax(db)}
     />
     <p class="muted">
-      The range every meter shows (−60 to +20 dBu by default; the DSP's full scale is +20 dBu).
+      The range every meter shows (−40 to +20 dBu by default; the DSP's full scale is +20 dBu).
       Levels, CLIP and the colour zones do not change. This browser only.
       {#if !meterRange.isDefault}
         <button class="link" disabled={app.screenLocked} onclick={() => meterRange.reset()}

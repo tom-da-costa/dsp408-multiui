@@ -5,7 +5,7 @@
 
   // Colour zones, dimmed behind the level; the fill reveals them up to the level, turns to
   // the limiter's or the compressor's colour while it acts, and all red on clip. Linear in dBu
-  // over the range set in Settings (−60 to +20 dBu by default).
+  // over the range set in Settings (−40 to +20 dBu by default).
 
   interface Props {
     level: number | null; // dB; null = no data

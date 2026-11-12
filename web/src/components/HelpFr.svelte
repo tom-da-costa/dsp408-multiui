@@ -251,7 +251,7 @@
     </dd>
     <dt>Meters · Scale bottom / top</dt>
     <dd>
-      La plage affichée par tous les vumètres, de −60 à +20 dBu par défaut (+20 dBu est le
+      La plage affichée par tous les vumètres, de −40 à +20 dBu par défaut (+20 dBu est le
       maximum du DSP). Les niveaux, CLIP et les couleurs ne changent pas. Cet appareil uniquement.
     </dd>
     <dt>Display · Merge linked channels</dt>
