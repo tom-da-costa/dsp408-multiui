@@ -220,12 +220,17 @@
     min-height: 36px;
     padding: 0 8px;
     font-variant-numeric: tabular-nums;
-    display: flex;
-    align-items: baseline;
-    justify-content: center;
-    gap: 3px;
+    /* A button centres its content vertically; number and unit stay on one baseline and the
+       unit wraps under the number when the box is too narrow (inline blocks). */
+    text-align: center;
+    line-height: 1.15;
+  }
+  .num,
+  .unit {
+    display: inline-block;
   }
   .unit {
+    margin-left: 3px;
     color: var(--muted);
     font-size: 0.8rem;
   }
@@ -266,12 +271,11 @@
     text-overflow: ellipsis;
   }
   .vfield .value {
-    flex-wrap: wrap;
-    column-gap: 2px;
     padding: 0 2px;
     font-size: 0.9rem;
   }
   .vfield .unit {
+    margin-left: 2px;
     font-size: 0.7rem;
   }
   .vfield form input {
