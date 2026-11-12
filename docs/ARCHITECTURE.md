@@ -218,9 +218,9 @@ captures of a real device, the 204 the notes of an app tested on one ([PROTOCOL.
   refused, kicking the first), reads unanswered on a connection left idle for 6 s.
 - It loads the same protocol profile as the backend (§6) and logs every frame it receives, so the
   official editor can be pointed at it to capture its requests ([captures.md](captures.md)).
-- It is a **separate program**, `tracks-dsp-sim`, reached over TCP like a real DSP, so tests
-  cover the real network path. The **demo mode** (`serve --demo`) runs the same simulated device inside the
-  backend process.
+- It runs as a **separate process**, `tracks-dsp-controller sim` (also installed as
+  `tracks-dsp-sim`), reached over TCP like a real DSP, so tests cover the real network path. The
+  **demo mode** (`serve --demo`) runs the same simulated device inside the backend process.
 
 ## 6. Protocol profile
 
@@ -323,8 +323,8 @@ tracks-dsp-controller [serve] --dsp-host 192.168.1.50 [options]   # "serve" is t
 tracks-dsp-controller probe --dsp-host IP {info|meters|dump-config|export-preset|diff-config|raw HEX}
 tracks-dsp-controller proxy --listen 0.0.0.0:9761 --dsp-host IP --log frames.jsonl
 
-tracks-dsp-sim [--model 408|206|204] [--host 0.0.0.0] [--port 9761] [--scenario demo]
-               [--state-dir DIR] [--preset SLOT=FILE(.bin|.prs)] [--fast] [--latency-ms N] …
+tracks-dsp-controller sim [--model 408|206|204] [--host 0.0.0.0] [--port 9761] [--scenario demo]
+                          [--state-dir DIR] [--preset SLOT=FILE(.bin|.prs)] [--fast] …
 ```
 
 ## 10. Design choices

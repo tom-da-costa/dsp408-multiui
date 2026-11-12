@@ -20,7 +20,7 @@ typecheck:  ## Run mypy
 test:  ## Run the test suite
 	uv run pytest
 
-e2e:  ## End-to-end: tracks-dsp-sim and tracks-dsp-controller run as two programs
+e2e:  ## End-to-end: the simulator (sim) and the app run as two processes
 	uv run pytest -m e2e -v
 
 cov:  ## Run tests with coverage
@@ -51,7 +51,7 @@ web-dev:  ## Vite dev server only, hot reload on :5173 (start a backend on :8080
 	$(NPM_DEV) run dev -- --host 0.0.0.0
 
 # Backend of `make dev`: demo mode by default. Against the separate simulator instead:
-#   uv run tracks-dsp-sim --host 127.0.0.1   then   make dev DEV_BACKEND="--dsp-host 127.0.0.1"
+#   uv run tracks-dsp-controller sim --host 127.0.0.1   then   make dev DEV_BACKEND="--dsp-host 127.0.0.1"
 DEV_BACKEND ?= --demo
 backend:  ## Backend only (--demo) on :8080, for `make web-dev` in another terminal
 	uv run tracks-dsp-controller $(DEV_BACKEND) --host 127.0.0.1 --port 8080

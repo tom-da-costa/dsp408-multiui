@@ -1,6 +1,6 @@
 """Option defaults from environment variables, with the names of earlier versions as a fallback.
 
-``tracks-dsp-controller`` reads ``TDSP_<NAME>`` and ``tracks-dsp-sim`` reads ``TDSP_SIM_<NAME>``.
+``tracks-dsp-controller`` reads ``TDSP_<NAME>``; its ``sim`` command reads ``TDSP_SIM_<NAME>``.
 Before 0.8 they were ``DSP408_<NAME>`` and ``TRACKS_DSP_SIM_<NAME>``: those are still read when
 the new name is not set, and :meth:`Env.warn_legacy` logs which ones should be renamed.
 """

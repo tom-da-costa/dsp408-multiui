@@ -80,8 +80,8 @@ On a phone, in landscape:
 - Access protected by a shared code (default `0000`, set with `--pin`); optional HTTPS with
   your certificate or a self-signed one, on the same port (plain http is redirected)
 - No database, no internet access needed, no external assets
-- `tracks-dsp-sim`: a separate program that simulates a DSP 408, 206 or 204 on the network, to
-  test the app without a device (presets kept across restarts, fault injection, live console)
+- `tracks-dsp-controller sim`: a simulated DSP 408, 206 or 204 on the network, run as a second
+  process, to test the app without a device (presets kept across restarts, fault injection, live console)
 
 ## Compatibility
 
@@ -250,14 +250,14 @@ it on a DSP in use). The DSP accepts one client at a time: stop the app before p
 ## Testing without a DSP
 
 `tracks-dsp-controller --demo` runs a simulated DSP inside the app. To test the whole network
-path, `tracks-dsp-sim` is a separate program that behaves like a DSP on TCP port 9761, with
-fault injection and a console: see [docs/SIMULATOR.md](docs/SIMULATOR.md).
+path, `tracks-dsp-controller sim` runs, as a second process, a simulated DSP on TCP port 9761,
+with fault injection and a console: see [docs/SIMULATOR.md](docs/SIMULATOR.md).
 
 ## Documentation
 
 | Document | Content |
 |---|---|
-| [docs/SIMULATOR.md](docs/SIMULATOR.md) | The simulated DSP (`tracks-dsp-sim`): options, console, fidelity |
+| [docs/SIMULATOR.md](docs/SIMULATOR.md) | The simulated DSP (`tracks-dsp-controller sim`): options, console, fidelity |
 | [CONTRIBUTING.md](CONTRIBUTING.md) | Development setup, checks, code rules, device safety |
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | Components, state model, command pipeline, simulator, client/server API, security |
 | [docs/PROTOCOL.md](docs/PROTOCOL.md) | The DSP 408 network protocol, with a confidence level for each item and the open questions |

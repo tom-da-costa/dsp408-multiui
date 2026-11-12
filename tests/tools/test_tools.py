@@ -234,3 +234,16 @@ def test_simulator_reads_tdsp_sim_and_its_legacy_names(
         sim_cli.ENV.warn_legacy(logging.getLogger("test"))
     assert "TRACKS_DSP_SIM_SCENARIO is deprecated: rename it to TDSP_SIM_SCENARIO" in caplog.text
     assert "MODEL" not in caplog.text
+
+
+def test_sim_command_runs_the_simulator_cli(capsys: pytest.CaptureFixture[str]) -> None:
+    with pytest.raises(SystemExit):
+        cli.main(["sim", "--version"])
+    assert capsys.readouterr().out.startswith("tracks-dsp-controller sim ")
+    with pytest.raises(SystemExit):
+        cli.main(["sim", "--model", "999"])  # the simulator's own parser: no "auto", no 999
+    assert "tracks-dsp-controller sim: error" in capsys.readouterr().err
+    # options of the main program before "sim" would be silently lost: refused
+    with pytest.raises(SystemExit):
+        cli.main(["--log-level", "debug", "sim"])
+    assert "after 'sim'" in capsys.readouterr().err

@@ -1,7 +1,7 @@
 # Releases (docs/release.md):
 # - push to main  -> pre-release "main" (tag main-latest), rebuilt on every push, image :main
 # - tag vX.Y.Z    -> release vX.Y.Z, image :X.Y.Z and :latest
-# Each release holds the standalone executables of the app and of the tracks-dsp-sim simulator,
+# Each release holds the standalone executable (the app, with the simulator as its `sim` command),
 # built natively: linux-amd64, linux-arm64 (arm64 runner) and windows-amd64 (Windows runner).
 # The multi-arch Docker image goes to the GitHub container registry (ghcr.io).
 name: Release
@@ -101,7 +101,7 @@ jobs:
         run: |
           eval "$(packaging/release.sh env)"
           packaging/build_exe.sh "tracks-dsp-controller-${ASSET_VERSION}-windows-amd64"
-          for exe in dist/*.exe; do "$exe" --version; done
+          for exe in dist/*.exe; do "$exe" --version && "$exe" sim --version; done
 
       - name: Upload to the release
         run: packaging/release.sh upload dist/*-windows-amd64.exe

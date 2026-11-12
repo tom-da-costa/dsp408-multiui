@@ -1,12 +1,13 @@
-"""End to end: ``tracks-dsp-sim`` and ``tracks-dsp-controller`` run as two separate programs.
+"""End to end: ``tracks-dsp-controller sim`` and ``tracks-dsp-controller`` run as two processes.
 
 The simulator listens on TCP like a DSP 408; the app connects to it with ``--dsp-host``. The
 tests then drive the app as the browser does (HTTP login, WebSocket) and check the effect on the
 simulated DSP over TCP, as a second client of it.
 
 Run with ``uv run pytest -m e2e`` (or ``make e2e``); excluded from the default run.
-The programs default to ``python -m …``; ``TDSP_E2E_SIM_CMD`` / ``TDSP_E2E_APP_CMD``
-select other commands, e.g. the built executables. ``TDSP_E2E_LOG_DIR`` keeps the programs'
+The programs default to ``python -m tracks_dsp_controller [sim]``; ``TDSP_E2E_SIM_CMD`` /
+``TDSP_E2E_APP_CMD`` select other commands, e.g. the built executable (with ``sim`` for the
+simulator). ``TDSP_E2E_LOG_DIR`` keeps the programs'
 output.
 """
 
@@ -51,9 +52,11 @@ def free_port() -> int:
         return port
 
 
-def command(env: str, module: str) -> list[str]:
+def command(env: str, *default: str) -> list[str]:
     custom = os.environ.get(env)
-    return shlex.split(custom) if custom else [sys.executable, "-m", module]
+    return (
+        shlex.split(custom) if custom else [sys.executable, "-m", "tracks_dsp_controller", *default]
+    )
 
 
 @dataclass
@@ -80,9 +83,9 @@ class Stack:
 
     def start_sim(self) -> None:
         self.sim = self._spawn(
-            "tracks-dsp-sim",
+            "sim",
             [
-                *command("TDSP_E2E_SIM_CMD", "tracks_dsp_controller.simulator"),
+                *command("TDSP_E2E_SIM_CMD", "sim"),
                 "--host", "127.0.0.1", "--port", str(self.sim_port),
                 "--state-dir", str(self.state_dir), "--fast", "--console", "off",
                 # the tests read the DSP as a second client (a real 408 queues it)
@@ -95,7 +98,7 @@ class Stack:
         self.app = self._spawn(
             "tracks-dsp-controller",
             [
-                *command("TDSP_E2E_APP_CMD", "tracks_dsp_controller"),
+                *command("TDSP_E2E_APP_CMD"),
                 "--dsp-host", "127.0.0.1", "--dsp-port", str(self.sim_port),
                 "--host", "127.0.0.1", "--port", str(self.app_port), "--pin", PIN,
                 "--meter-rate", "10",

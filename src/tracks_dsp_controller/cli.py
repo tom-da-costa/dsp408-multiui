@@ -1,9 +1,9 @@
 """Command-line entry point (``tracks-dsp-controller``).
 
-``serve`` (the default) runs the web application; ``probe`` and ``proxy`` are developer tools.
-The simulated DSP is a separate program, ``tracks-dsp-sim`` (``simulator/cli.py``). Every option can
-also come from a ``TDSP_<NAME>`` environment variable (``DSP408_<NAME>`` before 0.8: still read,
-with a warning; see ``envvars.py``).
+``serve`` (the default) runs the web application; ``sim`` runs a simulated DSP on the network
+(``simulator/cli.py``, also installed as ``tracks-dsp-sim``); ``probe`` and ``proxy`` are
+developer tools. Every option can also come from a ``TDSP_<NAME>`` environment variable
+(``DSP408_<NAME>`` before 0.8: still read, with a warning; see ``envvars.py``).
 """
 
 from __future__ import annotations
@@ -127,7 +127,7 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         default=_env_flag("DEMO"),
         help="demo mode: no DSP, a simulated one runs inside this process "
-        "(to test against a separate fake DSP on the network, use tracks-dsp-sim)",
+        "(to test against a separate fake DSP on the network, use the sim command)",
     )
     tls = serve.add_argument_group("HTTPS (one port: plain http on it is redirected to https)")
     tls.add_argument("--tls-cert", default=_env("TLS_CERT"), help="certificate file (PEM)")
@@ -193,6 +193,14 @@ def build_parser() -> argparse.ArgumentParser:
     proxy.add_argument("--dsp-port", type=int, default=DSP_PORT)
     proxy.add_argument("--listen", default="0.0.0.0:9761", help="HOST:PORT to listen on")
     proxy.add_argument("--log", type=Path, required=True, help="JSONL frame log file")
+
+    # sim: only listed here; main() hands everything after "sim" to the simulator's own parser
+    sim = sub.add_parser(
+        "sim",
+        add_help=False,
+        help="run a simulated DSP on the network, to test without a device (sim --help)",
+    )
+    sim.add_argument("sim_args", nargs=argparse.REMAINDER)
     return parser
 
 
@@ -349,19 +357,27 @@ async def _proxy(args: argparse.Namespace, profile: ProtocolProfile) -> int:
 
 
 COMMANDS = {"serve": _serve, "probe": _probe, "proxy": _proxy}
+SIM_COMMAND = "sim"
 
 
 def _with_default_command(argv: Sequence[str]) -> list[str]:
     """``tracks-dsp-controller --dsp-host X`` means ``tracks-dsp-controller serve --dsp-host X``."""
     args = list(argv)
-    if any(a in COMMANDS for a in args) or any(a in ("-h", "--help", "--version") for a in args):
+    if any(a in (*COMMANDS, SIM_COMMAND, "-h", "--help", "--version") for a in args):
         return args
     return ["serve", *args] if args else args
 
 
 def main(argv: Sequence[str] | None = None) -> int:
+    argv = list(sys.argv[1:] if argv is None else argv)
+    if argv[:1] == [SIM_COMMAND]:
+        from tracks_dsp_controller.simulator import cli as sim_cli
+
+        return sim_cli.main(argv[1:], prog=f"tracks-dsp-controller {SIM_COMMAND}")
     parser = build_parser()
-    args = parser.parse_args(_with_default_command(sys.argv[1:] if argv is None else argv))
+    args = parser.parse_args(_with_default_command(argv))
+    if args.command == SIM_COMMAND:  # options before "sim" would belong to the wrong program
+        parser.error(f"put the simulator's options after '{SIM_COMMAND}', e.g. sim --model 206")
     logging.basicConfig(
         level=args.log_level.upper(),
         format="%(asctime)s %(levelname)-7s %(name)s: %(message)s",
