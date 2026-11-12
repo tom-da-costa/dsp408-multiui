@@ -1,7 +1,8 @@
 <script lang="ts">
   // Name editor of one channel. Saves on Enter, on Save and on blur; Escape gives the device's
   // name back. `label` is shown before the field ("Name"; a slot such as "Out 5" in a merged
-  // link group); empty, the field has none (it sits in a "Name" section).
+  // link group); empty, the field has none (it sits in a "Name" section). `hint: false` leaves
+  // out the length hint, for a list of fields that shows it once.
   import { app } from "../lib/app.svelte";
   import type { Channel } from "../lib/types";
 
@@ -9,9 +10,10 @@
     channel: Channel;
     path: string;
     label?: string;
+    hint?: boolean;
   }
 
-  let { channel, path, label = "Name" }: Props = $props();
+  let { channel, path, label = "Name", hint = true }: Props = $props();
 
   let draft = $state("");
   let focused = $state(false);
@@ -75,7 +77,7 @@
     >Save</button
   >
 </form>
-<p class="hint muted">{maxLength} characters max, plain ASCII.</p>
+{#if hint}<p class="hint muted">{maxLength} characters max, plain ASCII.</p>{/if}
 
 <style>
   .rename {

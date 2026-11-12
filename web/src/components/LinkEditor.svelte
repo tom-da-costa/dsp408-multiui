@@ -1,10 +1,12 @@
 <script lang="ts">
   // Channel links: tap channels to select them, then link or unlink them. Linking copies the
   // settings of the first selected channel onto the others (the DSP does it), except names and
-  // routing; afterwards every change on one member applies to the whole group.
+  // routing; afterwards every change on one member applies to the whole group. Each channel's
+  // name can be edited below the chips, since a link is usually named along with it.
   import { app } from "../lib/app.svelte";
   import { slotLabel } from "../lib/nav.svelte";
   import type { Channel } from "../lib/types";
+  import NameEditor from "./NameEditor.svelte";
 
   type Side = "inputs" | "outputs";
 
@@ -14,6 +16,7 @@
 
   const device = $derived(app.device);
   const editable = $derived(app.editable("link"));
+  const nameLength = $derived(app.hello?.limits.channel_name_length ?? 8);
 
   function channels(side: Side): Channel[] {
     return (side === "inputs" ? device?.inputs : device?.outputs) ?? [];
@@ -142,6 +145,26 @@
             {/if}
           </div>
         {/if}
+
+        <details class="names" open>
+          <summary>Channel names</summary>
+          <div class="name-list">
+            {#each channels(side) as ch, i (i)}
+              <div style:--ch={app.color(`${side}.${i}`)}>
+                <NameEditor
+                  channel={ch}
+                  path={`${side}.${i}`}
+                  label={label(side, i)}
+                  hint={false}
+                />
+              </div>
+            {/each}
+          </div>
+          <p class="muted hint">
+            {nameLength} characters max, plain ASCII. Names are not copied by a link: each channel
+            keeps its own.
+          </p>
+        </details>
       </section>
     {/each}
   </div>
@@ -154,7 +177,7 @@
 <style>
   .sides {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(min(320px, 100%), 1fr));
     gap: 10px;
   }
   .chips {
@@ -232,5 +255,28 @@
   }
   .hint {
     font-size: 0.85rem;
+  }
+  .names {
+    margin-top: 12px;
+    border-top: 1px solid var(--line);
+    padding-top: 8px;
+  }
+  .names summary {
+    cursor: pointer;
+    font-weight: 600;
+    padding: 4px 0;
+  }
+  .name-list {
+    display: grid;
+    gap: 6px;
+    margin-top: 6px;
+  }
+  .name-list :global(label) {
+    min-width: 3.5em;
+    font-weight: 700;
+    color: var(--ch);
+  }
+  .names .hint {
+    margin: 6px 0 0;
   }
 </style>
