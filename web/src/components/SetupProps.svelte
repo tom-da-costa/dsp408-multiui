@@ -217,11 +217,11 @@
   </div>
 {:else if speaker}
   <h2>Speaker</h2>
-  <label class="field">
+  <label class="field stack">
     <span>Model</span>
     <input type="text" bind:value={speaker.model} />
   </label>
-  <div class="field">
+  <div class="field stack">
     <span>Side</span>
     <div class="seg" role="group" aria-label="Side">
       {#each SIDES as [value, label] (value)}
@@ -233,6 +233,7 @@
     Left or right for one speaker of a stereo pair; mono plays L+R. Its outputs play that side.
     A copy takes the other side.
   </p>
+  <div class="sections" class:two={speaker.sections.length > 1}>
   {#each speaker.sections as section, i (i)}
     {@const lib = librarySection(speaker, i)}
     {@const estimated = new Set(lib?.estimated ?? [])}
@@ -327,6 +328,7 @@
       {/if}
     </fieldset>
   {/each}
+  </div>
   {#if speaker.ref === null}
     <button class="small" onclick={() => speaker.sections.push(newSection(speaker.sections.length))}
       >+ Section (bi-amp)</button
@@ -404,6 +406,45 @@
     border-radius: 8px;
     margin: 8px 0;
     padding: 4px 10px 8px;
+    min-width: 0;
+  }
+  /* A label above a full-width field. */
+  .field.stack {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 4px;
+  }
+  .field.stack .seg,
+  .field.stack input {
+    grid-column: 1;
+  }
+  /* A bi-amped speaker: its sections side by side (stacked when there is no room), each label
+     above its field. */
+  .sections.two {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(190px, 100%), 1fr));
+    gap: 0 8px;
+  }
+  .sections.two fieldset {
+    padding: 4px 8px 8px;
+  }
+  .sections.two .field {
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 2px 6px;
+    margin: 4px 0;
+    font-size: 0.85rem;
+  }
+  .sections.two .field > span:first-child {
+    grid-column: 1 / -1;
+  }
+  .sections.two .field .seg,
+  .sections.two .field input[type="text"]:not([inputmode]) {
+    grid-column: 1 / -1;
+  }
+  .sections.two .field small {
+    min-width: 2.5em;
+  }
+  .sections.two h3 {
+    font-size: 0.85rem;
   }
   legend {
     color: var(--muted);

@@ -457,7 +457,7 @@
   }
   @media (min-width: 1000px) {
     .layout {
-      grid-template-columns: minmax(0, 1fr) 340px;
+      grid-template-columns: minmax(0, 1fr) 440px;
       align-items: start;
     }
     .props {
