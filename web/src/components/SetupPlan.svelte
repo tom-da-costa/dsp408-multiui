@@ -1,9 +1,11 @@
 <script lang="ts">
   // Setup wizard, step 2: the plan of the system. The DSP is fixed on the left; amplifiers and
   // speakers are added from the library (or generic), moved by their title, and wired: DSP
-  // output → amplifier channel → speaker section (or straight to an active speaker). A wire is
+  // output → amplifier channel → speaker section (or straight to an active speaker), and a
+  // speaker's link output → another speaker (bridged, in parallel). A wire is
   // drawn by dragging from a port to another, or by tapping one port then the other. Tapping
   // an element opens its properties on the right (below on a phone).
+  import { app } from "../lib/app.svelte";
   import {
     addAmp,
     addSpeaker,
@@ -64,9 +66,12 @@
 
   function portXY(p: Port): { x: number; y: number } {
     if (p.node === "dsp") return { x: DSP_X + W, y: dspOutTop + p.port * ROW + ROW / 2 };
-    if (p.node === "spk") {
+    if (p.node === "spk" || p.node === "spk-out") {
       const s = draft.speakers.find((n) => n.id === p.id);
-      return { x: s?.x ?? 0, y: (s?.y ?? 0) + HEAD + p.port * ROW + ROW / 2 };
+      return {
+        x: (s?.x ?? 0) + (p.node === "spk-out" ? W : 0),
+        y: (s?.y ?? 0) + HEAD + p.port * ROW + ROW / 2,
+      };
     }
     const a = draft.amps.find((n) => n.id === p.id);
     return {
@@ -83,11 +88,16 @@
         { node: "amp-out", id: w.amp, port: w.channel },
         { node: "spk", id: w.speaker, port: w.section },
       ];
+    if (w.type === "chain")
+      return [
+        { node: "spk-out", id: w.from, port: w.fromSection },
+        { node: "spk", id: w.speaker, port: w.section },
+      ];
     return [{ node: "dsp", port: w.output }, { node: "spk", id: w.speaker, port: w.section }];
   }
 
   function wireColor(w: Wire): string {
-    if (w.type === "drive") {
+    if (w.type === "drive" || w.type === "chain") {
       const name = draft.speakers.find((s) => s.id === w.speaker)?.sections[w.section]?.name;
       return wayColor.get(name ?? "") ?? "#888";
     }
@@ -200,7 +210,10 @@
   function join(a: Port, b: Port): boolean {
     const wire = wireBetween(a, b);
     if (!wire) return false;
-    connect(draft, wire);
+    if (!connect(draft, wire)) {
+      app.toast("That bridge would loop back to the speaker it comes from", "error");
+      return true;
+    }
     selection = { type: "wire", wire };
     return true;
   }
@@ -275,8 +288,9 @@
     <p class="muted hint">
       Move a block by its title. Wire a DSP output to an amplifier channel, and the channel to
       its speakers (several in parallel): drag from one dot to the other, or tap one then the
-      other. Wire an output straight to an active speaker. Tap a block, an output or a wire to
-      edit it.
+      other. A speaker's right dot is its link output: wire it to another speaker to bridge it
+      (same signal, in parallel). Wire an output straight to an active speaker. Tap a block, an
+      output or a wire to edit it.
     </p>
     <div class="scroll">
       <!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_static_element_interactions -->
@@ -386,6 +400,7 @@
               </div>
               <div class="anchor" style:top={`${HEAD + i * ROW}px`}>
                 {@render port({ node: "spk", id: spk.id, port: i }, "left")}
+                {@render port({ node: "spk-out", id: spk.id, port: i }, "right")}
               </div>
             {/each}
           </div>

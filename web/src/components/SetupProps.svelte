@@ -82,6 +82,8 @@
     };
     if (w.type === "feed") return `Out ${w.output + 1} → ${ampName(w.amp)} ch ${w.channel + 1}`;
     if (w.type === "drive") return `${ampName(w.amp)} ch ${w.channel + 1} → ${spkName(w.speaker, w.section)}`;
+    if (w.type === "chain")
+      return `${spkName(w.from, w.fromSection)} → ${spkName(w.speaker, w.section)} (bridged, in parallel)`;
     return `Out ${w.output + 1} → ${spkName(w.speaker, w.section)} (active)`;
   }
 

@@ -7,6 +7,8 @@
 //   speakers     each cabinet placed has its own specs (a library model's are copied in), a
 //                side (left, right, or mono L+R) and one section per way it plays (two for a
 //                bi-amped cabinet)
+//   bridging     a speaker's link output feeds another speaker (daisy chain): it plays the
+//                same signal, in parallel on the same amplifier channel
 //   ways         by channel name: the outputs that drive sections called "Sub" form the Sub way,
 //                their outputs linked; an output (or an amplifier channel) drives one name only.
 //                The way's settings (auxiliary, polarity, limiter, gain) are shared
@@ -178,12 +180,14 @@ export interface WayProps {
   gainDb: Num;
 }
 
-/** A link of the plan: DSP output → amplifier channel, amplifier channel → speaker section, or
- * DSP output → section of an active speaker. */
+/** A link of the plan: DSP output → amplifier channel, amplifier channel → speaker section,
+ * DSP output → section of an active speaker, or a speaker's link output → another speaker
+ * (bridged: the same signal, in parallel). */
 export type Wire =
   | { type: "feed"; output: number; amp: number; channel: number }
   | { type: "drive"; amp: number; channel: number; speaker: number; section: number }
-  | { type: "direct"; output: number; speaker: number; section: number };
+  | { type: "direct"; output: number; speaker: number; section: number }
+  | { type: "chain"; from: number; fromSection: number; speaker: number; section: number };
 
 export interface FilterSetting {
   enabled: boolean;
@@ -351,10 +355,12 @@ export function addAmp(draft: Draft, ref: string | null, x: number, y: number): 
 export function removeNode(draft: Draft, type: "amp" | "speaker", id: number): void {
   if (type === "amp") {
     draft.amps = draft.amps.filter((a) => a.id !== id);
-    draft.wires = draft.wires.filter((w) => w.type === "direct" || w.amp !== id);
+    draft.wires = draft.wires.filter((w) => !("amp" in w) || w.amp !== id);
   } else {
     draft.speakers = draft.speakers.filter((s) => s.id !== id);
-    draft.wires = draft.wires.filter((w) => w.type === "feed" || w.speaker !== id);
+    draft.wires = draft.wires.filter(
+      (w) => w.type === "feed" || (w.speaker !== id && !(w.type === "chain" && w.from === id)),
+    );
   }
 }
 
@@ -362,7 +368,7 @@ export function removeNode(draft: Draft, type: "amp" | "speaker", id: number): v
 export function setAmpChannels(draft: Draft, amp: AmpNode, channels: number): void {
   amp.channels = Math.max(1, Math.min(16, Math.round(channels) || 1));
   draft.wires = draft.wires.filter(
-    (w) => w.type === "direct" || w.amp !== amp.id || w.channel < amp.channels,
+    (w) => !("amp" in w) || w.amp !== amp.id || w.channel < amp.channels,
   );
 }
 
@@ -370,13 +376,22 @@ export function setAmpChannels(draft: Draft, amp: AmpNode, channels: number): vo
 export function removeSection(draft: Draft, node: SpeakerNode, index: number): void {
   if (node.sections.length <= 1) return;
   node.sections.splice(index, 1);
+  const gone = (id: number, section: number) => id === node.id && section === index;
+  const shift = (id: number, section: number) =>
+    id === node.id && section > index ? section - 1 : section;
   draft.wires = draft.wires
-    .filter((w) => w.type === "feed" || w.speaker !== node.id || w.section !== index)
-    .map((w) =>
-      w.type !== "feed" && w.speaker === node.id && w.section > index
-        ? { ...w, section: w.section - 1 }
-        : w,
-    );
+    .filter(
+      (w) =>
+        w.type === "feed" ||
+        !(gone(w.speaker, w.section) || (w.type === "chain" && gone(w.from, w.fromSection))),
+    )
+    .map((w) => {
+      if (w.type === "feed") return w;
+      const moved = { ...w, section: shift(w.speaker, w.section) };
+      return moved.type === "chain"
+        ? { ...moved, fromSection: shift(moved.from, moved.fromSection) }
+        : moved;
+    });
 }
 
 export function removeSource(draft: Draft, id: number): void {
@@ -398,7 +413,8 @@ export type Port =
   | { node: "dsp"; port: number } // a DSP output
   | { node: "amp-in"; id: number; port: number }
   | { node: "amp-out"; id: number; port: number }
-  | { node: "spk"; id: number; port: number };
+  | { node: "spk"; id: number; port: number } // a speaker section's input
+  | { node: "spk-out"; id: number; port: number }; // its link output (bridging)
 
 export function portKey(p: Port): string {
   return p.node === "dsp" ? `dsp:${p.port}` : `${p.node}:${p.id}:${p.port}`;
@@ -407,7 +423,11 @@ export function portKey(p: Port): string {
 export function parsePort(key: string): Port | null {
   const [node, a, b] = key.split(":");
   if (node === "dsp" && a !== undefined) return { node, port: Number(a) };
-  if ((node === "amp-in" || node === "amp-out" || node === "spk") && a !== undefined && b !== undefined)
+  if (
+    (node === "amp-in" || node === "amp-out" || node === "spk" || node === "spk-out") &&
+    a !== undefined &&
+    b !== undefined
+  )
     return { node, id: Number(a), port: Number(b) };
   return null;
 }
@@ -424,13 +444,46 @@ export function wireBetween(a: Port, b: Port): Wire | null {
       return { type: "drive", amp: x.id, channel: x.port, speaker: y.id, section: y.port };
     if (x.node === "dsp" && y.node === "spk")
       return { type: "direct", output: x.port, speaker: y.id, section: y.port };
+    if (x.node === "spk-out" && y.node === "spk" && x.id !== y.id)
+      return { type: "chain", from: x.id, fromSection: x.port, speaker: y.id, section: y.port };
   }
   return null;
 }
 
+/** The speaker sections bridged from this one, further and further down the chain. */
+export function bridged(
+  draft: Draft,
+  speaker: number,
+  section: number,
+): { speaker: number; section: number }[] {
+  const found: { speaker: number; section: number }[] = [];
+  const seen = new Set([`${speaker}:${section}`]);
+  const queue = [{ speaker, section }];
+  while (queue.length) {
+    const at = queue.shift()!;
+    for (const w of draft.wires) {
+      if (w.type !== "chain" || w.from !== at.speaker || w.fromSection !== at.section) continue;
+      const key = `${w.speaker}:${w.section}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      const next = { speaker: w.speaker, section: w.section };
+      found.push(next);
+      queue.push(next);
+    }
+  }
+  return found;
+}
+
 /** Add a wire; an amplifier input or a speaker section takes one signal: its previous wire
- * goes. */
-export function connect(draft: Draft, wire: Wire): void {
+ * goes. A bridge that would loop back is refused (returns false). */
+export function connect(draft: Draft, wire: Wire): boolean {
+  if (
+    wire.type === "chain" &&
+    bridged(draft, wire.speaker, wire.section).some(
+      (b) => b.speaker === wire.from && b.section === wire.fromSection,
+    )
+  )
+    return false;
   draft.wires = draft.wires.filter((w) => {
     if (wire.type === "feed")
       return !(w.type === "feed" && w.amp === wire.amp && w.channel === wire.channel);
@@ -438,6 +491,7 @@ export function connect(draft: Draft, wire: Wire): void {
     return !(w.speaker === wire.speaker && w.section === wire.section);
   });
   draft.wires.push(wire);
+  return true;
 }
 
 export function sameWire(a: Wire, b: Wire): boolean {
@@ -504,14 +558,17 @@ export function wiring(draft: Draft, topo: Topology): Wiring {
     const spec = node?.sections[section];
     return node && spec ? { node, section: spec } : null;
   };
+  // A section and the ones bridged from it.
+  const withBridged = (speaker: number, section: number): Cabinet[] =>
+    [{ speaker, section }, ...bridged(draft, speaker, section)]
+      .map((b) => cabinet(b.speaker, b.section))
+      .filter((c): c is Cabinet => c !== null);
   // What each amplifier channel drives.
   const driven = new Map<string, Cabinet[]>();
   for (const w of draft.wires) {
     if (w.type !== "drive") continue;
-    const c = cabinet(w.speaker, w.section);
-    if (!c) continue;
     const key = `${w.amp}:${w.channel}`;
-    driven.set(key, [...(driven.get(key) ?? []), c]);
+    driven.set(key, [...(driven.get(key) ?? []), ...withBridged(w.speaker, w.section)]);
   }
   for (const [key, list] of driven) {
     if (new Set(list.map((c) => c.section.name)).size > 1) {
@@ -533,8 +590,7 @@ export function wiring(draft: Draft, topo: Topology): Wiring {
         if (list.length)
           loads.push({ output: o, amp: amps.get(w.amp) ?? null, channel: w.channel, cabinets: list });
       } else if (w.type === "direct" && w.output === o) {
-        const c = cabinet(w.speaker, w.section);
-        if (c) direct.push(c);
+        direct.push(...withBridged(w.speaker, w.section));
       }
     }
     if (direct.length) loads.push({ output: o, amp: null, channel: 0, cabinets: direct });

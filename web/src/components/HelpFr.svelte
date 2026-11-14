@@ -116,7 +116,9 @@
       puis l'autre ; toucher un bloc, une sortie ou un fil pour le modifier) ; les coupures qu'il
       propose d'après les plages des enceintes ; puis un récapitulatif. Chaque enceinte a
       ses propres caractéristiques et un côté (gauche, droite ou mono L+R) ; les sorties qui
-      alimentent des sections de même nom de canal forment une voie, liées entre elles. Il calcule le routing, les noms des canaux, les liens, les filtres, les
+      alimentent des sections de même nom de canal forment une voie, liées entre elles. Le point
+      de droite d'une enceinte est sa sortie link : reliez-le à une autre enceinte pour la ponter
+      (en parallèle). Il calcule le routing, les noms des canaux, les liens, les filtres, les
       limiteurs (comme le calculateur de limiteur) et les gains de sortie, pour que toutes les
       voies principales jouent au même niveau. L'écriture remplace tous les réglages (delays à 0,
       EQ à plat), coupe les sorties pendant ce temps et stocke le résultat dans l'emplacement de

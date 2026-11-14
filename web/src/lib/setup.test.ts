@@ -26,6 +26,7 @@ import {
   setWayProp,
   storeErrors,
   type Topology,
+  type Wire,
   wayFilters,
   wayGains,
   wayLevel,
@@ -181,11 +182,46 @@ describe("wiring", () => {
     const d = ownerStack();
     const mid = d.amps[1]!;
     setAmpChannels(d, mid, 2);
-    expect(d.wires.some((w) => w.type !== "direct" && w.amp === mid.id && w.channel >= 2)).toBe(
-      false,
-    );
+    const onAmp = (w: Wire) => "amp" in w && w.amp === mid.id;
+    expect(d.wires.some((w) => onAmp(w) && "channel" in w && w.channel >= 2)).toBe(false);
     removeNode(d, "amp", mid.id);
-    expect(d.wires.some((w) => w.type !== "direct" && w.amp === mid.id)).toBe(false);
+    expect(d.wires.some(onAmp)).toBe(false);
+  });
+
+  it("bridges a speaker from another one, in parallel on the same channel", () => {
+    const d = ownerStack();
+    const subs = d.speakers.filter((s) => s.ref === "th1821");
+    const amp = d.amps[0]!.id;
+    // Sub 2 bridged from sub 1 instead of its own wire to the amplifier.
+    disconnect(d, { type: "drive", amp, channel: 0, speaker: subs[1]!.id, section: 0 });
+    const chain = wireBetween(
+      { node: "spk-out", id: subs[0]!.id, port: 0 },
+      { node: "spk", id: subs[1]!.id, port: 0 },
+    )!;
+    expect(chain).toEqual({
+      type: "chain",
+      from: subs[0]!.id,
+      fromSection: 0,
+      speaker: subs[1]!.id,
+      section: 0,
+    });
+    expect(connect(d, chain)).toBe(true);
+    const [first] = levelOf(d, "Sub").channels;
+    expect([first!.load.cabinets.length, first!.impedanceOhm]).toEqual([2, 4]);
+    // A loop is refused; a speaker cannot be bridged to itself.
+    const back: Wire = {
+      type: "chain",
+      from: subs[1]!.id,
+      fromSection: 0,
+      speaker: subs[0]!.id,
+      section: 0,
+    };
+    expect(connect(d, back)).toBe(false);
+    const self = { node: "spk-out", id: 5, port: 0 } as const;
+    expect(wireBetween(self, { node: "spk", id: 5, port: 1 })).toBeNull();
+    // Removing the first one drops the bridge.
+    removeNode(d, "speaker", subs[0]!.id);
+    expect(d.wires.some((w) => w.type === "chain")).toBe(false);
   });
 
   it("treats speakers wired straight to an output as active", () => {
