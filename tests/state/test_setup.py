@@ -48,7 +48,7 @@ def plan_dict() -> dict[str, Any]:
     ]
     return {
         "inputs": [
-            {"name": "Mix L", "low_shelf": {"freq_hz": 100, "gain_db": 3}},
+            {"name": "Mix L", "low_shelf": {"freq_hz": 100, "gain_db": 9, "q": 1.4}},
             {"name": "Mix R", "low_shelf": {"freq_hz": 100, "gain_db": 3}},
             {"name": "InC"},
             {"name": "InD"},
@@ -105,7 +105,9 @@ def test_builds_the_whole_configuration() -> None:
     # The low shelf on the inputs' first PEQ band.
     shelf = target.inputs[0].peq[0]
     assert P.peq_types[shelf.type] == "Low Shelf"
-    assert c.eq_gain_raw_to_db(shelf.gain) == 3.0
+    assert c.eq_gain_raw_to_db(shelf.gain) == 9.0
+    assert c.q_raw_to_q(shelf.q, P) == pytest.approx(1.4, rel=0.05)
+    assert c.q_raw_to_q(target.inputs[1].peq[0].q, P) == pytest.approx(0.71, rel=0.05)
     assert target.inputs[2].peq[0].type == 0
 
 

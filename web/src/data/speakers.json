@@ -45,7 +45,7 @@
       "description": "2× Sanway 12W76ND-8 + Sanway DE800-8 on a 1.4\" horn",
       "sections": [
         {
-          "name": "Low",
+          "name": "Mid",
           "drivers": "2× Sanway 12W76ND-8, parallel",
           "impedance_ohm": 4,
           "aes_w": 800,

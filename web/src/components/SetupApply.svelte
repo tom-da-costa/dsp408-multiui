@@ -8,9 +8,10 @@
   import { formatDb } from "../lib/scale";
   import {
     buildPlan,
-    mainWays,
+    orderedWays,
     outputNames,
     routeOf,
+    setWayProp,
     sourceInputs,
     storeErrors,
     wayFilters,
@@ -25,12 +26,10 @@
   let { topo }: { topo: Topology } = $props();
 
   const draft = $derived(wizard.draft);
-  const ways = $derived.by(() => {
-    const all = wiring(draft, topo).ways;
-    return [...mainWays(all), ...all.filter((w) => w.section.aux)];
-  });
+  const wired = $derived(wiring(draft, topo));
+  const ways = $derived(orderedWays(wired.ways));
   const filters = $derived(wayFilters(draft, ways, topo.slopes));
-  const gains = $derived(wayGains(draft, ways));
+  const gains = $derived(wayGains(draft, wired));
   const inputsOf = $derived(sourceInputs(draft));
   const errors = $derived(storeErrors(draft, topo));
   const presets = $derived(app.device?.presets ?? []);
@@ -45,13 +44,13 @@
     f ? `${Math.round(f.freq_hz)} Hz ${topo.slopes[f.slope] ?? ""}` : "—";
   /** What an output plays: "Main L (A)", "Main L+R (A+B)". */
   function plays(output: number): string {
-    const route = routeOf(draft, output);
-    const source = draft.sources.find((s) => s.id === route.source);
+    const source = draft.sources.find((s) => s.id === routeOf(draft, output));
     if (!source) return "?";
+    const side = wired.sideOf.get(output) ?? "LR";
     const ins = inputsOf.get(source.id) ?? [];
     if (!source.stereo) return `${source.name} (${ins.map(letter).join("")})`;
-    if (route.side === "LR") return `${source.name} L+R (${ins.map(letter).join("+")})`;
-    return `${source.name} ${route.side} (${letter(ins[route.side === "L" ? 0 : 1] ?? 0)})`;
+    if (side === "LR") return `${source.name} L+R (${ins.map(letter).join("+")})`;
+    return `${source.name} ${side} (${letter(ins[side === "L" ? 0 : 1] ?? 0)})`;
   }
 
   async function apply() {
@@ -93,20 +92,20 @@
     </p>
     <div class="ways">
       {#each ways as way (way.key)}
-        {@const level = wayLevel(draft, way)}
+        {@const level = wayLevel(draft, way, wired.sideOf)}
         {@const gain = gains.get(way.key)}
         {@const f = filters.get(way.key)}
         <article class="way">
           <h3>
-            {way.section.name}
+            {way.key}
             <small
-              >{way.kind.model} ×{way.cabinets}{way.active ? ", active" : ""}{way.section.aux
+              >{way.models.join(", ")} ×{way.cabinets}{way.active ? ", active" : ""}{way.props.aux
                 ? ", auxiliary"
                 : ""}{way.outputs.length > 1 ? ", outputs linked" : ""}</small
             >
           </h3>
           <dl>
-            {#each [...outputNames(draft, way)] as [o, name] (o)}
+            {#each [...outputNames(way, wired.sideOf)] as [o, name] (o)}
               <dt>Out {o + 1} {name}</dt>
               <dd>{plays(o)}</dd>
             {/each}
@@ -125,16 +124,17 @@
               <dd>{level.splMaxDb.toFixed(1)} dB</dd>
             {/if}
             <dt>Polarity</dt>
-            <dd>{way.section.phase ? "inverted" : "normal"}</dd>
+            <dd>{way.props.phase ? "inverted" : "normal"}</dd>
           </dl>
           <label class="gain">
             <span>Output gain</span>
             <input
               type="text"
               inputmode="decimal"
-              aria-label={`${way.section.name} output gain`}
+              aria-label={`${way.key} output gain`}
               placeholder={gain ? formatDb(gain.computed) : "0"}
-              bind:value={way.section.gainDb}
+              value={way.props.gainDb}
+              oninput={(e) => setWayProp(draft, way.key, "gainDb", e.currentTarget.value)}
             />
             <small>dB</small>
           </label>
@@ -179,6 +179,11 @@
           <span>Gain</span>
           <input type="text" inputmode="decimal" bind:value={draft.lowShelf.gainDb} />
           <small>dB</small>
+        </label>
+        <label>
+          <span>Q</span>
+          <input type="text" inputmode="decimal" bind:value={draft.lowShelf.q} />
+          <small></small>
         </label>
       </div>
     {/if}

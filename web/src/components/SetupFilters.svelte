@@ -1,7 +1,7 @@
 <script lang="ts">
   // Setup wizard, step 3: the crossovers between the main ways (proposed from the speakers'
   // ranges, editable), the subsonic high-pass of the lowest way and the auxiliary ways' filters.
-  import { boundaries, mainWays, num, wiring, type FilterSetting, type Topology } from "../lib/setup";
+  import { boundaries, mainWays, wiring, type FilterSetting, type Topology } from "../lib/setup";
   import { wizard } from "../lib/wizard.svelte";
 
   let { topo }: { topo: Topology } = $props();
@@ -12,9 +12,11 @@
   const lowest = $derived(main[0]);
   const highest = $derived(main[main.length - 1]);
   const bounds = $derived(boundaries(ways));
-  const auxWays = $derived(ways.filter((w) => w.section.aux));
+  const auxWays = $derived(ways.filter((w) => w.props.aux));
   const slopeOptions = $derived(topo.slopes.map((name, i) => ({ name, i })).slice(1));
-  const range = (low: string, high: string) => `${low || "?"}–${high || "?"} Hz`;
+  const hz = (v: number) => (Number.isFinite(v) ? String(Math.round(v)) : "?");
+  const range = (way: { lowHz: number; highHz: number }) => `${hz(way.lowHz)}–${hz(way.highHz)} Hz`;
+  const known = (v: number) => (Number.isFinite(v) && v > 0 ? Math.round(v) : null);
 </script>
 
 {#snippet filter(setting: FilterSetting, label: string, proposed: number | null)}
@@ -49,20 +51,15 @@
     the bottom of the upper one), Linkwitz-Riley 24 dB/oct. An empty frequency takes the proposal.
   </p>
   {#if lowest}
-    <h3>{lowest.section.name} <small>{range(lowest.section.lowHz, lowest.section.highHz)}</small></h3>
-    {@render filter(draft.subsonic, "Subsonic high-pass", num(lowest.section.lowHz) || null)}
+    <h3>{lowest.key} <small>{range(lowest)}</small></h3>
+    {@render filter(draft.subsonic, "Subsonic high-pass", known(lowest.lowHz))}
     <p class="muted note">Protects the lowest way below its range (the cone's excursion).</p>
   {/if}
   {#each bounds as b (b.key)}
     {@const setting = draft.crossovers[b.key]}
     <h3>
-      {b.lower.section.name} ↔ {b.upper.section.name}
-      <small
-        >{range(b.lower.section.lowHz, b.lower.section.highHz)} · {range(
-          b.upper.section.lowHz,
-          b.upper.section.highHz,
-        )}</small
-      >
+      {b.lower.key} ↔ {b.upper.key}
+      <small>{range(b.lower)} · {range(b.upper)}</small>
     </h3>
     {#if setting}{@render filter(setting, "Crossover", b.proposedHz)}{/if}
     {#if b.gap}
@@ -70,7 +67,7 @@
     {/if}
   {/each}
   {#if highest}
-    <p class="muted note">{highest.section.name}: no low-pass, it plays up to the top of its range.</p>
+    <p class="muted note">{highest.key}: no low-pass, it plays up to the top of its range.</p>
   {/if}
 </section>
 
@@ -80,10 +77,10 @@
     <p class="muted hint">Filtered to their speakers' range, Butterworth 24 dB/oct.</p>
     {#each auxWays as way (way.key)}
       {@const setting = draft.aux[way.key]}
-      <h3>{way.section.name} <small>{range(way.section.lowHz, way.section.highHz)}</small></h3>
+      <h3>{way.key} <small>{range(way)}</small></h3>
       {#if setting}
-        {@render filter(setting.hpf, "High-pass", num(way.section.lowHz) || null)}
-        {@render filter(setting.lpf, "Low-pass", num(way.section.highHz) || null)}
+        {@render filter(setting.hpf, "High-pass", known(way.lowHz))}
+        {@render filter(setting.lpf, "Low-pass", known(way.highHz))}
       {/if}
     {/each}
   </section>

@@ -56,8 +56,9 @@ On a phone, in landscape:
 - Limiter calculator: compressor and limiter thresholds from the amplifier gain and the speaker
   power, impedance and load
 - **Setup wizard**: describe the sources, then draw the system on a plan: amplifiers and
-  speakers (from a small library in `web/src/data/`, or generic) wired to the DSP's outputs. The
-  ways come from the wiring (two outputs to four subs: one Sub way, its outputs linked); the
+  speakers (from a small library in `web/src/data/`, or generic) wired to the DSP's outputs.
+  Each speaker has its own specs and a side (left, right or mono). The ways come from the
+  wiring, by channel name (two outputs to four subs: one Sub way, its outputs linked); the
   wizard works out the routing, channel names, links, crossovers, subsonic filter, limiters and
   output gains (every main way at the same level), then writes the whole setup (outputs muted
   meanwhile, inputs left muted) and stores it in a preset

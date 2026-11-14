@@ -116,7 +116,8 @@
       oder generisch) hinzufügen und mit den DSP-Ausgängen verbinden (von einem Punkt zum anderen
       ziehen oder beide nacheinander antippen; einen Block, Ausgang oder Draht antippen, um ihn zu
       bearbeiten); die aus den Frequenzbereichen vorgeschlagenen Trennfrequenzen; dann eine
-      Zusammenfassung. Ausgänge, die denselben Lautsprecher speisen, bilden einen Weg und werden
+      Zusammenfassung. Jeder Lautsprecher hat eigene Daten und eine Seite (links, rechts oder mono
+      L+R); Ausgänge, die Sektionen mit demselben Kanalnamen speisen, bilden einen Weg und werden
       verlinkt. Er berechnet Routing, Kanalnamen, Links, Filter, Limiter (wie der
       Limiter-Rechner) und Ausgangspegel, sodass alle Hauptwege gleich laut spielen. Das Schreiben
       ersetzt alle Einstellungen (Delays 0, EQ flach), schaltet die Ausgänge währenddessen stumm

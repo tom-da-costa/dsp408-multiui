@@ -99,7 +99,8 @@
       or mono); a plan where you add amplifiers and speakers (library or generic) and wire them
       to the DSP's outputs (drag from one dot to another, or tap one then the other; tap a block,
       an output or a wire to edit it); the crossovers it proposes from the speakers' ranges; then
-      a summary. The outputs that drive the same speaker form one way, their outputs linked. It
+      a summary. Each speaker has its own specs and a side (left, right or mono L+R); the outputs
+      that drive sections with the same channel name form one way, their outputs linked. It
       works out the routing, channel names, links, filters, limiters (as the limiter
       calculator) and output gains, so that every main way plays at the same level. Writing replaces every setting (delays at 0, EQ flat),
       mutes the outputs meanwhile and stores the result in the preset slot you pick.

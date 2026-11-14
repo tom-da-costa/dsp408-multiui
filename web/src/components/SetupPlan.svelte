@@ -9,7 +9,7 @@
     addSpeaker,
     AMPLIFIERS,
     connect,
-    mainWays,
+    orderedWays,
     outputNames,
     parsePort,
     portKey,
@@ -38,19 +38,18 @@
 
   const draft = $derived(wizard.draft);
   const wired = $derived(wiring(draft, topo));
-  const kinds = $derived(new Map(draft.kinds.map((k) => [k.id, k])));
   const dspOutTop = $derived(DSP_Y + HEAD + topo.inputs * IN_ROW + 8);
   const dspHeight = $derived(dspOutTop - DSP_Y + topo.outputs * ROW + 6);
   // A colour per way: main ways from low to high, then the auxiliary ones.
-  const wayColor = $derived.by(() => {
-    const ordered = [...mainWays(wired.ways), ...wired.ways.filter((w) => w.section.aux)];
-    return new Map(ordered.map((w, i) => [w.key, COLORS[i % COLORS.length]!]));
-  });
+  const wayColor = $derived(
+    new Map(orderedWays(wired.ways).map((w, i) => [w.key, COLORS[i % COLORS.length]!])),
+  );
   const names = $derived.by(() => {
     const map = new Map<number, string>();
-    for (const way of wired.ways) for (const [o, n] of outputNames(draft, way)) map.set(o, n);
+    for (const way of wired.ways) for (const [o, n] of outputNames(way, wired.sideOf)) map.set(o, n);
     return map;
   });
+  const SIDE_LABEL = { L: "L", R: "R", LR: "L+R" } as const;
   const sourceName = (id: number | null) => draft.sources.find((s) => s.id === id)?.name ?? "?";
   /** Name of the source channel on each DSP input. */
   const inputLabels = $derived.by(() => {
@@ -89,8 +88,8 @@
 
   function wireColor(w: Wire): string {
     if (w.type === "drive") {
-      const kind = draft.speakers.find((s) => s.id === w.speaker)?.kind;
-      return wayColor.get(`${kind}/${w.section}`) ?? "#888";
+      const name = draft.speakers.find((s) => s.id === w.speaker)?.sections[w.section]?.name;
+      return wayColor.get(name ?? "") ?? "#888";
     }
     return wayColor.get(wired.wayOf.get(w.output) ?? "") ?? "#888";
   }
@@ -111,7 +110,7 @@
     }
     for (const s of draft.speakers) {
       w = Math.max(w, s.x + W + 40);
-      h = Math.max(h, s.y + spkHeight(kinds.get(s.kind)?.sections.length ?? 1) + 40);
+      h = Math.max(h, s.y + spkHeight(s.sections.length) + 40);
     }
     return { w, h };
   });
@@ -313,7 +312,7 @@
           <div class="outs">
             {#each Array.from({ length: topo.outputs }, (_, o) => o) as o (o)}
               {@const way = wired.wayOf.get(o)}
-              {@const route = routeOf(draft, o)}
+              {@const side = wired.sideOf.get(o) ?? "LR"}
               <div class="outrow">
                 <button
                   class="row out"
@@ -324,9 +323,7 @@
                 >
                   <b>{o + 1}</b>
                   <span class="label">{names.get(o) ?? `Out${o + 1}`}</span>
-                  {#if way}<small
-                      >{sourceName(route.source)} {route.side === "LR" ? "L+R" : route.side}</small
-                    >{/if}
+                  {#if way}<small>{sourceName(routeOf(draft, o))} {SIDE_LABEL[side]}</small>{/if}
                 </button>
                 {@render port({ node: "dsp", port: o }, "right")}
               </div>
@@ -364,13 +361,12 @@
         {/each}
 
         {#each draft.speakers as spk (spk.id)}
-          {@const kind = kinds.get(spk.kind)}
           <div
             class="node spk"
             class:selected={isSelected("speaker", spk.id)}
             style:left={`${spk.x}px`}
             style:top={`${spk.y}px`}
-            style:height={`${spkHeight(kind?.sections.length ?? 1)}px`}
+            style:height={`${spkHeight(spk.sections.length)}px`}
           >
             <div
               class="head"
@@ -381,15 +377,12 @@
               onpointerup={endMove}
               onkeydown={(e) => e.key === "Enter" && (selection = { type: "speaker", id: spk.id })}
             >
-              {kind?.model ?? "?"}
+              {#if spk.side !== "LR"}<span class="side">{spk.side}</span>{/if}
+              {spk.model}
             </div>
-            {#each kind?.sections ?? [] as section, i (i)}
-              <div
-                class="row ch"
-                style:top={`${HEAD + i * ROW}px`}
-                style:--c={wayColor.get(`${spk.kind}/${i}`)}
-              >
-                {section.name}{section.aux ? " (aux)" : ""}
+            {#each spk.sections as section, i (i)}
+              <div class="row ch" style:top={`${HEAD + i * ROW}px`} style:--c={wayColor.get(section.name)}>
+                {section.name}{draft.ways[section.name]?.aux ? " (aux)" : ""}
               </div>
               <div class="anchor" style:top={`${HEAD + i * ROW}px`}>
                 {@render port({ node: "spk", id: spk.id, port: i }, "left")}
@@ -411,15 +404,16 @@
       <h2>Properties</h2>
       <p class="muted hint">
         Tap a block, a DSP output or a wire to see and change its properties. The ways come from
-        the wiring: the outputs that drive the same speaker form one way (two outputs to four
-        subs: one Sub way, its two outputs linked).
+        the wiring, by channel name: the outputs that drive sections called "Sub" form the Sub
+        way, their outputs linked (two outputs to four subs: one Sub way). Each speaker is left,
+        right or mono (L+R): its outputs play that side.
       </p>
       {#if wired.ways.length}
         <h3>Ways</h3>
         <ul class="ways">
-          {#each [...mainWays(wired.ways), ...wired.ways.filter((w) => w.section.aux)] as way (way.key)}
+          {#each orderedWays(wired.ways) as way (way.key)}
             <li style:--c={wayColor.get(way.key)}>
-              <b>{way.section.name}</b>
+              <b>{way.key}</b>
               {way.outputs.map((o) => `Out ${o + 1}`).join(", ")} · {way.cabinets} cabinet{way.cabinets > 1 ? "s" : ""}{way.active ? " · active" : ""}
             </li>
           {/each}
@@ -625,6 +619,17 @@
   }
   .dim {
     opacity: 0.45;
+  }
+  .side {
+    display: inline-block;
+    min-width: 18px;
+    margin-right: 6px;
+    border-radius: 4px;
+    background: var(--info);
+    color: #000;
+    text-align: center;
+    font-size: 0.7rem;
+    line-height: 18px;
   }
   .ways {
     list-style: none;

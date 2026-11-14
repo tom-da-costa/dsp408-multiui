@@ -25,7 +25,7 @@ from tracks_dsp_controller.state.registry import ParamError
 DYNAMICS_ATTACK_MS = 1.0
 DYNAMICS_RELEASE_MS = 1000.0
 LIMIT_RATIO = c.COMPRESSOR_RATIOS.index("Limit")
-SHELF_Q = 0.7
+SHELF_Q = 0.71  # default Q of the low shelf
 
 
 class _Model(BaseModel):
@@ -40,6 +40,7 @@ class SetupFilter(_Model):
 class SetupShelf(_Model):
     freq_hz: float = Field(gt=0)
     gain_db: float = Field(ge=c.EQ_GAIN_MIN_DB, le=c.EQ_GAIN_MAX_DB)
+    q: float = Field(SHELF_Q, gt=0)  # clamped to the profile's Q range
 
 
 class SetupInput(_Model):
@@ -124,7 +125,7 @@ def build_target(
             peq[0] = cm.RawPeqBand(
                 gain=c.eq_gain_db_to_raw(shelf.gain_db),
                 freq=c.freq_hz_to_raw(shelf.freq_hz, profile),
-                q=c.q_to_raw(SHELF_Q, profile),
+                q=c.q_to_raw(shelf.q, profile),
                 type=_shelf_type(profile),
             )
         inputs.append(

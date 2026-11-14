@@ -23,6 +23,7 @@ import {
   proposeCrossover,
   removeNode,
   setAmpChannels,
+  setWayProp,
   storeErrors,
   type Topology,
   wayFilters,
@@ -47,23 +48,19 @@ function ownerStack(): Draft {
   const sub = addAmp(d, "admark-ad42", 300, 0);
   const mid = addAmp(d, "admark-ad416", 300, 200);
   const high = addAmp(d, "admark-ad416", 300, 400);
-  const feed = (output: number, amp: number, channel: number, side: "L" | "R" | "LR") => {
+  const feed = (output: number, amp: number, channel: number) =>
     connect(d, { type: "feed", output, amp, channel });
-    d.routes[output]!.side = side;
-  };
   const drive = (amp: number, channel: number, speaker: number, section = 0) =>
     connect(d, { type: "drive", amp, channel, speaker, section });
   for (let n = 0; n < 4; n++) drive(sub.id, n >> 1, addSpeaker(d, "th1821", 600, n * 60).id);
   const kicks = [addSpeaker(d, "mkh230", 600, 300), addSpeaker(d, "mkh230", 600, 360)];
   const tops = [addSpeaker(d, "t24n-clone", 600, 420), addSpeaker(d, "t24n-clone", 600, 500)];
-  feed(0, sub.id, 0, "LR");
-  feed(1, sub.id, 1, "LR");
-  feed(2, mid.id, 0, "L");
-  feed(3, mid.id, 1, "R");
-  feed(4, mid.id, 2, "L");
-  feed(5, mid.id, 3, "R");
-  feed(6, high.id, 0, "L");
-  feed(7, high.id, 1, "R");
+  // The kicks and the tops are a stereo pair: one left, one right; the subs play L+R.
+  kicks[0]!.side = tops[0]!.side = "L";
+  kicks[1]!.side = tops[1]!.side = "R";
+  const amps = [sub, sub, mid, mid, mid, mid, high, high];
+  const channels = [0, 1, 0, 1, 2, 3, 0, 1];
+  for (let o = 0; o < 8; o++) feed(o, amps[o]!.id, channels[o]!);
   drive(mid.id, 0, kicks[0]!.id);
   drive(mid.id, 1, kicks[1]!.id);
   drive(mid.id, 2, tops[0]!.id, 0);
@@ -75,8 +72,8 @@ function ownerStack(): Draft {
   return d;
 }
 
-const wayNamed = (d: Draft, name: string) =>
-  wiring(d, DSP408).ways.find((w) => w.section.name === name)!;
+const wayNamed = (d: Draft, name: string) => wiring(d, DSP408).ways.find((w) => w.key === name)!;
+const levelOf = (d: Draft, name: string) => wayLevel(d, wayNamed(d, name), wiring(d, DSP408).sideOf);
 
 describe("library", () => {
   it("gives an amplifier's power at a load, on the safe side", () => {
@@ -100,18 +97,18 @@ describe("library", () => {
     expect(gainFromSensitivity(1.4, 1600, 8)).toBeCloseTo(38.15, 2);
   });
 
-  it("shares a library model's specs between its cabinets", () => {
+  it("gives every cabinet its own specs", () => {
     const d = newDraft(SLOPES);
-    const a = addSpeaker(d, "th1821", 0, 0);
-    const b = addSpeaker(d, "th1821", 0, 0);
+    const a = addSpeaker(d, "t24n-clone", 0, 0);
+    const b = addSpeaker(d, "t24n-clone", 0, 0);
+    expect(a.sections.map((s) => s.name)).toEqual(["Mid", "High"]);
+    a.sections[0]!.aesW = "600";
+    expect(b.sections[0]!.aesW).toBe("800");
+    a.side = "L";
     const c = duplicateSpeaker(d, a);
-    expect(new Set([a.kind, b.kind, c.kind]).size).toBe(1);
-    expect(addSpeaker(d, null, 0, 0).kind).not.toBe(a.kind); // a generic speaker: its own
-    removeNode(d, "speaker", a.id);
-    removeNode(d, "speaker", b.id);
-    expect(d.kinds).toHaveLength(2);
-    removeNode(d, "speaker", c.id);
-    expect(d.kinds).toHaveLength(1);
+    expect([c.side, c.sections[0]!.aesW]).toEqual(["R", "600"]); // a copy, on the other side
+    c.sections[0]!.aesW = "700";
+    expect(a.sections[0]!.aesW).toBe("600");
   });
 });
 
@@ -129,14 +126,16 @@ describe("wiring", () => {
     const d = ownerStack();
     const { ways, errors } = wiring(d, DSP408);
     expect(errors).toEqual([]);
-    expect(mainWays(ways).map((w) => [w.section.name, w.outputs, w.cabinets])).toEqual([
+    expect(mainWays(ways).map((w) => [w.key, w.outputs, w.cabinets])).toEqual([
       ["Sub", [0, 1], 4],
       ["Kick", [2, 3], 2],
-      ["Low", [4, 5], 2],
+      ["Mid", [4, 5], 2],
       ["High", [6, 7], 2],
     ]);
-    expect([...outputNames(d, wayNamed(d, "Sub")).values()]).toEqual(["Sub1", "Sub2"]);
-    expect([...outputNames(d, wayNamed(d, "Kick")).values()]).toEqual(["Kick L", "Kick R"]);
+    const { sideOf } = wiring(d, DSP408);
+    expect([...sideOf.values()]).toEqual(["LR", "LR", "L", "R", "L", "R", "L", "R"]);
+    expect([...outputNames(wayNamed(d, "Sub"), sideOf).values()]).toEqual(["Sub1", "Sub2"]);
+    expect([...outputNames(wayNamed(d, "Kick"), sideOf).values()]).toEqual(["Kick L", "Kick R"]);
   });
 
   it("gives an amplifier input or a speaker one signal", () => {
@@ -150,16 +149,32 @@ describe("wiring", () => {
     expect(wayNamed(d, "Sub").outputs).toEqual([1]);
   });
 
-  it("refuses an output or an amplifier channel on two kinds of speakers", () => {
+  it("refuses an output or an amplifier channel on two ways, or on both sides", () => {
     const d = ownerStack();
     const [sub, mid] = d.amps;
     connect(d, { type: "feed", output: 0, amp: mid!.id, channel: 0 }); // Out 1 also to the kicks
     expect(wiring(d, DSP408).errors).toContain(
-      "Out 1 drives two kinds of speakers: give each its own output.",
+      "Out 1 drives two different channels (Sub, Kick): give each its own output.",
     );
-    const kick = d.speakers.find((s) => d.kinds.find((k) => k.id === s.kind)?.ref === "mkh230")!;
+    const kick = d.speakers.find((s) => s.ref === "mkh230")!;
     connect(d, { type: "drive", amp: sub!.id, channel: 1, speaker: kick.id, section: 0 });
-    expect(wiring(d, DSP408).errors).toContain("Admark AD42 ch 2 drives two kinds of speakers.");
+    expect(wiring(d, DSP408).errors).toContain(
+      "Admark AD42 ch 2 drives two different channels (Sub, Kick).",
+    );
+    const e = ownerStack();
+    connect(e, { type: "feed", output: 3, amp: e.amps[1]!.id, channel: 0 }); // Kick L and R on Out 4
+    expect(wiring(e, DSP408).errors).toContain(
+      "Out 4 drives speakers of different sides: give each side its own output.",
+    );
+  });
+
+  it("makes a way of the sections with the same channel name", () => {
+    const d = ownerStack();
+    const other = d.speakers.find((s) => s.ref === "th1821")!;
+    other.sections[0]!.name = "Sub2"; // renamed: a way of its own (and Out 1 drives both)
+    expect(wiring(d, DSP408).errors).toContain(
+      "Out 1 drives two different channels (Sub2, Sub): give each its own output.",
+    );
   });
 
   it("drops the wires of a removed amplifier or channel", () => {
@@ -177,9 +192,9 @@ describe("wiring", () => {
     const d = newDraft(SLOPES);
     const spk = addSpeaker(d, null, 0, 0);
     connect(d, { type: "direct", output: 0, speaker: spk.id, section: 0 });
-    const [way] = wiring(d, DSP408).ways;
-    expect(way?.active).toBe(true);
-    expect(wayLevel(d, way!).limiter).toBeNull();
+    const w = wiring(d, DSP408);
+    expect(w.ways[0]?.active).toBe(true);
+    expect(wayLevel(d, w.ways[0]!, w.sideOf).limiter).toBeNull();
   });
 });
 
@@ -215,31 +230,25 @@ describe("filters", () => {
     const d = ownerStack();
     const amp = addAmp(d, "admark-ad42", 0, 0);
     const mon = addSpeaker(d, null, 0, 0);
-    const kind = d.kinds.find((k) => k.id === mon.kind)!;
-    Object.assign(kind.sections[0]!, {
-      name: "Mon",
-      aux: true,
-      lowHz: "80",
-      highHz: "18000",
-      aesW: "300",
-    });
+    Object.assign(mon.sections[0]!, { name: "Mon", lowHz: "80", highHz: "18000", aesW: "300" });
+    setWayProp(d, "Mon", "aux", true);
     // The DSP 408 has 8 outputs: the monitor takes Out 8 from High R.
     disconnect(d, { type: "feed", output: 7, amp: d.amps[2]!.id, channel: 1 });
     connect(d, { type: "feed", output: 7, amp: amp.id, channel: 0 });
     connect(d, { type: "drive", amp: amp.id, channel: 0, speaker: mon.id, section: 0 });
     const { ways } = wiring(d, DSP408);
-    expect(wayFilters(d, ways, SLOPES).get(`${kind.id}/0`)).toEqual({
+    expect(wayFilters(d, ways, SLOPES).get("Mon")).toEqual({
       hpf: { freq_hz: 80, slope: BW24 },
       lpf: { freq_hz: 18000, slope: BW24 },
     });
-    expect(mainWays(ways).map((w) => w.section.name)).not.toContain("Mon");
+    expect(mainWays(ways).map((w) => w.key)).not.toContain("Mon");
   });
 });
 
 describe("levels", () => {
   it("computes each channel's limiter, the way taking the lowest", () => {
     const d = ownerStack();
-    const level = wayLevel(d, wayNamed(d, "Sub"));
+    const level = levelOf(d, "Sub");
     // Two TH1821 per AD42 channel: 3400 W AES / 1.56 into 4 Ω at 41 dB, 0.6 dBu, rounded up
     expect(level.channels.map((c) => [c.impedanceOhm, c.aesW, c.powerW])).toEqual([
       [4, 3400, 7800],
@@ -253,23 +262,31 @@ describe("levels", () => {
     expect(level.splAt0Db).toBeCloseTo(146.59, 1);
   });
 
+  it("puts different cabinets of one channel in parallel", () => {
+    const d = ownerStack();
+    d.speakers.find((s) => s.ref === "th1821")!.sections[0]!.impedanceOhm = "4";
+    const [first] = levelOf(d, "Sub").channels;
+    expect(first!.impedanceOhm).toBeCloseTo(8 / 3, 2); // 4 Ω ∥ 8 Ω
+  });
+
   it("turns the louder main ways down to the quietest", () => {
     const d = ownerStack();
-    const { ways } = wiring(d, DSP408);
-    const gains = wayGains(d, ways);
-    const levels = ways.map((w) => wayLevel(d, w).splAt0Db! + gains.get(w.key)!.gainDb);
+    const wired = wiring(d, DSP408);
+    const gains = wayGains(d, wired);
+    const levels = wired.ways.map(
+      (w) => wayLevel(d, w, wired.sideOf).splAt0Db! + gains.get(w.key)!.gainDb,
+    );
     for (const level of levels) expect(level).toBeCloseTo(Math.min(...levels), 0);
     expect(Math.max(...[...gains.values()].map((g) => g.gainDb))).toBe(0);
   });
 
   it("keeps a gain typed by hand and leaves auxiliary ways at 0 dB", () => {
     const d = ownerStack();
-    const { ways } = wiring(d, DSP408);
-    ways[0]!.section.gainDb = "-2";
-    ways[1]!.section.aux = true;
-    const gains = wayGains(d, ways);
-    expect(gains.get(ways[0]!.key)!.gainDb).toBe(-2);
-    expect(gains.get(ways[1]!.key)!.gainDb).toBe(0);
+    setWayProp(d, "Sub", "gainDb", "-2");
+    setWayProp(d, "Kick", "aux", true);
+    const gains = wayGains(d, wiring(d, DSP408));
+    expect(gains.get("Sub")!.gainDb).toBe(-2);
+    expect(gains.get("Kick")!.gainDb).toBe(0);
   });
 });
 
@@ -279,11 +296,11 @@ describe("plan", () => {
     d.lowShelf.enabled = true;
     const plan = buildPlan(d, DSP408);
     expect(plan.inputs.map((i) => i.name)).toEqual(["Main L", "Main R", "InC", "InD"]);
-    expect(plan.inputs[0]!.low_shelf).toEqual({ freq_hz: 100, gain_db: 3 });
+    expect(plan.inputs[0]!.low_shelf).toEqual({ freq_hz: 100, gain_db: 9, q: 0.71 });
     expect(plan.inputs[2]!.low_shelf).toBeNull();
     expect(plan.input_links).toEqual([[0, 1]]);
     expect(plan.outputs.map((o) => o.name)).toEqual([
-      "Sub1", "Sub2", "Kick L", "Kick R", "Low L", "Low R", "High L", "High R",
+      "Sub1", "Sub2", "Kick L", "Kick R", "Mid L", "Mid R", "High L", "High R",
     ]);
     expect(plan.outputs.map((o) => o.sources.slice(0, 2))).toEqual([
       [true, true], [true, true], [true, false], [false, true], [true, false], [false, true],
@@ -323,7 +340,7 @@ describe("plan", () => {
       'Source "Microphone": 8 characters at most (channel name "Microphone R").',
     ]);
     d.amps[0]!.gainDb = "";
-    d.routes[2]!.source = null;
+    d.routes[2] = null;
     expect(planErrors(d, DSP408)).toEqual([
       "Out 3: pick what it plays.",
       "Admark AD42: its gain is needed.",
@@ -331,12 +348,13 @@ describe("plan", () => {
     expect(planErrors(newDraft(SLOPES), DSP408)).toHaveLength(1);
     d.slot = 0;
     d.presetName = "";
-    d.lowShelf = { enabled: true, freqHz: "", gainDb: "15" };
+    d.lowShelf = { enabled: true, freqHz: "", gainDb: "15", q: "0" };
     expect(storeErrors(d, DSP408)).toEqual([
       "Pick a preset slot.",
       "Preset name: a name is required.",
       "Low shelf: a frequency is needed.",
       "Low shelf: gain between −12 and +12 dB.",
+      "Low shelf: a Q above 0 is needed.",
     ]);
   });
 });

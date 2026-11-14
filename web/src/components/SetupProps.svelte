@@ -10,8 +10,8 @@
 
 <script lang="ts">
   // Setup wizard, plan: the properties of the element picked on the plan (a DSP output, an
-  // amplifier, a speaker, a wire). A speaker's specs are its model's: every cabinet of that
-  // model shares them.
+  // amplifier, a speaker, a wire). Each speaker has its own specs and side; the settings of a
+  // way (by channel name) are shared by every cabinet and output of that way.
   import { formatDb } from "../lib/scale";
   import {
     amplifierModel,
@@ -27,7 +27,9 @@
     routeOf,
     sameWire,
     setAmpChannels,
+    setWayProp,
     wayLevel,
+    wayProps,
     wiring,
     type Side,
     type Topology,
@@ -45,29 +47,29 @@
     selection?.type === type ? selection.id : null;
   const amp = $derived(draft.amps.find((a) => a.id === selectedId("amp")));
   const speaker = $derived(draft.speakers.find((s) => s.id === selectedId("speaker")));
-  const kind = $derived(speaker ? draft.kinds.find((k) => k.id === speaker.kind) : undefined);
-  const cabinets = $derived(kind ? draft.speakers.filter((s) => s.kind === kind.id).length : 0);
+  const SIDES: [Side, string][] = [
+    ["L", "Left"],
+    ["R", "Right"],
+    ["LR", "Mono L+R"],
+  ];
 
-  // Selected DSP output: its route and its way.
+  // Selected DSP output: its source, its side (from its speakers) and its way.
   const output = $derived(selection?.type === "dsp" ? selection.output : null);
-  const outputWay = $derived(output === null ? undefined : wired.ways.find((w) => w.outputs.includes(output)));
-  const route = $derived(output === null ? null : (draft.routes[output] ?? routeOf(draft, output)));
-  const routeSource = $derived(draft.sources.find((s) => s.id === route?.source));
-
-  function setRoute(source: number | null, side: Side) {
-    if (output === null) return;
-    draft.routes[output] = { source, side };
-  }
+  const outputWay = $derived(
+    output === null ? undefined : wired.ways.find((w) => w.outputs.includes(output)),
+  );
+  const source = $derived(output === null ? null : routeOf(draft, output));
+  const side = $derived(output === null ? "LR" : (wired.sideOf.get(output) ?? "LR"));
 
   // Per amplifier channel: what it drives and its limiter.
   function channelInfo(ampId: number, channel: number): string {
     for (const way of wired.ways) {
-      const level = wayLevel(draft, way);
+      const level = wayLevel(draft, way, wired.sideOf);
       const c = level.channels.find((r) => r.load.amp?.id === ampId && r.load.channel === channel);
       if (!c) continue;
       const limit = c.limiter ? ` · comp ${dbu(c.limiter.compThresholdDbu)}` : "";
       const power = c.powerW ? `, ${c.powerW} W` : ", below its rated loads";
-      return `${c.load.cabinets}× ${way.section.name} (${ohms(c.impedanceOhm)}${power})${limit} → Out ${c.load.output + 1}`;
+      return `${c.load.cabinets.length}× ${way.key} (${ohms(c.impedanceOhm)}${power})${limit} → Out ${c.load.output + 1}`;
     }
     return "not wired";
   }
@@ -75,7 +77,7 @@
   function describeWire(w: Wire): string {
     const ampName = (id: number) => draft.amps.find((a) => a.id === id)?.model ?? "amplifier";
     const spkName = (id: number, section: number) => {
-      const k = draft.kinds.find((x) => x.id === draft.speakers.find((s) => s.id === id)?.kind);
+      const k = draft.speakers.find((s) => s.id === id);
       return `${k?.model ?? "speaker"}${k && k.sections.length > 1 ? ` · ${k.sections[section]?.name}` : ""}`;
     };
     if (w.type === "feed") return `Out ${w.output + 1} → ${ampName(w.amp)} ch ${w.channel + 1}`;
@@ -100,11 +102,11 @@
   }
 </script>
 
-{#if selection?.type === "dsp" && output !== null && route}
+{#if selection?.type === "dsp" && output !== null}
   <h2>Out {output + 1}</h2>
   {#if outputWay}
     <p class="muted note">
-      {outputNames(draft, outputWay).get(output)} — way {outputWay.section.name}, {outputWay.outputs.length > 1
+      {outputNames(outputWay, wired.sideOf).get(output)} — way {outputWay.key}, {outputWay.outputs.length > 1
         ? `linked with ${outputWay.outputs.filter((o) => o !== output).map((o) => `Out ${o + 1}`).join(", ")}`
         : "one output"}.
     </p>
@@ -114,22 +116,17 @@
   <div class="field">
     <span>Plays</span>
     <select
-      value={route.source ?? ""}
-      onchange={(e) => setRoute(Number(e.currentTarget.value) || null, route.side)}
+      value={source ?? ""}
+      onchange={(e) => (draft.routes[output] = Number(e.currentTarget.value) || null)}
     >
       {#each draft.sources as s (s.id)}<option value={s.id}>{s.name}</option>{/each}
     </select>
   </div>
-  {#if routeSource?.stereo}
-    <div class="field">
-      <span>Side</span>
-      <div class="seg" role="group" aria-label="Side">
-        {#each [["L", "L"], ["R", "R"], ["LR", "L+R"]] as const as [side, label] (side)}
-          <button class:on={route.side === side} onclick={() => setRoute(route.source, side)}>{label}</button>
-        {/each}
-      </div>
-    </div>
-    <p class="muted note">L+R sums both sides (mono), the default; L or R for a stereo pair.</p>
+  {#if outputWay}
+    <p class="muted note">
+      Side: <strong>{side === "LR" ? "L+R (mono)" : side === "L" ? "left" : "right"}</strong>, from
+      its speakers (set the side on a speaker).
+    </p>
   {/if}
 {:else if selection?.type === "wire"}
   <h2>Wire</h2>
@@ -216,35 +213,34 @@
   <div class="actions">
     <button class="danger" onclick={() => remove("amp", amp.id)}>Remove the amplifier</button>
   </div>
-{:else if speaker && kind}
+{:else if speaker}
   <h2>Speaker</h2>
-  {#if kind.ref === null}
-    <label class="field">
-      <span>Model</span>
-      <input type="text" bind:value={kind.model} />
-    </label>
-  {:else}
-    <p class="muted note">{kind.model}: {cabinets} cabinet{cabinets > 1 ? "s" : ""} in the plan.</p>
-  {/if}
+  <label class="field">
+    <span>Model</span>
+    <input type="text" bind:value={speaker.model} />
+  </label>
+  <div class="field">
+    <span>Side</span>
+    <div class="seg" role="group" aria-label="Side">
+      {#each SIDES as [value, label] (value)}
+        <button class:on={speaker.side === value} onclick={() => (speaker.side = value)}>{label}</button>
+      {/each}
+    </div>
+  </div>
   <p class="muted note">
-    {cabinets > 1 ? `These settings apply to the ${cabinets} cabinets of this model.` : ""}
+    Left or right for one speaker of a stereo pair; mono plays L+R. Its outputs play that side.
+    A copy takes the other side.
   </p>
-  {#each kind.sections as section, i (i)}
-    {@const lib = librarySection(kind, i)}
+  {#each speaker.sections as section, i (i)}
+    {@const lib = librarySection(speaker, i)}
     {@const estimated = new Set(lib?.estimated ?? [])}
+    {@const props = wayProps(draft, section.name)}
     <fieldset>
-      <legend>{kind.sections.length > 1 ? `Section ${i + 1}` : "Specs"}</legend>
+      <legend>{speaker.sections.length > 1 ? `Section ${i + 1}` : "This speaker"}</legend>
       <label class="field">
         <span>Channel name</span>
         <input type="text" maxlength="8" bind:value={section.name} />
       </label>
-      <div class="field">
-        <span>Role</span>
-        <div class="seg" role="group" aria-label="Role">
-          <button class:on={!section.aux} onclick={() => (section.aux = false)}>Main</button>
-          <button class:on={section.aux} onclick={() => (section.aux = true)}>Auxiliary</button>
-        </div>
-      </div>
       <label class="field">
         <span>Range, bottom</span>
         <input type="text" inputmode="decimal" bind:value={section.lowHz} />
@@ -279,38 +275,63 @@
           >
         </div>
       </div>
+      {#if lib}<p class="muted note">{lib.drivers}. {lib.source}</p>{/if}
+
+      <h3>Way "{section.name}" <small>shared by its cabinets and outputs</small></h3>
+      <div class="field">
+        <span>Role</span>
+        <div class="seg" role="group" aria-label="Role">
+          <button class:on={!props.aux} onclick={() => setWayProp(draft, section.name, "aux", false)}
+            >Main</button
+          >
+          <button class:on={props.aux} onclick={() => setWayProp(draft, section.name, "aux", true)}
+            >Auxiliary</button
+          >
+        </div>
+      </div>
       <div class="field">
         <span>Limiter</span>
         <div class="seg" role="group" aria-label="Hard or soft">
-          <button class:on={section.mode === "hard"} onclick={() => (section.mode = "hard")}>Hard</button>
-          <button class:on={section.mode === "soft"} onclick={() => (section.mode = "soft")}>Soft +2</button>
+          <button class:on={props.mode === "hard"} onclick={() => setWayProp(draft, section.name, "mode", "hard")}
+            >Hard</button
+          >
+          <button class:on={props.mode === "soft"} onclick={() => setWayProp(draft, section.name, "mode", "soft")}
+            >Soft +2</button
+          >
         </div>
       </div>
       <div class="field">
         <span>0.5 dB step</span>
         <div class="seg" role="group" aria-label="Rounding">
-          <button class:on={section.rounding === "up"} onclick={() => (section.rounding = "up")}>Up</button>
-          <button class:on={section.rounding === "down"} onclick={() => (section.rounding = "down")}
-            >Down</button
+          <button
+            class:on={props.rounding === "up"}
+            onclick={() => setWayProp(draft, section.name, "rounding", "up")}>Up</button
+          >
+          <button
+            class:on={props.rounding === "down"}
+            onclick={() => setWayProp(draft, section.name, "rounding", "down")}>Down</button
           >
         </div>
       </div>
       <label class="check">
-        <input type="checkbox" bind:checked={section.phase} /> Inverted polarity
+        <input
+          type="checkbox"
+          checked={props.phase}
+          onchange={(e) => setWayProp(draft, section.name, "phase", e.currentTarget.checked)}
+        /> Inverted polarity
       </label>
-      {#if lib}<p class="muted note">{lib.drivers}. {lib.source}</p>{/if}
-      {#if kind.ref === null && kind.sections.length > 1}
-        <button class="small" onclick={() => removeSection(draft, kind, i)}>Remove this section</button>
+      {#if speaker.ref === null && speaker.sections.length > 1}
+        <button class="small" onclick={() => removeSection(draft, speaker, i)}>Remove this section</button>
       {/if}
     </fieldset>
   {/each}
-  {#if kind.ref === null}
-    <button class="small" onclick={() => kind.sections.push(newSection(kind.sections.length))}
+  {#if speaker.ref === null}
+    <button class="small" onclick={() => speaker.sections.push(newSection(speaker.sections.length))}
       >+ Section (bi-amp)</button
     >
   {/if}
   <div class="actions">
-    <button onclick={duplicate}>+ Another cabinet</button>
+    <button onclick={duplicate}>+ Copy</button>
     <button class="danger" onclick={() => remove("speaker", speaker.id)}>Remove</button>
   </div>
 {:else}
