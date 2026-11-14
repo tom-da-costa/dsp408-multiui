@@ -157,6 +157,15 @@ def login(client: TestClient, name: str = "tester") -> None:
 _BACKLOG: dict[int, list[dict[str, Any]]] = {}
 
 
+@pytest.fixture(autouse=True)
+def _fresh_backlog() -> Iterator[None]:
+    """The backlog is keyed by the socket's id(), which a later test's socket can reuse: start
+    each test with none, or it would read another test's leftover messages."""
+    _BACKLOG.clear()
+    yield
+    _BACKLOG.clear()
+
+
 def receive_until(ws: WebSocketTestSession, kind: str, limit: int = 200) -> dict[str, Any]:
     """Next message of ``kind``; messages skipped by ``request`` are looked at first."""
     backlog = _BACKLOG.setdefault(id(ws), [])
