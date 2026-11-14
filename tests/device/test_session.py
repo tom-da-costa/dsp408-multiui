@@ -20,6 +20,7 @@ from tracks_dsp_controller.protocol.meters import MeterReading
 from tracks_dsp_controller.protocol.profile import DEFAULT_PROFILE
 from tracks_dsp_controller.simulator import Faults, SimulatedDevice, SimulatorServer, apply_scenario
 from tracks_dsp_controller.state.registry import ParamError
+from tracks_dsp_controller.state.setup import SetupPlan
 from tracks_dsp_controller.state.store import Patch, Snapshot, StateStore
 
 P = DEFAULT_PROFILE.with_overrides({"timing": {"command_timeout_s": 0.2}})
@@ -414,3 +415,57 @@ async def test_export_preset_file(session: DeviceSession, sim: SimulatorServer) 
     # A file exported and loaded back changes nothing.
     assert (await session.import_preset(exported.data, "a")).notes == ()
     assert sim.device.config_blob[2:end] == blob[2:end]
+
+
+def setup_plan() -> SetupPlan:
+    """Mono source on In A: a sub on Out1 and a top on Out2, the other outputs unused."""
+    outputs: list[dict[str, Any]] = [
+        {
+            "name": "Sub",
+            "used": True,
+            "sources": [True, False, False, False],
+            "lpf": {"freq_hz": 100, "slope": 10},
+            "dynamics": {"compressor_threshold_db": 0, "limiter_threshold_db": 6},
+        },
+        {
+            "name": "Top",
+            "used": True,
+            "sources": [True, False, False, False],
+            "gain_db": -3,
+            "hpf": {"freq_hz": 100, "slope": 10},
+        },
+    ]
+    outputs += [{"name": f"Out{n}", "used": False, "sources": [False] * 4} for n in range(3, 9)]
+    return SetupPlan.model_validate(
+        {"inputs": [{"name": n} for n in ("Mix", "InB", "InC", "InD")], "outputs": outputs}
+    )
+
+
+async def test_apply_setup_and_store(session: DeviceSession, sim: SimulatorServer) -> None:
+    result = await session.apply_setup(setup_plan(), "a", slot=7, name="Wizard")
+    assert result == PresetImport("Wizard", ())
+    state = session.store.state
+    assert [o.name for o in state.outputs[:3]] == ["Sub", "Top", "Out3"]
+    assert [o.mute for o in state.outputs] == [False, False] + [True] * 6
+    assert all(i.mute for i in state.inputs)
+    assert all(not o.linked for o in state.outputs)  # the demo's links are undone
+    assert state.outputs[0].compressor.threshold_db == 0
+    assert state.outputs[1].gain_db == -3
+    assert state.outputs[0].delay_ms == 0
+    assert (state.active_slot, state.modified, state.presets[6].name) == (7, False, "Wizard")
+    assert sim.device.presets[7].preset_name == "Wizard"
+
+
+async def test_apply_setup_refuses_bad_plans_before_sending(
+    session: DeviceSession, sim: SimulatorServer
+) -> None:
+    before = sim.device.config_blob
+    bad = setup_plan().model_copy(update={"inputs": setup_plan().inputs[:2]})
+    for plan, kwargs in [
+        (bad, {}),
+        (setup_plan(), {"slot": 0}),
+        (setup_plan(), {"slot": 3, "name": "fifteen chars!!"}),
+    ]:
+        with pytest.raises(ParamError):
+            await session.apply_setup(plan, "a", **kwargs)
+    assert sim.device.config_blob == before

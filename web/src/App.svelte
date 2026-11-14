@@ -13,6 +13,7 @@
   import ParamView from "./components/ParamView.svelte";
   import Presets from "./components/Presets.svelte";
   import Settings from "./components/Settings.svelte";
+  import SetupWizard from "./components/SetupWizard.svelte";
   import Toasts from "./components/Toasts.svelte";
   import TooLoud from "./components/TooLoud.svelte";
   import RailLock from "./components/RailLock.svelte";
@@ -162,6 +163,8 @@
           <TooLoud />
         {:else if nav.tab === "limiter"}
           <LimiterCalc />
+        {:else if nav.tab === "setup"}
+          <SetupWizard />
         {:else if nav.tab === "presets"}
           <Presets />
         {:else if nav.tab === "help"}

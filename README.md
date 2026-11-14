@@ -55,6 +55,14 @@ On a phone, in landscape:
   (horizontally) and gain (vertically), turn the mouse wheel over it for its Q
 - Limiter calculator: compressor and limiter thresholds from the amplifier gain and the speaker
   power, impedance and load
+- **Setup wizard**: describe the sources, then draw the system on a plan: amplifiers and
+  speakers (from a small library in `web/src/data/`, or generic) wired to the DSP's outputs.
+  Each speaker has its own specs and a side (left, right or mono), and can be bridged from
+  another one (link output, in parallel). The ways come from the
+  wiring, by channel name (two outputs to four subs: one Sub way, its outputs linked); the
+  wizard works out the routing, channel names, links, crossovers, subsonic filter, limiters and
+  output gains (every main way at the same level), then writes the whole setup (outputs muted
+  meanwhile, inputs left muted) and stores it in a preset
 - DSP presets U01–U20: recall, store, rename, with an "unsaved changes" indicator
 - Preset files (`.prs`) of the official t.racks editor: export the live setup, import a file
   into it (and store it in a slot). The outputs are muted while a file loads
@@ -240,6 +248,10 @@ it on a DSP in use). The DSP accepts one client at a time: stop the app before p
   inputs' gate and GEQ), with MUTE under each meter.
 - In Live, Params and All-in-one, a row picks the channels shown (all, inputs, outputs or any
   set); each view remembers its choice in the browser (Params: one choice for every setting).
+- **Setup** view: the setup wizard, in four steps (inputs, plan, crossover, apply). On the plan,
+  move a block by its title, wire by dragging from one dot to another (or tapping one then the
+  other), and tap a block, an output or a wire to edit it. Delays and EQ are left flat: set them by ear
+  or by measurement. When it is done, every input is muted: check the system, then unmute them.
 - **Too loud** view: one indicator that fills the screen, for whoever sets the volume. It lights
   in the compressor's colour when at least one output's compressor or limiter acts (and names
   those outputs), and stays grey otherwise; its brightness is adjustable (per browser). Flashing

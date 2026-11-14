@@ -143,3 +143,27 @@ button.switch.danger.on {
 .vfields-grid.two-rows {
   grid-template-rows: repeat(2, minmax(min-content, 1fr));
 }
+
+/* Segmented choice: buttons side by side, the chosen one lit (`.on`). */
+.seg {
+  display: flex;
+}
+.seg button {
+  padding: 0 10px;
+  font-size: 0.85rem;
+  border-radius: 0;
+}
+.seg button + button {
+  margin-left: -1px;
+}
+.seg button:first-child {
+  border-radius: var(--radius) 0 0 var(--radius);
+}
+.seg button:last-child {
+  border-radius: 0 var(--radius) var(--radius) 0;
+}
+.seg button.on {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-text);
+}

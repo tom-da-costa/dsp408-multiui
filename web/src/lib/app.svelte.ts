@@ -31,7 +31,8 @@ const REQUEST_TIMEOUT_MS = 10_000;
 // (~50 requests: 23 s in all behind a link with 300 ms of latency, measured).
 const SLOW_REQUEST_TIMEOUT_MS = 60_000;
 const SLOW_REQUESTS = new Set(["preset.recall", "preset.store", "preset.export", "resync", "link.set"]);
-// Loading a preset file: up to a few hundred writes, then maybe a store (~7.5 s).
+// Loading a preset file or the setup wizard's result: up to a few hundred writes, then maybe a
+// store (~7.5 s).
 const IMPORT_TIMEOUT_MS = 180_000;
 const ACTIVITY_INTERVAL_MS = 10_000;
 // Link to the server: a ping every few seconds; with nothing received for a while (not even the
@@ -385,7 +386,7 @@ class App {
     }
     return new Promise((resolve) => {
       const timeout =
-        message.type === "preset.import"
+        message.type === "preset.import" || message.type === "setup.apply"
           ? IMPORT_TIMEOUT_MS
           : SLOW_REQUESTS.has(message.type)
             ? SLOW_REQUEST_TIMEOUT_MS

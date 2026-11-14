@@ -15,6 +15,7 @@ export const TABS = [
   ["aio", "All-in-one", "▥"],
   ["loud", "Too loud", "🚨"],
   ["limiter", "Limiter calc", "🧮"],
+  ["setup", "Setup", "🪄"],
   ["presets", "Presets", "☰"],
   ["settings", "Settings", "⚙"],
   ["help", "Help", "❓"],

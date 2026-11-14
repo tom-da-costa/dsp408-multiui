@@ -1,0 +1,296 @@
+{
+  "$comment": "Amplifier library of the setup wizard: power per channel by load impedance (ohm → W), bridged power, and the gains the datasheet lists (the wizard pre-fills the highest; the real gain can differ, enter it). Admark: the manual of its digital amplifiers, 2- and 4-channel models (the AD60 has no bridge mode).",
+  "amplifiers": [
+    {
+      "id": "admark-ad06",
+      "name": "Admark AD06",
+      "channels": 2,
+      "power_w": {
+        "8": 650,
+        "4": 1100,
+        "2": 1870
+      },
+      "bridge_power_w": {
+        "8": 2200,
+        "4": 3740
+      },
+      "gains_db": [
+        32,
+        35,
+        38,
+        41
+      ],
+      "rating": "EIAJ, 1 kHz, 1 % THD"
+    },
+    {
+      "id": "admark-ad08",
+      "name": "Admark AD08",
+      "channels": 2,
+      "power_w": {
+        "8": 850,
+        "4": 1400,
+        "2": 2400
+      },
+      "bridge_power_w": {
+        "8": 2800,
+        "4": 4800
+      },
+      "gains_db": [
+        32,
+        35,
+        38,
+        41
+      ],
+      "rating": "EIAJ, 1 kHz, 1 % THD"
+    },
+    {
+      "id": "admark-ad10",
+      "name": "Admark AD10",
+      "channels": 2,
+      "power_w": {
+        "8": 1000,
+        "4": 1700,
+        "2": 2890
+      },
+      "bridge_power_w": {
+        "8": 3400,
+        "4": 5780
+      },
+      "gains_db": [
+        32,
+        35,
+        38,
+        41
+      ],
+      "rating": "EIAJ, 1 kHz, 1 % THD"
+    },
+    {
+      "id": "admark-ad20",
+      "name": "Admark AD20",
+      "channels": 2,
+      "power_w": {
+        "8": 2000,
+        "4": 3800,
+        "2": 4760
+      },
+      "bridge_power_w": {
+        "8": 6800,
+        "4": 9520
+      },
+      "gains_db": [
+        32,
+        35,
+        38,
+        41
+      ],
+      "rating": "EIAJ, 1 kHz, 1 % THD"
+    },
+    {
+      "id": "admark-ad30",
+      "name": "Admark AD30",
+      "channels": 2,
+      "power_w": {
+        "8": 3000,
+        "4": 5100,
+        "2": 7140
+      },
+      "bridge_power_w": {
+        "8": 10200,
+        "4": 14280
+      },
+      "gains_db": [
+        32,
+        35,
+        38,
+        41
+      ],
+      "rating": "EIAJ, 1 kHz, 1 % THD"
+    },
+    {
+      "id": "admark-ad35",
+      "name": "Admark AD35",
+      "channels": 2,
+      "power_w": {
+        "8": 3500,
+        "4": 6500,
+        "2": 7500
+      },
+      "bridge_power_w": {
+        "8": 13000,
+        "4": 15000
+      },
+      "gains_db": [
+        32,
+        35,
+        38,
+        41
+      ],
+      "rating": "EIAJ, 1 kHz, 1 % THD"
+    },
+    {
+      "id": "admark-ad42",
+      "name": "Admark AD42",
+      "channels": 2,
+      "power_w": {
+        "8": 4200,
+        "4": 7800,
+        "2": 8500
+      },
+      "bridge_power_w": {
+        "8": 15600,
+        "4": 17000
+      },
+      "gains_db": [
+        32,
+        35,
+        38,
+        41
+      ],
+      "rating": "EIAJ, 1 kHz, 1 % THD"
+    },
+    {
+      "id": "admark-ad60",
+      "name": "Admark AD60",
+      "channels": 2,
+      "power_w": {
+        "8": 6000,
+        "4": 11000,
+        "2": 11000
+      },
+      "bridge_power_w": {},
+      "gains_db": [
+        32,
+        35,
+        38,
+        41
+      ],
+      "rating": "EIAJ, 1 kHz, 1 % THD"
+    },
+    {
+      "id": "admark-ad406",
+      "name": "Admark AD406",
+      "channels": 4,
+      "power_w": {
+        "8": 650,
+        "4": 1100,
+        "2": 1870
+      },
+      "bridge_power_w": {
+        "8": 2200,
+        "4": 3740
+      },
+      "gains_db": [
+        32,
+        35,
+        38,
+        41
+      ],
+      "rating": "EIAJ, 1 kHz, 1 % THD"
+    },
+    {
+      "id": "admark-ad410",
+      "name": "Admark AD410",
+      "channels": 4,
+      "power_w": {
+        "8": 1000,
+        "4": 1700,
+        "2": 2890
+      },
+      "bridge_power_w": {
+        "8": 3400,
+        "4": 5780
+      },
+      "gains_db": [
+        32,
+        35,
+        38,
+        41
+      ],
+      "rating": "EIAJ, 1 kHz, 1 % THD"
+    },
+    {
+      "id": "admark-ad416",
+      "name": "Admark AD416",
+      "channels": 4,
+      "power_w": {
+        "8": 1600,
+        "4": 2600,
+        "2": 3500
+      },
+      "bridge_power_w": {
+        "8": 5200,
+        "4": 7000
+      },
+      "gains_db": [
+        32,
+        35,
+        38,
+        41
+      ],
+      "rating": "EIAJ, 1 kHz, 1 % THD"
+    },
+    {
+      "id": "admark-ad420",
+      "name": "Admark AD420",
+      "channels": 4,
+      "power_w": {
+        "8": 2000,
+        "4": 3400,
+        "2": 4760
+      },
+      "bridge_power_w": {
+        "8": 6800,
+        "4": 9520
+      },
+      "gains_db": [
+        32,
+        35,
+        38,
+        41
+      ],
+      "rating": "EIAJ, 1 kHz, 1 % THD"
+    },
+    {
+      "id": "admark-ad430",
+      "name": "Admark AD430",
+      "channels": 4,
+      "power_w": {
+        "8": 3000,
+        "4": 5000,
+        "2": 7140
+      },
+      "bridge_power_w": {
+        "8": 10000,
+        "4": 13000
+      },
+      "gains_db": [
+        32,
+        35,
+        38,
+        41
+      ],
+      "rating": "EIAJ, 1 kHz, 1 % THD"
+    },
+    {
+      "id": "admark-ad442",
+      "name": "Admark AD442",
+      "channels": 4,
+      "power_w": {
+        "8": 4200,
+        "4": 7200,
+        "2": 7400
+      },
+      "bridge_power_w": {
+        "8": 14400,
+        "4": 14800
+      },
+      "gains_db": [
+        32,
+        35,
+        38,
+        41
+      ],
+      "rating": "EIAJ, 1 kHz, 1 % THD"
+    }
+  ]
+}
