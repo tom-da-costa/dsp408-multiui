@@ -35,6 +35,8 @@
   const ROW = 26;
   const IN_ROW = 18;
   const DSP_X = 8;
+  /** A speaker's link output: on its left too, just inside the input. */
+  const LINK_X = 22;
   const DSP_Y = 8;
   const COLORS = ["#3ddc97", "#4da3ff", "#ffb020", "#c38bff", "#ff7a59", "#5ad1e6", "#e6d75a", "#ff5fa2"];
 
@@ -69,7 +71,7 @@
     if (p.node === "spk" || p.node === "spk-out") {
       const s = draft.speakers.find((n) => n.id === p.id);
       return {
-        x: (s?.x ?? 0) + (p.node === "spk-out" ? W : 0),
+        x: (s?.x ?? 0) + (p.node === "spk-out" ? LINK_X : 0),
         y: (s?.y ?? 0) + HEAD + p.port * ROW + ROW / 2,
       };
     }
@@ -104,9 +106,12 @@
     return wayColor.get(wired.wayOf.get(w.output) ?? "") ?? "#888";
   }
 
-  const curve = (a: { x: number; y: number }, b: { x: number; y: number }) => {
+  /** A wire from `a` (leaving to the right, or to the left from a speaker's link output) to
+   * `b` (entering from the left). */
+  const curve = (a: { x: number; y: number }, b: { x: number; y: number }, leftward = false) => {
     const dx = Math.max(40, Math.abs(b.x - a.x) / 2);
-    return `M ${a.x} ${a.y} C ${a.x + dx} ${a.y}, ${b.x - dx} ${b.y}, ${b.x} ${b.y}`;
+    const out = leftward ? a.x - Math.max(40, Math.abs(b.y - a.y) / 3) : a.x + dx;
+    return `M ${a.x} ${a.y} C ${out} ${a.y}, ${b.x - dx} ${b.y}, ${b.x} ${b.y}`;
   };
 
   const ampHeight = (channels: number) => HEAD + channels * ROW + 6;
@@ -251,7 +256,7 @@
     selection !== null && selection.type === type && "id" in selection && selection.id === id;
 </script>
 
-{#snippet port(p: Port, side: "left" | "right")}
+{#snippet port(p: Port, side: "left" | "right" | "link")}
   <span
     class="port {side}"
     class:pending={pending !== null && portKey(pending) === portKey(p)}
@@ -288,8 +293,8 @@
     <p class="muted hint">
       Move a block by its title. Wire a DSP output to an amplifier channel, and the channel to
       its speakers (several in parallel): drag from one dot to the other, or tap one then the
-      other. A speaker's right dot is its link output: wire it to another speaker to bridge it
-      (same signal, in parallel). Wire an output straight to an active speaker. Tap a block, an
+      other. A speaker's square dot, beside its input, is its link output: wire it to another
+      speaker to bridge it (same signal, in parallel). Wire an output straight to an active speaker. Tap a block, an
       output or a wire to edit it.
     </p>
     <div class="scroll">
@@ -304,14 +309,18 @@
         <svg width={size.w} height={size.h} aria-hidden="true">
           {#each draft.wires as w (JSON.stringify(w))}
             {@const [a, b] = ends(w)}
-            {@const d = curve(portXY(a), portXY(b))}
+            {@const d = curve(portXY(a), portXY(b), a.node === "spk-out")}
             {@const selected = selection?.type === "wire" && JSON.stringify(selection.wire) === JSON.stringify(w)}
             <path class="wire" class:selected {d} stroke={wireColor(w)} />
             <!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_static_element_interactions -->
             <path class="hit" {d} onclick={() => (selection = { type: "wire", wire: w })} />
           {/each}
           {#if drawing?.moved}
-            <path class="wire drawing" d={curve(portXY(drawing.from), drawing)} stroke="#fff" />
+            <path
+              class="wire drawing"
+              d={curve(portXY(drawing.from), drawing, drawing.from.node === "spk-out")}
+              stroke="#fff"
+            />
           {/if}
         </svg>
 
@@ -400,7 +409,7 @@
               </div>
               <div class="anchor" style:top={`${HEAD + i * ROW}px`}>
                 {@render port({ node: "spk", id: spk.id, port: i }, "left")}
-                {@render port({ node: "spk-out", id: spk.id, port: i }, "right")}
+                {@render port({ node: "spk-out", id: spk.id, port: i }, "link")}
               </div>
             {/each}
           </div>
@@ -590,6 +599,9 @@
     justify-content: center;
     box-shadow: inset 0 -2px 0 var(--c, transparent);
   }
+  .spk .ch {
+    padding-left: 36px; /* clear of the input and link dots */
+  }
   .anchor {
     position: absolute;
     left: 0;
@@ -608,6 +620,14 @@
   }
   .port.left {
     left: -12px;
+  }
+  /* A speaker's link output, beside its input: a square dot. */
+  .port.link {
+    left: 10px;
+  }
+  .port.link::after {
+    border-radius: 3px;
+    border-style: dashed;
   }
   .port.right {
     right: -12px;
