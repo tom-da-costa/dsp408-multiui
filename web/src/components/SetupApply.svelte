@@ -1,6 +1,6 @@
 <script lang="ts">
   // Setup wizard, step 5: everything the wizard will write, the output gains (computed, can be
-  // typed over), the preset slot, then the write: outputs muted while it runs, every input left
+  // typed over), the optional low shelf on the inputs, the preset slot, then the write: outputs muted while it runs, every input left
   // muted at the end (the user lets the sound in from the Live view).
   import { app } from "../lib/app.svelte";
   import { nav } from "../lib/nav.svelte";
@@ -146,13 +146,33 @@
           on {(inputsOf.get(source.id) ?? []).map((i) => `In ${letter(i)}`).join(" + ")}{source.stereo
             ? ", linked"
             : ""}
-          {#if draft.lowShelf.enabled}
-            · low shelf {draft.lowShelf.freqHz} Hz, {draft.lowShelf.gainDb} dB
-          {/if}
         </li>
       {/each}
     </ul>
     <p class="muted note">Every input ends muted: you let the sound in once the system is checked.</p>
+  </section>
+
+  <section class="card">
+    <h2>Input EQ</h2>
+    <label class="check">
+      <input type="checkbox" bind:checked={draft.lowShelf.enabled} />
+      Low shelf on the inputs
+      <small>a bass lift (or cut) on every source, on the inputs' first PEQ band</small>
+    </label>
+    {#if draft.lowShelf.enabled}
+      <div class="fields">
+        <label>
+          <span>Frequency</span>
+          <input type="text" inputmode="decimal" bind:value={draft.lowShelf.freqHz} />
+          <small>Hz</small>
+        </label>
+        <label>
+          <span>Gain</span>
+          <input type="text" inputmode="decimal" bind:value={draft.lowShelf.gainDb} />
+          <small>dB</small>
+        </label>
+      </div>
+    {/if}
   </section>
 
   <section class="card">
@@ -268,6 +288,36 @@
     margin: 0;
     padding-left: 18px;
     font-size: 0.9rem;
+  }
+  .check {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 4px 8px;
+    min-height: 36px;
+  }
+  .check input {
+    width: 20px;
+    height: 20px;
+  }
+  .check small {
+    flex-basis: 100%;
+    padding-left: 28px;
+  }
+  .fields {
+    display: grid;
+    gap: 8px;
+    margin-top: 8px;
+    max-width: 360px;
+  }
+  .fields label {
+    display: grid;
+    grid-template-columns: 1fr 7em 2.5em;
+    align-items: center;
+    gap: 8px;
+  }
+  .fields input {
+    text-align: right;
   }
   .store {
     display: grid;

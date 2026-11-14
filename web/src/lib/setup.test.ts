@@ -204,7 +204,7 @@ describe("routing and plan", () => {
     const draft = ownerStack();
     draft.lowShelf.enabled = true;
     const plan = buildPlan(draft, DSP408);
-    expect(plan.inputs.map((i) => i.name)).toEqual(["Mix L", "Mix R", "InC", "InD"]);
+    expect(plan.inputs.map((i) => i.name)).toEqual(["Main L", "Main R", "InC", "InD"]);
     expect(plan.inputs[0]!.low_shelf).toEqual({ freq_hz: 100, gain_db: 3 });
     expect(plan.inputs[2]!.low_shelf).toBeNull();
     expect(plan.input_links).toEqual([[0, 1]]);
@@ -250,9 +250,12 @@ describe("routing and plan", () => {
     expect(speakerErrors(draft)).toContain("High: the amplifier's gain is needed.");
     draft.slot = 0;
     draft.presetName = "";
+    draft.lowShelf = { enabled: true, freqHz: "", gainDb: "15" };
     expect(storeErrors(draft, DSP408)).toEqual([
       "Pick a preset slot.",
       "Preset name: a name is required.",
+      "Low shelf: a frequency is needed.",
+      "Low shelf: gain between −12 and +12 dB.",
     ]);
   });
 });

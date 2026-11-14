@@ -191,7 +191,7 @@ export function slopeIndex(slopes: string[], name: string): number {
 
 export function newDraft(slopes: string[]): Draft {
   return {
-    sources: [{ id: 1, name: "Mix", stereo: true }],
+    sources: [{ id: 1, name: "Main", stereo: true }],
     ways: [],
     lowShelf: { enabled: false, freqHz: String(DEFAULT_SHELF_HZ), gainDb: String(DEFAULT_SHELF_DB) },
     crossovers: {},
@@ -585,7 +585,7 @@ export function nameError(name: string, max: number): string {
   return "";
 }
 
-/** Problems that keep the wizard from going on, per step. */
+/** Problems that keep the wizard from going on, per step (the input EQ is set at the last one). */
 export function inputErrors(draft: Draft, topo: Topology): string[] {
   const errors: string[] = [];
   if (draft.sources.length === 0) errors.push("Add a source.");
@@ -596,12 +596,6 @@ export function inputErrors(draft: Draft, topo: Topology): string[] {
       const e = nameError(name, CHANNEL_NAME_LENGTH);
       if (e) errors.push(`Source "${s.name}": ${e} (channel name "${name}").`);
     }
-  }
-  if (draft.lowShelf.enabled) {
-    const f = num(draft.lowShelf.freqHz);
-    const g = num(draft.lowShelf.gainDb);
-    if (!positive(f)) errors.push("Low shelf: a frequency is needed.");
-    if (!Number.isFinite(g) || g < -12 || g > 12) errors.push("Low shelf: gain between −12 and +12 dB.");
   }
   return errors;
 }
@@ -663,6 +657,12 @@ export function storeErrors(draft: Draft, topo: Topology): string[] {
   if (!(draft.slot >= 1 && draft.slot <= topo.presets)) errors.push("Pick a preset slot.");
   const e = nameError(draft.presetName, PRESET_NAME_LENGTH);
   if (e) errors.push(`Preset name: ${e}.`);
+  if (draft.lowShelf.enabled) {
+    const f = num(draft.lowShelf.freqHz);
+    const g = num(draft.lowShelf.gainDb);
+    if (!positive(f)) errors.push("Low shelf: a frequency is needed.");
+    if (!Number.isFinite(g) || g < -12 || g > 12) errors.push("Low shelf: gain between −12 and +12 dB.");
+  }
   return errors;
 }
 

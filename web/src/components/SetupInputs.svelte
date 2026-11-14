@@ -1,6 +1,5 @@
 <script lang="ts">
-  // Setup wizard, step 1: the sources (stereo or mono, they take the inputs in order) and the
-  // optional low shelf on the inputs.
+  // Setup wizard, step 1: the sources (stereo or mono, they take the inputs in order).
   import { inputsNeeded, sourceInputs, type Topology } from "../lib/setup";
   import { wizard } from "../lib/wizard.svelte";
 
@@ -64,28 +63,6 @@
   </div>
 </section>
 
-<section class="card">
-  <h2>Input EQ</h2>
-  <label class="check">
-    <input type="checkbox" bind:checked={draft.lowShelf.enabled} />
-    Low shelf on the inputs
-    <small>a bass lift (or cut) on every source, on the inputs' first PEQ band</small>
-  </label>
-  {#if draft.lowShelf.enabled}
-    <div class="fields">
-      <label>
-        <span>Frequency</span>
-        <input type="text" inputmode="decimal" bind:value={draft.lowShelf.freqHz} />
-        <small>Hz</small>
-      </label>
-      <label>
-        <span>Gain</span>
-        <input type="text" inputmode="decimal" bind:value={draft.lowShelf.gainDb} />
-        <small>dB</small>
-      </label>
-    </div>
-  {/if}
-</section>
 
 <style>
   .hint {
@@ -128,39 +105,5 @@
   }
   .add span {
     font-size: 0.85rem;
-  }
-  .check {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 4px 8px;
-    min-height: 36px;
-  }
-  .check input {
-    width: 20px;
-    height: 20px;
-  }
-  .check small {
-    flex-basis: 100%;
-    padding-left: 28px;
-  }
-  small {
-    color: var(--muted);
-    font-size: 0.75rem;
-  }
-  .fields {
-    display: grid;
-    gap: 8px;
-    margin-top: 8px;
-    max-width: 360px;
-  }
-  .fields label {
-    display: grid;
-    grid-template-columns: 1fr 7em 2.5em;
-    align-items: center;
-    gap: 8px;
-  }
-  .fields input {
-    text-align: right;
   }
 </style>
