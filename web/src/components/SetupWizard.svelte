@@ -3,20 +3,13 @@
   // routing, names, links, crossovers, limiters and gains, written to the live setup and stored
   // in a preset slot. lib/setup.ts does the maths; this component holds the steps together.
   import { app } from "../lib/app.svelte";
-  import {
-    filterErrors,
-    inputErrors,
-    speakerErrors,
-    systemErrors,
-    type Topology,
-  } from "../lib/setup";
+  import { filterErrors, inputErrors, planErrors, type Topology } from "../lib/setup";
   import { STEPS, wizard } from "../lib/wizard.svelte";
   import SetupApply from "./SetupApply.svelte";
   import SetupDiagram from "./SetupDiagram.svelte";
   import SetupFilters from "./SetupFilters.svelte";
   import SetupInputs from "./SetupInputs.svelte";
-  import SetupSpeakers from "./SetupSpeakers.svelte";
-  import SetupSystem from "./SetupSystem.svelte";
+  import SetupPlan from "./SetupPlan.svelte";
 
   const profile = $derived(app.hello?.profile);
   const topo = $derived<Topology | null>(
@@ -38,7 +31,7 @@
   const errors = $derived.by(() => {
     if (!topo) return [];
     const d = wizard.draft;
-    return [inputErrors(d, topo), systemErrors(d, topo), speakerErrors(d), filterErrors(d, topo.slopes)];
+    return [inputErrors(d, topo), planErrors(d, topo), filterErrors(d, topo)];
   });
   /** The furthest step that can be reached: every step before it is complete. */
   const reachable = $derived.by(() => {
@@ -79,24 +72,28 @@
         {/each}
       </ol>
       <p class="muted intro">
-        Describe the sources and the speaker stack: the wizard works out the routing, channel
-        names, links, crossovers, limiters and gains, then writes them to the DSP and stores them
-        in a preset. Delays and EQ are left flat: set them by ear or by measurement.
+        Describe the sources, then draw the system: amplifiers and speakers wired to the DSP's
+        outputs. The wizard works out the routing, channel names, links, crossovers, limiters and
+        gains, then writes them to the DSP and stores them in a preset. Delays and EQ are left
+        flat: set them by ear or by measurement.
       </p>
     </section>
 
-    <SetupDiagram {topo} />
-
-    {#if wizard.step === 0}
-      <SetupInputs {topo} />
-    {:else if wizard.step === 1}
-      <SetupSystem {topo} />
-    {:else if wizard.step === 2}
-      <SetupSpeakers />
-    {:else if wizard.step === 3}
-      <SetupFilters {topo} />
+    {#if wizard.step === 1}
+      <SetupPlan {topo} />
     {:else}
-      <SetupApply {topo} />
+      <div class="columns">
+        <div class="main">
+          {#if wizard.step === 0}
+            <SetupInputs {topo} />
+          {:else if wizard.step === 2}
+            <SetupFilters {topo} />
+          {:else}
+            <SetupApply {topo} />
+          {/if}
+        </div>
+        <aside><SetupDiagram {topo} /></aside>
+      </div>
     {/if}
 
     {#if stepErrors.length}
@@ -126,7 +123,24 @@
     display: grid;
     grid-template-columns: minmax(0, 1fr);
     gap: 10px;
-    max-width: 980px;
+  }
+  .columns,
+  .main {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 10px;
+    align-content: start;
+  }
+  /* Wide screens: the diagram on the right, beside the step. */
+  @media (min-width: 1000px) {
+    .columns {
+      grid-template-columns: minmax(0, 1fr) minmax(320px, 420px);
+      align-items: start;
+    }
+    aside {
+      position: sticky;
+      top: 0;
+    }
   }
   .title {
     display: flex;
@@ -140,7 +154,7 @@
   }
   .steps {
     display: grid;
-    grid-template-columns: repeat(5, 1fr);
+    grid-template-columns: repeat(4, 1fr);
     gap: 4px;
     list-style: none;
     margin: 0;

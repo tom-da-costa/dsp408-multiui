@@ -1,7 +1,7 @@
 <script lang="ts">
   // Setup wizard: the system as it stands, inputs on the left, outputs on the right, one line
   // per route of the matrix, in the colour of its way. Redrawn at every change.
-  import { buildPlan, orderedWays, wayOutputs, type Topology } from "../lib/setup";
+  import { buildPlan, mainWays, wiring, type Topology } from "../lib/setup";
   import { wizard } from "../lib/wizard.svelte";
 
   let { topo }: { topo: Topology } = $props();
@@ -17,18 +17,17 @@
   const plan = $derived(buildPlan(draft, topo));
   const rows = $derived(Math.max(topo.inputs, topo.outputs));
   const height = $derived(TOP + rows * ROW + 4);
-  // The way, its colour and its speaker, per output.
+  // The way's colour (the same as on the plan) and its speakers, per output.
   const byOutput = $derived.by(() => {
     const map = new Map<number, { color: string; speaker: string }>();
-    const outs = wayOutputs(draft, topo.outputs);
-    orderedWays(draft).forEach((way, n) => {
-      for (const o of outs.get(way.id) ?? []) {
-        const cabinets = way.cabinets > 1 ? `${way.cabinets}× ` : "";
+    const ways = wiring(draft, topo).ways;
+    [...mainWays(ways), ...ways.filter((w) => w.section.aux)].forEach((way, n) => {
+      const perOutput = Math.round(way.cabinets / way.outputs.length);
+      for (const o of way.outputs)
         map.set(o, {
           color: COLORS[n % COLORS.length]!,
-          speaker: `${cabinets}${way.speaker.label || "?"}`,
+          speaker: `${perOutput > 1 ? `${perOutput}× ` : ""}${way.kind.model}`,
         });
-      }
     });
     return map;
   });

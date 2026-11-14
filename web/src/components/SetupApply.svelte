@@ -1,18 +1,22 @@
 <script lang="ts">
-  // Setup wizard, step 5: everything the wizard will write, the output gains (computed, can be
-  // typed over), the optional low shelf on the inputs, the preset slot, then the write: outputs muted while it runs, every input left
-  // muted at the end (the user lets the sound in from the Live view).
+  // Setup wizard, last step: everything the wizard will write, the output gains (computed, can
+  // be typed over), the optional low shelf on the inputs, the preset slot, then the write:
+  // outputs muted while it runs, every input left muted at the end (the user lets the sound in
+  // from the Live view).
   import { app } from "../lib/app.svelte";
   import { nav } from "../lib/nav.svelte";
   import { formatDb } from "../lib/scale";
   import {
     buildPlan,
+    mainWays,
+    outputNames,
+    routeOf,
     sourceInputs,
     storeErrors,
     wayFilters,
     wayGains,
     wayLevel,
-    wayOutputs,
+    wiring,
     type Filter,
     type Topology,
   } from "../lib/setup";
@@ -21,9 +25,12 @@
   let { topo }: { topo: Topology } = $props();
 
   const draft = $derived(wizard.draft);
-  const outs = $derived(wayOutputs(draft, topo.outputs));
-  const filters = $derived(wayFilters(draft, topo.slopes));
-  const gains = $derived(wayGains(draft));
+  const ways = $derived.by(() => {
+    const all = wiring(draft, topo).ways;
+    return [...mainWays(all), ...all.filter((w) => w.section.aux)];
+  });
+  const filters = $derived(wayFilters(draft, ways, topo.slopes));
+  const gains = $derived(wayGains(draft, ways));
   const inputsOf = $derived(sourceInputs(draft));
   const errors = $derived(storeErrors(draft, topo));
   const presets = $derived(app.device?.presets ?? []);
@@ -36,19 +43,15 @@
   const label = (slot: number) => `U${String(slot).padStart(2, "0")}`;
   const describe = (f: Filter | null | undefined) =>
     f ? `${Math.round(f.freq_hz)} Hz ${topo.slopes[f.slope] ?? ""}` : "—";
-  const outLabel = (list: number[]) =>
-    list.map((o) => (o >= 0 && o < topo.outputs ? `Out ${o + 1}` : "no output")).join(" + ");
-
-  function playsLabel(sourceIds: number[], stereo: boolean): string {
-    return draft.sources
-      .filter((s) => sourceIds.includes(s.id))
-      .map((s) => {
-        const ins = (inputsOf.get(s.id) ?? []).map(letter).join("+");
-        const [l, r] = (inputsOf.get(s.id) ?? []).map(letter);
-        if (s.stereo && stereo) return `${s.name} (${l}→L, ${r}→R)`;
-        return `${s.name} (${s.stereo ? `${ins} summed` : ins})`;
-      })
-      .join(", ");
+  /** What an output plays: "Main L (A)", "Main L+R (A+B)". */
+  function plays(output: number): string {
+    const route = routeOf(draft, output);
+    const source = draft.sources.find((s) => s.id === route.source);
+    if (!source) return "?";
+    const ins = inputsOf.get(source.id) ?? [];
+    if (!source.stereo) return `${source.name} (${ins.map(letter).join("")})`;
+    if (route.side === "LR") return `${source.name} L+R (${ins.map(letter).join("+")})`;
+    return `${source.name} ${route.side} (${letter(ins[route.side === "L" ? 0 : 1] ?? 0)})`;
   }
 
   async function apply() {
@@ -89,18 +92,24 @@
       at 1 m (the loudest are turned down). Type a gain to replace it.
     </p>
     <div class="ways">
-      {#each draft.ways as way (way.id)}
-        {@const level = wayLevel(way)}
-        {@const gain = gains.get(way.id)}
-        {@const f = filters.get(way.id)}
+      {#each ways as way (way.key)}
+        {@const level = wayLevel(draft, way)}
+        {@const gain = gains.get(way.key)}
+        {@const f = filters.get(way.key)}
         <article class="way">
           <h3>
-            {way.name}
-            <small>{outLabel(outs.get(way.id) ?? [])}{way.stereo ? ", linked" : ""}</small>
+            {way.section.name}
+            <small
+              >{way.kind.model} ×{way.cabinets}{way.active ? ", active" : ""}{way.section.aux
+                ? ", auxiliary"
+                : ""}{way.outputs.length > 1 ? ", outputs linked" : ""}</small
+            >
           </h3>
           <dl>
-            <dt>Plays</dt>
-            <dd>{playsLabel(way.sources, way.stereo)}</dd>
+            {#each [...outputNames(draft, way)] as [o, name] (o)}
+              <dt>Out {o + 1} {name}</dt>
+              <dd>{plays(o)}</dd>
+            {/each}
             <dt>High-pass</dt>
             <dd class="nowrap">{describe(f?.hpf)}</dd>
             <dt>Low-pass</dt>
@@ -116,16 +125,16 @@
               <dd>{level.splMaxDb.toFixed(1)} dB</dd>
             {/if}
             <dt>Polarity</dt>
-            <dd>{way.phase ? "inverted" : "normal"}</dd>
+            <dd>{way.section.phase ? "inverted" : "normal"}</dd>
           </dl>
           <label class="gain">
             <span>Output gain</span>
             <input
               type="text"
               inputmode="decimal"
-              aria-label={`${way.name} output gain`}
+              aria-label={`${way.section.name} output gain`}
               placeholder={gain ? formatDb(gain.computed) : "0"}
-              bind:value={way.gainDb}
+              bind:value={way.section.gainDb}
             />
             <small>dB</small>
           </label>

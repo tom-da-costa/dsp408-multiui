@@ -1,6 +1,6 @@
 <script lang="ts">
   // Setup wizard, step 1: the sources (stereo or mono, they take the inputs in order).
-  import { inputsNeeded, sourceInputs, type Topology } from "../lib/setup";
+  import { inputsNeeded, removeSource, sourceInputs, type Topology } from "../lib/setup";
   import { wizard } from "../lib/wizard.svelte";
 
   let { topo }: { topo: Topology } = $props();
@@ -16,8 +16,7 @@
   }
 
   function remove(id: number) {
-    draft.sources = draft.sources.filter((s) => s.id !== id);
-    for (const way of draft.ways) way.sources = way.sources.filter((s) => s !== id);
+    removeSource(draft, id);
   }
 
   function inputsLabel(id: number): string {

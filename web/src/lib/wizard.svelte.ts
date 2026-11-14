@@ -1,9 +1,10 @@
 // The setup wizard's draft (Setup tab): kept while the page is open, so that switching tabs
 // does not lose it; a reload starts from scratch (nothing is saved).
 
-import { ensureFilters, newDraft, type Draft, type Topology } from "./setup";
+import { ensureFilters, newDraft, wiring, type Draft, type Topology } from "./setup";
 
-export const STEPS = ["Inputs", "System", "Speakers", "Filters", "Apply"] as const;
+export const STEPS = ["Inputs", "Plan", "Filters", "Apply"] as const;
+export const FILTERS_STEP = 2;
 
 class Wizard {
   step = $state(0);
@@ -18,7 +19,7 @@ class Wizard {
   }
 
   go(step: number, topo: Topology): void {
-    if (step >= 3) ensureFilters(this.draft, topo.slopes);
+    if (step >= FILTERS_STEP) ensureFilters(this.draft, wiring(this.draft, topo).ways, topo.slopes);
     this.step = Math.max(0, Math.min(STEPS.length - 1, step));
   }
 }
