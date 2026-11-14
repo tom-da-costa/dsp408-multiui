@@ -3,7 +3,7 @@
 
 import { ensureFilters, newDraft, wiring, type Draft, type Topology } from "./setup";
 
-export const STEPS = ["Inputs", "Plan", "Filters", "Apply"] as const;
+export const STEPS = ["Inputs", "Plan", "Crossover", "Apply"] as const;
 export const FILTERS_STEP = 2;
 
 class Wizard {

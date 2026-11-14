@@ -1,8 +1,9 @@
 <script lang="ts">
-  // Setup wizard, step 3: the crossovers between the main ways (proposed from the speakers'
+  // Setup wizard, step 3 (Crossover): the bar of the whole system, then the crossovers between the main ways (proposed from the speakers'
   // ranges, editable), the subsonic high-pass of the lowest way and the auxiliary ways' filters.
   import { boundaries, mainWays, wiring, type FilterSetting, type Topology } from "../lib/setup";
   import { wizard } from "../lib/wizard.svelte";
+  import SetupCrossoverBar from "./SetupCrossoverBar.svelte";
 
   let { topo }: { topo: Topology } = $props();
 
@@ -43,6 +44,8 @@
     </select>
   </div>
 {/snippet}
+
+<SetupCrossoverBar {topo} />
 
 <section class="card">
   <h2>Crossovers</h2>

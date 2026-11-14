@@ -248,7 +248,7 @@ it on a DSP in use). The DSP accepts one client at a time: stop the app before p
   inputs' gate and GEQ), with MUTE under each meter.
 - In Live, Params and All-in-one, a row picks the channels shown (all, inputs, outputs or any
   set); each view remembers its choice in the browser (Params: one choice for every setting).
-- **Setup** view: the setup wizard, in four steps (inputs, plan, filters, apply). On the plan,
+- **Setup** view: the setup wizard, in four steps (inputs, plan, crossover, apply). On the plan,
   move a block by its title, wire by dragging from one dot to another (or tapping one then the
   other), and tap a block, an output or a wire to edit it. Delays and EQ are left flat: set them by ear
   or by measurement. When it is done, every input is muted: check the system, then unmute them.
