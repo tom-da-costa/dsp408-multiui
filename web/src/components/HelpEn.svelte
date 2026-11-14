@@ -101,7 +101,7 @@
       an output or a wire to edit it); the crossovers it proposes from the speakers' ranges; then
       a summary. Each speaker has its own specs and a side (left, right or mono L+R); the outputs
       that drive sections with the same channel name form one way, their outputs linked. A
-      speaker's square dot, beside its input, is its link output: wire it to another speaker to bridge it (in
+      speaker's square dot, under its input, is its link output: wire it to another speaker to bridge it (in
       parallel). It
       works out the routing, channel names, links, filters, limiters (as the limiter
       calculator) and output gains, so that every main way plays at the same level. Writing replaces every setting (delays at 0, EQ flat),

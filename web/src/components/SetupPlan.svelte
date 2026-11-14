@@ -35,8 +35,10 @@
   const ROW = 26;
   const IN_ROW = 18;
   const DSP_X = 8;
-  /** A speaker's link output: on its left too, just inside the input. */
-  const LINK_X = 22;
+  /** A speaker's section row: its input dot above its link output dot, both on the left. */
+  const SPK_ROW = 36;
+  const SPK_IN_Y = 11;
+  const SPK_LINK_Y = 25;
   const DSP_Y = 8;
   const COLORS = ["#3ddc97", "#4da3ff", "#ffb020", "#c38bff", "#ff7a59", "#5ad1e6", "#e6d75a", "#ff5fa2"];
 
@@ -71,8 +73,8 @@
     if (p.node === "spk" || p.node === "spk-out") {
       const s = draft.speakers.find((n) => n.id === p.id);
       return {
-        x: (s?.x ?? 0) + (p.node === "spk-out" ? LINK_X : 0),
-        y: (s?.y ?? 0) + HEAD + p.port * ROW + ROW / 2,
+        x: s?.x ?? 0,
+        y: (s?.y ?? 0) + HEAD + p.port * SPK_ROW + (p.node === "spk-out" ? SPK_LINK_Y : SPK_IN_Y),
       };
     }
     const a = draft.amps.find((n) => n.id === p.id);
@@ -115,7 +117,7 @@
   };
 
   const ampHeight = (channels: number) => HEAD + channels * ROW + 6;
-  const spkHeight = (sections: number) => HEAD + sections * ROW + 6;
+  const spkHeight = (sections: number) => HEAD + sections * SPK_ROW + 4;
   const size = $derived.by(() => {
     let w = 760;
     let h = DSP_Y + dspHeight + 16;
@@ -256,7 +258,7 @@
     selection !== null && selection.type === type && "id" in selection && selection.id === id;
 </script>
 
-{#snippet port(p: Port, side: "left" | "right" | "link")}
+{#snippet port(p: Port, side: "left" | "right" | "spk-in" | "link")}
   <span
     class="port {side}"
     class:pending={pending !== null && portKey(pending) === portKey(p)}
@@ -293,7 +295,7 @@
     <p class="muted hint">
       Move a block by its title. Wire a DSP output to an amplifier channel, and the channel to
       its speakers (several in parallel): drag from one dot to the other, or tap one then the
-      other. A speaker's square dot, beside its input, is its link output: wire it to another
+      other. A speaker's square dot, under its input, is its link output: wire it to another
       speaker to bridge it (same signal, in parallel). Wire an output straight to an active speaker. Tap a block, an
       output or a wire to edit it.
     </p>
@@ -404,11 +406,11 @@
               {spk.model}
             </div>
             {#each spk.sections as section, i (i)}
-              <div class="row ch" style:top={`${HEAD + i * ROW}px`} style:--c={wayColor.get(section.name)}>
+              <div class="row ch" style:top={`${HEAD + i * SPK_ROW}px`} style:--c={wayColor.get(section.name)}>
                 {section.name}{draft.ways[section.name]?.aux ? " (aux)" : ""}
               </div>
-              <div class="anchor" style:top={`${HEAD + i * ROW}px`}>
-                {@render port({ node: "spk", id: spk.id, port: i }, "left")}
+              <div class="anchor tall" style:top={`${HEAD + i * SPK_ROW}px`}>
+                {@render port({ node: "spk", id: spk.id, port: i }, "spk-in")}
                 {@render port({ node: "spk-out", id: spk.id, port: i }, "link")}
               </div>
             {/each}
@@ -600,7 +602,8 @@
     box-shadow: inset 0 -2px 0 var(--c, transparent);
   }
   .spk .ch {
-    padding-left: 36px; /* clear of the input and link dots */
+    height: 36px;
+    padding-left: 16px;
   }
   .anchor {
     position: absolute;
@@ -621,9 +624,24 @@
   .port.left {
     left: -12px;
   }
-  /* A speaker's link output, beside its input: a square dot. */
+  /* A speaker's input (round) above its link output (square), both on its left edge. */
+  .anchor.tall {
+    height: 36px;
+  }
+  .port.spk-in,
   .port.link {
-    left: 10px;
+    left: -12px;
+    height: 18px;
+  }
+  .port.spk-in {
+    top: 2px;
+  }
+  .port.link {
+    top: 16px;
+  }
+  .port.spk-in::after,
+  .port.link::after {
+    top: 3px;
   }
   .port.link::after {
     border-radius: 3px;

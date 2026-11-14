@@ -118,7 +118,7 @@
       bearbeiten); die aus den Frequenzbereichen vorgeschlagenen Trennfrequenzen; dann eine
       Zusammenfassung. Jeder Lautsprecher hat eigene Daten und eine Seite (links, rechts oder mono
       L+R); Ausgänge, die Sektionen mit demselben Kanalnamen speisen, bilden einen Weg und werden
-      verlinkt. Der eckige Punkt eines Lautsprechers neben seinem Eingang ist sein Link-Ausgang: mit einem anderen
+      verlinkt. Der eckige Punkt eines Lautsprechers unter seinem Eingang ist sein Link-Ausgang: mit einem anderen
       Lautsprecher verbinden, um ihn durchzuschleifen (parallel). Er berechnet Routing, Kanalnamen, Links, Filter, Limiter (wie der
       Limiter-Rechner) und Ausgangspegel, sodass alle Hauptwege gleich laut spielen. Das Schreiben
       ersetzt alle Einstellungen (Delays 0, EQ flach), schaltet die Ausgänge währenddessen stumm
