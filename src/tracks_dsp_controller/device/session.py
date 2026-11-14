@@ -47,6 +47,7 @@ from tracks_dsp_controller.protocol.profile import (
 from tracks_dsp_controller.state.convert import build_state
 from tracks_dsp_controller.state.models import DeviceInfo, DeviceState
 from tracks_dsp_controller.state.registry import ParamError, Write, resolve
+from tracks_dsp_controller.state.setup import SetupPlan, build_target
 from tracks_dsp_controller.state.store import StateStore
 
 log = logging.getLogger(__name__)
@@ -494,9 +495,7 @@ class DeviceSession:
     ) -> PresetImport:
         """Load a preset file (.prs) into the live setup; with ``slot``, store it there too.
 
-        Nothing is sent before the whole file is checked. The DSP's config is read first, the
-        writes that differ are sent (``preset_file.plan_import``), then the config is read again
-        and compared with the file.
+        Nothing is sent before the whole file is checked (``_load_config``).
         """
         layout = cm.layout_for(self.profile)
         model = self.model_key or "408"
@@ -505,18 +504,55 @@ class DeviceSession:
         except pf.PresetFileError as exc:
             raise ParamError(str(exc)) from exc
         target = cm.decode_config(blob, layout)
-        stored_name = pf.ascii_name(target.preset_name, PRESET_NAME_LENGTH) or "Imported"
+        default_name = pf.ascii_name(target.preset_name, PRESET_NAME_LENGTH) or "Imported"
+        return await self._load_config(
+            lambda _current: target, origin, "preset import", default_name, slot, name
+        )
+
+    async def apply_setup(
+        self, plan: SetupPlan, origin: str, *, slot: int | None = None, name: str = "Setup"
+    ) -> PresetImport:
+        """Load the setup wizard's configuration into the live setup; with ``slot``, store it.
+
+        Everything the plan does not set is reset, unused outputs and every input end muted
+        (``state.setup.build_target``); the plan is checked before anything is sent.
+        """
+
+        def target(current: cm.RawConfig) -> cm.RawConfig:
+            return build_target(plan, current, self.profile, name)
+
+        # Checked against a blank config first, so that a bad plan sends nothing at all.
+        target(cm.default_config(name, cm.layout_for(self.profile)))
+        return await self._load_config(target, origin, "setup", name, slot, name)
+
+    async def _load_config(
+        self,
+        target_for: Callable[[cm.RawConfig], cm.RawConfig],
+        origin: str,
+        what: str,
+        default_name: str,
+        slot: int | None,
+        name: str | None,
+    ) -> PresetImport:
+        """Turn the live config into ``target_for(current)``; with ``slot``, store it there.
+
+        The slot and the name are checked before anything is sent. The DSP's config is read
+        first, the writes that differ are sent (``preset_file.plan_import``: outputs muted until
+        the end), then the config is read again and compared with the target.
+        """
+        layout = cm.layout_for(self.profile)
+        stored_name = default_name
         if slot is not None:
-            # Checked before anything is sent, like the file.
             if not 1 <= slot <= self.profile.preset_count:
                 raise ParamError(f"user preset slot must be 1..{self.profile.preset_count}")
-            stored_name = stored_name if name is None else name
+            stored_name = default_name if name is None else name
             try:
                 validate_name(stored_name, PRESET_NAME_LENGTH)
             except ValueError as exc:
                 raise ParamError(str(exc)) from exc
-        async with self._sequence("preset import") as conn:
+        async with self._sequence(what) as conn:
             current = cm.decode_config(await reader.read_config_blob(conn), layout)
+            target = target_for(current)
             try:
                 plan = pf.plan_import(current, target, self.profile)
             except pf.PresetFileError as exc:
@@ -525,14 +561,14 @@ class DeviceSession:
                 reader.expect(await reader.ask(conn, request), rsp.Ack)
             state = await self._read_state(conn, previous=self.store.state)
             actual = self._raw.image if self._raw is not None else b""
-        log.info("preset file %r loaded by %s (%d writes)", target.preset_name, origin,
+        log.info("%s %r loaded by %s (%d writes)", what, target.preset_name, origin,
                  len(plan.requests))  # fmt: skip
         self.store.replace(state.model_copy(update={"modified": True}))
         notes = list(plan.notes)
         differing = pf.mismatches(plan.expected, actual, layout)
         if differing:
-            log.warning("after loading the preset file, the DSP differs in %s", differing)
-            notes.append("the DSP differs from the file in: " + ", ".join(differing))
+            log.warning("after the %s, the DSP differs in %s", what, differing)
+            notes.append("the DSP differs from the target in: " + ", ".join(differing))
         if slot is not None:
             await self.store_preset(slot, stored_name, origin)
         return PresetImport(stored_name, tuple(notes))

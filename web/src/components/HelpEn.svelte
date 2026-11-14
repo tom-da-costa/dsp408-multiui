@@ -93,6 +93,18 @@
       outputs you pick (see <em>Limiter</em> below). The threshold is rounded down to the DSP's
       0.5 dB step, or up if you choose (up to 0.5 dB above the computed value).
     </dd>
+    <dt>🪄 Setup</dt>
+    <dd>
+      A wizard that sets up the whole DSP from a description of your system, in five steps:
+      the sources (stereo or mono), the ways (sub, kick, mid, high… and auxiliary outputs such as
+      monitors), each way's speaker, cabinets per amplifier channel and amplifier, the crossovers
+      it proposes from the speakers' ranges, then a summary. It works out the routing, channel
+      names, links, filters, limiters (as the limiter calculator) and output gains, so that every
+      main way plays at the same level. Writing replaces every setting (delays at 0, EQ flat),
+      mutes the outputs meanwhile and stores the result in the preset slot you pick.
+      <strong>Every input stays muted</strong> at the end: check the system, then unmute them in
+      Live, quietly first.
+    </dd>
     <dt>☰ Presets</dt>
     <dd>Recall and store the DSP's presets (see <em>Presets</em>).</dd>
     <dt>⚙ Settings</dt>

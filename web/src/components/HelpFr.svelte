@@ -108,6 +108,19 @@
       arrondi au pas de 0,5 dB du DSP vers le bas, ou vers le haut si vous le choisissez (jusqu'à
       0,5 dB au-dessus de la valeur calculée).
     </dd>
+    <dt>🪄 Setup</dt>
+    <dd>
+      Un assistant qui règle tout le DSP à partir de la description de votre système, en cinq
+      étapes : les sources (stéréo ou mono), les voies (sub, kick, médium, aigu… et sorties
+      auxiliaires comme les retours), l'enceinte de chaque voie, le nombre de caissons par canal
+      d'ampli et l'ampli, les coupures qu'il propose d'après les plages des enceintes, puis un
+      récapitulatif. Il calcule le routing, les noms des canaux, les liens, les filtres, les
+      limiteurs (comme le calculateur de limiteur) et les gains de sortie, pour que toutes les
+      voies principales jouent au même niveau. L'écriture remplace tous les réglages (delays à 0,
+      EQ à plat), coupe les sorties pendant ce temps et stocke le résultat dans l'emplacement de
+      preset choisi. <strong>Toutes les entrées restent coupées</strong> à la fin : vérifiez le
+      système, puis ouvrez-les dans Live, doucement d'abord.
+    </dd>
     <dt>☰ Presets</dt>
     <dd>Rappeler et enregistrer les presets du DSP (voir <em>Presets</em>).</dd>
     <dt>⚙ Settings</dt>

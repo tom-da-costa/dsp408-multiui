@@ -674,6 +674,32 @@ def test_preset_export_and_import(client: TestClient) -> None:
             assert result["error"] == error, (req, result)
 
 
+def test_setup_apply(client: TestClient) -> None:
+    login(client, "Op")
+    outputs = [
+        {"name": "Main", "used": True, "sources": [True, True, False, False]},
+        *({"name": f"Out{n}", "used": False, "sources": [False] * 4} for n in range(2, 9)),
+    ]
+    plan = {"inputs": [{"name": n} for n in ("L", "R", "InC", "InD")], "outputs": outputs}
+    with client.websocket_connect("/ws") as ws:
+        receive_until(ws, "snapshot")
+        applied = request(
+            ws, {"type": "setup.apply", "req": 1, "plan": plan, "slot": 4, "name": "Wizard"}
+        )
+        assert applied == {"type": "result", "req": 1, "ok": True, "name": "Wizard", "notes": []}
+        state = receive_until(ws, "snapshot")["state"]
+        assert state["outputs"][0]["name"] == "Main"
+        assert [i["mute"] for i in state["inputs"]] == [True] * 4
+        for req, message in [
+            (2, {"plan": {"inputs": []}, "name": "X"}),
+            (3, {"plan": plan, "name": 3}),
+            (4, {"plan": plan, "name": "X", "slot": "1"}),
+            (5, {"plan": {**plan, "outputs": outputs[:2]}, "name": "X"}),
+        ]:
+            result = request(ws, {"type": "setup.apply", "req": req, **message})
+            assert result["error"] == "invalid", (req, result)
+
+
 def test_pings_are_answered_during_a_long_request(web_dir: Path) -> None:
     """A preset import (or a recall on a slow link) can last longer than the client's 12 s
     silence limit: the server keeps answering pings meanwhile, or the client drops the link."""

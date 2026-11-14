@@ -1,0 +1,74 @@
+{
+  "$comment": "Speaker library of the setup wizard. One entry per cabinet; a multi-way cabinet driven bi-amp has one section per way. impedance_ohm and aes_w are the section's totals (all its drivers, as wired inside the cabinet); sensitivity_db is 1 W / 1 m. 'estimated' lists the values not taken from a datasheet of these exact drivers.",
+  "speakers": [
+    {
+      "id": "th1821",
+      "name": "TH1821",
+      "description": "Tapped horn, 1× B&C 21DS115-8",
+      "sections": [
+        {
+          "name": "Sub",
+          "drivers": "1× B&C 21DS115-8",
+          "impedance_ohm": 8,
+          "aes_w": 1700,
+          "sensitivity_db": 104.8,
+          "low_hz": 38,
+          "high_hz": 143,
+          "load": "open",
+          "estimated": ["sensitivity_db"],
+          "source": "Driver: B&C 21DS115 datasheet (8 Ω). Range and sensitivity: the TH1821 plan's simulation, made with another 21\" driver."
+        }
+      ]
+    },
+    {
+      "id": "mkh230",
+      "name": "MKH-230",
+      "description": "Kick bin, 2× RCF MB12G401",
+      "sections": [
+        {
+          "name": "Kick",
+          "drivers": "2× RCF MB12G401, parallel",
+          "impedance_ohm": 4,
+          "aes_w": 800,
+          "sensitivity_db": 109.1,
+          "low_hz": 77,
+          "high_hz": 500,
+          "load": "closed",
+          "estimated": ["aes_w"],
+          "source": "MKH-230 plan. No MB12G401 datasheet found: power from its neighbour, the MB12G301 (8 Ω, 400 W AES)."
+        }
+      ]
+    },
+    {
+      "id": "t24n-clone",
+      "name": "T24N clone (bi-amp)",
+      "description": "2× Sanway 12W76ND-8 + Sanway DE800-8 on a 1.4\" horn",
+      "sections": [
+        {
+          "name": "Low",
+          "drivers": "2× Sanway 12W76ND-8, parallel",
+          "impedance_ohm": 4,
+          "aes_w": 800,
+          "sensitivity_db": 103,
+          "low_hz": 65,
+          "high_hz": 1200,
+          "load": "closed",
+          "estimated": ["sensitivity_db"],
+          "source": "Sanway 12W76ND-8 datasheet (400 W AES, 100 dB 1 W/1 m each, +3 dB for two). Low end: the original TW Audio T24N."
+        },
+        {
+          "name": "High",
+          "drivers": "1× Sanway DE800-8",
+          "impedance_ohm": 8,
+          "aes_w": 100,
+          "sensitivity_db": 108,
+          "low_hz": 1200,
+          "high_hz": 18000,
+          "load": "open",
+          "estimated": ["sensitivity_db"],
+          "source": "Sanway DE800-8 datasheet: 100 W, 108 dB for the driver alone (the horn adds some), crossover recommended at 1.2 kHz (the original T24N's passive filter: 1.6 kHz)."
+        }
+      ]
+    }
+  ]
+}

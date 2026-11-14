@@ -109,6 +109,18 @@
       auf den 0,5-dB-Schritt des DSP abgerundet oder, wenn gewählt, aufgerundet (bis zu 0,5 dB
       über dem berechneten Wert).
     </dd>
+    <dt>🪄 Setup</dt>
+    <dd>
+      Ein Assistent, der den ganzen DSP aus einer Beschreibung Ihrer Anlage einrichtet, in fünf
+      Schritten: die Quellen (Stereo oder Mono), die Wege (Sub, Kick, Mitten, Hochton … und
+      Zusatzausgänge wie Monitore), Lautsprecher, Gehäuse pro Endstufenkanal und Endstufe jedes
+      Wegs, die aus den Frequenzbereichen vorgeschlagenen Trennfrequenzen, dann eine
+      Zusammenfassung. Er berechnet Routing, Kanalnamen, Links, Filter, Limiter (wie der
+      Limiter-Rechner) und Ausgangspegel, sodass alle Hauptwege gleich laut spielen. Das Schreiben
+      ersetzt alle Einstellungen (Delays 0, EQ flach), schaltet die Ausgänge währenddessen stumm
+      und speichert das Ergebnis im gewählten Preset-Platz. <strong>Alle Eingänge bleiben
+      stumm</strong>: prüfen Sie die Anlage und schalten Sie sie dann in Live frei, zuerst leise.
+    </dd>
     <dt>☰ Presets</dt>
     <dd>Presets des DSP laden und speichern (siehe <em>Presets</em>).</dd>
     <dt>⚙ Settings</dt>

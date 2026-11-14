@@ -1,0 +1,23 @@
+{
+  "$comment": "Amplifier library of the setup wizard: power per channel by load impedance (ohm → W), bridged power, and the gains the datasheet lists (the wizard pre-fills the highest; the real gain can differ, enter it).",
+  "amplifiers": [
+    {
+      "id": "admark-ad416",
+      "name": "Admark AD416",
+      "channels": 4,
+      "power_w": { "8": 1600, "4": 2600, "2": 3500 },
+      "bridge_power_w": { "8": 5200, "4": 7000 },
+      "gains_db": [32, 35, 38, 41],
+      "rating": "EIAJ, 1 kHz, 1 % THD"
+    },
+    {
+      "id": "admark-ad42",
+      "name": "Admark AD42",
+      "channels": 2,
+      "power_w": { "8": 4200, "4": 7800, "2": 8500 },
+      "bridge_power_w": { "8": 15600, "4": 17000 },
+      "gains_db": [32, 35, 38, 41],
+      "rating": "EIAJ, 1 kHz, 1 % THD"
+    }
+  ]
+}

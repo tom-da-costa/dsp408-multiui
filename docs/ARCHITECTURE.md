@@ -84,7 +84,7 @@ through a single queue (`device/pipeline.py`):
    acknowledged before reading the client's next message: each `set` runs as its own task (in
    order, since a write reaches the queue without yielding), so the values of a drag reach the
    queue while the previous one is in flight. The long requests (preset recall, store, import
-   and export, link changes, resync) run as tasks too: a preset import with a store, or a recall
+   and export, setup wizard, link changes, resync) run as tasks too: a preset import with a store, or a recall
    behind a slow link, lasts longer than the client's 12 s silence limit, and the client's
    pings must still be answered meanwhile (meters stop during an exclusive sequence).
 2. **Priorities.** Writes come before meter polls, but when the meter period has elapsed the next
@@ -260,12 +260,13 @@ WebSocket `/ws` (cookie auth plus an `Origin` check). JSON messages `{type, ...}
 | S→C | `screen_lock` | `locked` (to every tab of the session) |
 | S→C | `settings` | `meter_rate_hz`, `lock_idle_timeout_s` (sent on change) |
 | S→C | `clients` | list of `{id, name}` |
-| S→C | `result` | `req`, `ok`, extra fields of some requests (`preset.import`: `name`, `notes`; `preset.export`: `filename`, `data`, `notes`), `error?` (`locked`: another client has control, `screen_locked`, `master_taken`, `not_master`, `wrong_code`, `rate_limited`, `invalid`, `experimental`, `device_offline`, `device_timeout`), `message?` |
+| S→C | `result` | `req`, `ok`, extra fields of some requests (`preset.import`, `setup.apply`: `name`, `notes`; `preset.export`: `filename`, `data`, `notes`), `error?` (`locked`: another client has control, `screen_locked`, `master_taken`, `not_master`, `wrong_code`, `rate_limited`, `invalid`, `experimental`, `device_offline`, `device_timeout`), `message?` |
 | S→C | `pong` | `req` |
 | C→S | `set` | `req`, `path`, `value` |
 | C→S | `preset.recall` | `req`, `slot` |
 | C→S | `preset.store` | `req`, `slot` (1–20), `name` |
 | C→S | `preset.import` | `req`, `data` (a `.prs` file of the official editor, base64, 16 KB max), `slot?` and `name?` to store it too. The whole file is checked before anything is sent; then one exclusive sequence (PROTOCOL.md §7.1): outputs muted, links undone, the parameters that differ written, links set again, outputs unmuted, config re-read and compared. `notes` lists what did not load exactly |
+| C→S | `setup.apply` | `req`, `plan` (the setup wizard's result, physical units: per input its name, gain and optional low shelf; per output its name, use, matrix sources, gain, polarity, high-pass, low-pass, compressor and limiter thresholds; the input and output link groups), `name` (preset name), `slot?` to store it. The server validates and quantises the plan (`state/setup.py`), builds the whole target config from factory defaults (EQ flat, no delay, gate off; unused outputs and every input muted; the matrix levels kept, no verified request writes them) and loads it with the `preset.import` sequence |
 | C→S | `preset.export` | `req`; the config is re-read and returned as a `.prs` file (`filename`, `data` in base64). Allowed without control (read-only) |
 | C→S | `lock.acquire` / `lock.release` | `req`; take or release control |
 | C→S | `master.acquire` / `master.release` | `req`; take or give up the master role (giving it up allows new logins again) |

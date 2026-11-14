@@ -18,6 +18,7 @@ from dataclasses import dataclass, field
 from typing import Any, TypeGuard
 
 from fastapi import WebSocket, WebSocketDisconnect
+from pydantic import ValidationError
 
 from tracks_dsp_controller import __version__
 from tracks_dsp_controller.aio import cancel_and_wait
@@ -35,6 +36,7 @@ from tracks_dsp_controller.server.lock import LockManager, LockState
 from tracks_dsp_controller.server.master import MasterManager, MasterState
 from tracks_dsp_controller.server.settings import ServerConfig
 from tracks_dsp_controller.state.registry import HARDWARE_VERIFIED, ParamError, is_verified
+from tracks_dsp_controller.state.setup import SetupPlan
 from tracks_dsp_controller.state.store import Patch, Snapshot, StateStore, StoreEvent
 
 log = logging.getLogger(__name__)
@@ -49,6 +51,7 @@ ACTIVITY_TYPES = {
     "preset.store",
     "preset.import",
     "preset.export",
+    "setup.apply",
     "lock.acquire",
     "activity",
     "resync",
@@ -60,6 +63,7 @@ BACKGROUND_TYPES = {
     "preset.store",
     "preset.import",
     "preset.export",
+    "setup.apply",
     "link.set",
     "resync",
 }
@@ -413,6 +417,20 @@ class Hub:
                     raise RequestError("invalid", "name must be a string")
                 loaded = await self.session.import_preset(data, client.id, slot=slot, name=name)
                 return {"name": loaded.name, "notes": list(loaded.notes)}
+            case "setup.apply":
+                self._require_lock(client)
+                try:
+                    plan = SetupPlan.model_validate(message.get("plan"))
+                except ValidationError as exc:
+                    error = exc.errors()[0]
+                    where = ".".join(str(p) for p in error["loc"])
+                    raise RequestError("invalid", f"setup {where}: {error['msg']}") from exc
+                name = message.get("name")
+                if not isinstance(name, str):
+                    raise RequestError("invalid", "name must be a string")
+                slot = None if message.get("slot") is None else _int(message, "slot")
+                applied = await self.session.apply_setup(plan, client.id, slot=slot, name=name)
+                return {"name": applied.name, "notes": list(applied.notes)}
             case "preset.export":
                 exported = await self.session.export_preset()
                 return {
